@@ -16,45 +16,22 @@ Hint Resolve pilerep_valid_pointer : valid_pointer.
 
 Definition sumlist : list Z -> Z := List.fold_right Z.add 0.
 
-(*Clients -- apile.v and onepile.v -- also need these lemmas:
-Lemma pile_new_aux PILE gx x ret:
-(EX p : val, PROP ( )  LOCAL (temp ret_temp p)  SEP (pilerep PILE [] p; pile_freeable PILE p; mem_mgr x))%assert (make_ext_rval gx ret)
-  |-- !! is_pointer_or_null (force_val ret).
-Proof.
- rewrite exp_unfold. Intros p.
- rewrite <- insert_local.
- rewrite lower_andp.
- apply derives_extract_prop; intro.
- destruct H; unfold_lift in H. rewrite retval_ext_rval in *.
- subst p. renormalize. entailer!.
-Qed.
-
-Lemma pile_count_aux PILE gx l v ret:
-  (PROP ( )  LOCAL (temp ret_temp (Vint (Int.repr (sumlist l))))  SEP (pilerep PILE l v)) (make_ext_rval gx ret)
-  |-- !! is_int I32 Signed (force_val ret).
-Proof.
- rewrite <- insert_local.
- rewrite lower_andp.
- apply derives_extract_prop; intro.
- destruct H; unfold_lift in H. rewrite retval_ext_rval in *.
- rewrite <- H. renormalize. 
-Qed.*)
-
 Definition tpile := Tstruct _pile noattr.
 
 Local Open Scope assert.
 
 Section PileASI.
+Variable M: MemMGRPredicates.
 Variable PILE:PilePredicates.
 
 Definition Pile_new_spec :=
  DECLARE _Pile_new
  WITH gv: globals
- PRE [ ] PROP() (PARAMS () GLOBALS (gv) (SEP(mem_mgr gv)))
+ PRE [ ] PROP() (PARAMS () GLOBALS (gv) (SEP(mem_mgr M gv)))
  POST[ tptr tpile ]
    EX p: val,
       PROP() LOCAL(temp ret_temp p)
-      SEP(pilerep PILE nil p; pile_freeable PILE p; mem_mgr gv).
+      SEP(pilerep PILE nil p; pile_freeable PILE p; mem_mgr M gv).
 
 Definition Pile_add_spec :=
  DECLARE _Pile_add
@@ -62,10 +39,10 @@ Definition Pile_add_spec :=
  PRE [ tptr tpile, tint  ]
     PROP(0 <= n <= Int.max_signed)
     PARAMS (p; Vint (Int.repr n)) GLOBALS (gv)
-    SEP(pilerep PILE sigma p; mem_mgr gv)
+    SEP(pilerep PILE sigma p; mem_mgr M gv)
  POST[ tvoid ]
     PROP() LOCAL()
-    SEP(pilerep PILE (n::sigma) p; mem_mgr gv).
+    SEP(pilerep PILE (n::sigma) p; mem_mgr M gv).
 
 Definition Pile_count_spec :=
  DECLARE _Pile_count
@@ -85,9 +62,9 @@ Definition Pile_free_spec :=
  PRE [ tptr tpile  ]
     PROP()
     PARAMS (p) (GLOBALS (gv)
-    SEP(pilerep PILE sigma p; pile_freeable PILE p; mem_mgr gv))
+    SEP(pilerep PILE sigma p; pile_freeable PILE p; mem_mgr M gv))
  POST[ tvoid ]
-     PROP() LOCAL() SEP(mem_mgr gv).
+     PROP() LOCAL() SEP(mem_mgr M gv).
 
 Definition PileASI:funspecs := [ Pile_new_spec; Pile_add_spec; Pile_count_spec; Pile_free_spec].
 

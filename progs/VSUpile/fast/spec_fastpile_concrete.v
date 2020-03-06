@@ -16,16 +16,17 @@ Definition tpile := Tstruct _pile noattr.
 Local Open Scope assert.
 
 Section FastpileConcASI.
+Variable M: MemMGRPredicates.
 Variable FCP: FastpileConcretePredicates.
 
 Definition Pile_new_spec :=
  DECLARE _Pile_new
  WITH gv: globals
- PRE [ ] PROP() PARAMS () GLOBALS (gv) SEP(mem_mgr gv)
+ PRE [ ] PROP() PARAMS () GLOBALS (gv) SEP(mem_mgr M gv)
  POST[ tptr tpile ]
    EX p: val,
       PROP() LOCAL(temp ret_temp p)
-      SEP(countrep FCP 0 p; count_freeable FCP p; mem_mgr gv).
+      SEP(countrep FCP 0 p; count_freeable FCP p; mem_mgr M gv).
 
 Definition Pile_add_spec :=
  DECLARE _Pile_add
@@ -33,10 +34,10 @@ Definition Pile_add_spec :=
  PRE [ tptr tpile, tint ]
     PROP(0 <= n <= Int.max_signed)
     PARAMS (p; Vint (Int.repr n)) GLOBALS (gv)
-    SEP(countrep FCP s p; mem_mgr gv)
+    SEP(countrep FCP s p; mem_mgr M gv)
  POST[ tvoid ]
     PROP() LOCAL()
-    SEP(countrep FCP (n+s) p; mem_mgr gv).
+    SEP(countrep FCP (n+s) p; mem_mgr M gv).
 
 Definition Pile_count_spec :=
  DECLARE _Pile_count
@@ -57,9 +58,9 @@ Definition Pile_free_spec :=
  PRE [ tptr tpile  ]
     PROP()
     PARAMS (p) GLOBALS (gv)
-    SEP(countrep FCP s p; count_freeable FCP p; mem_mgr gv)
+    SEP(countrep FCP s p; count_freeable FCP p; mem_mgr M gv)
  POST[ tvoid ]
-    PROP() LOCAL() SEP(mem_mgr gv).
+    PROP() LOCAL() SEP(mem_mgr M gv).
 
 Definition FastpileConcreteASI:funspecs := [ Pile_new_spec; Pile_add_spec; Pile_count_spec; Pile_free_spec].
 

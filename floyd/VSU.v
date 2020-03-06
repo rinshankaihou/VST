@@ -2583,10 +2583,12 @@ Ltac mkComponent (*G_internal*) :=
   | apply compute_list_norepet_e; reflexivity
   | apply compute_list_norepet_e; reflexivity
   | apply compute_list_norepet_e; reflexivity
-  | intros; contradiction
+  | intros i H; first [ solve contradiction | simpl in H];
+    repeat (destruct H; [ subst; do 4 eexists; reflexivity |]); try contradiction
   | intros; simpl; split; trivial
   | apply compute_list_norepet_e; reflexivity
-  | intros; contradiction
+  | intros i H; first [ solve contradiction | simpl in H];
+    repeat (destruct H; [ subst; reflexivity |]); try contradiction
   | intros i phi fd H H0; simpl in H;
     repeat (if_tac in H; [ inv H; inv H0 | ]; try discriminate)
   | finishComponent
@@ -2603,6 +2605,22 @@ Ltac solve_SF_internal P :=
    | apply P
    | eexists; split; [ LookupID | LookupB ]
    ].
+
+(*slihgtly slower*)
+Ltac solve_SF_external_with_intuition B :=
+   first [simpl; split; intuition; [ try solve [entailer!] | try apply B | eexists; split; cbv; reflexivity ] | idtac].
+
+(*Slightly faster*)
+Ltac solve_SF_external B :=
+  first [ split3; [ reflexivity 
+                     | reflexivity 
+                     | split3; [ reflexivity
+                               | reflexivity
+                               | split3; [ left; trivial
+                                         | intros ? ? ? ?; try solve [entailer!](*; normalize*)
+                                         | split; [ try apply B
+                                                  | eexists; split; cbv; reflexivity ]] ] ]
+        | idtac ].
 
 Fixpoint FDM_entries (funs1 funs2 : list (ident * fundef function)): option (list (ident * fundef function * fundef function)) :=
   match funs1 with

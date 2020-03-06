@@ -9,6 +9,7 @@ Require Import spec_fastapile.
 Instance APileCompSpecs : compspecs. make_compspecs prog. Defined.
 
 Section Apile_VSU.
+Variable M: MemMGRPredicates.
 Variable PILEPRIV: FastpilePrivatePredicates. (*apile is parametric in a PRIVATE pile predicate structure*)
 
 Definition apile (gv: globals) (sigma: list Z) : mpred :=
@@ -39,17 +40,17 @@ Qed.
 
 Definition APILE: APilePredicates := Build_APilePredicates apile APileCompSpecs make_apile.
 
-  Definition Apile_ASI: funspecs := ApileASI APILE.
+  Definition Apile_ASI: funspecs := ApileASI M APILE.
 
   Definition apile_imported_specs:funspecs := 
-     [ Pile_add_spec PILEPRIV; Pile_count_spec PILEPRIV].
+     [ Pile_add_spec M PILEPRIV; Pile_count_spec PILEPRIV].
 
   Definition apile_internal_specs: funspecs := Apile_ASI.
 
   Definition ApileVprog: varspecs. mk_varspecs prog. Defined.
   Definition ApileGprog: funspecs := apile_imported_specs ++ apile_internal_specs.
 
-Lemma body_Apile_add: semax_body ApileVprog ApileGprog f_Apile_add (Apile_add_spec APILE).
+Lemma body_Apile_add: semax_body ApileVprog ApileGprog f_Apile_add (Apile_add_spec M APILE).
 Proof.
 start_function.
 simpl spec_fastapile.apile. unfold apile.
@@ -57,7 +58,7 @@ forward_call (gv _a_pile, n,sigma,gv).
 entailer!.
 Qed.
 
-Lemma body_Apile_count: semax_body ApileVprog ApileGprog f_Apile_count (Apile_count_spec APILE).
+Lemma body_Apile_count: semax_body ApileVprog ApileGprog f_Apile_count (Apile_count_spec M APILE).
 Proof.
 start_function.
 simpl spec_fastapile.apile. unfold apile in *.
@@ -77,4 +78,3 @@ Definition ApileVSU: @VSU NullExtension.Espec ApileVprog _
       nil apile_imported_specs prog Apile_ASI.
   Proof. eexists; apply ApileComponent. Qed.
 End Apile_VSU.
-

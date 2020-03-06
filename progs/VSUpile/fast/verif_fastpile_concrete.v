@@ -7,6 +7,7 @@ Require Import spec_fastpile_concrete.
 Instance FPileConcCompSpecs : compspecs. make_compspecs prog. Defined.
 
 Section FastpileConcrete_VSU.
+Variable M: MemMGRPredicates.
 
 Definition crep (s: Z) (p: val) : mpred :=
   EX s':Z, !! (0 <= s /\ 0 <= s' <= Int.max_signed /\
@@ -14,7 +15,7 @@ Definition crep (s: Z) (p: val) : mpred :=
   data_at Ews tpile (Vint (Int.repr s')) p.
 
 Definition cfreeable (p: val) :=
-   malloc_token Ews tpile p.
+   malloc_token M Ews tpile p.
 
 Lemma crep_local_facts:
   forall s p, crep s p |-- !! isptr p.
@@ -47,22 +48,22 @@ Definition surely_malloc_spec :=
                 complete_legal_cosu_type t = true;
                 natural_aligned natural_alignment t = true)
        (LAMBDAx [gv] [Vint (Int.repr (sizeof t))]
-       (SEP (mem_mgr gv)))
+       (SEP (mem_mgr M gv)))
     POST [ tptr tvoid ] EX p:_,
        PROP ()
        LOCAL (temp ret_temp p)
-       SEP (mem_mgr gv; malloc_token Ews t p * data_at_ Ews t p).
+       SEP (mem_mgr M gv; malloc_token M Ews t p * data_at_ Ews t p).
 
-  Definition FastpileConc_ASI: funspecs := FastpileConcreteASI FASTPILECONC.
+  Definition FastpileConc_ASI: funspecs := FastpileConcreteASI M FASTPILECONC.
 
-  Definition fastpileconc_imported_specs:funspecs := spec_stdlib.specs.
+  Definition fastpileconc_imported_specs:funspecs := (*spec_stdlib.specs.*)MMASI M.
 
   Definition fastpileconc_internal_specs: funspecs := surely_malloc_spec::FastpileConc_ASI.
 
   Definition FastpileConcVprog: varspecs. mk_varspecs prog. Defined.
   Definition FastpileConcGprog: funspecs := fastpileconc_imported_specs ++ fastpileconc_internal_specs.
 
-Lemma body_Pile_new: semax_body FastpileConcVprog FastpileConcGprog f_Pile_new (Pile_new_spec FASTPILECONC).
+Lemma body_Pile_new: semax_body FastpileConcVprog FastpileConcGprog f_Pile_new (Pile_new_spec M FASTPILECONC).
 Proof.
 start_function.
 forward_call (tpile, gv).
@@ -76,7 +77,7 @@ Exists p 0.
 entailer!.
 Qed.
 
-Lemma body_Pile_add: semax_body FastpileConcVprog FastpileConcGprog f_Pile_add (Pile_add_spec FASTPILECONC).
+Lemma body_Pile_add: semax_body FastpileConcVprog FastpileConcGprog f_Pile_add (Pile_add_spec M FASTPILECONC).
 Proof.
 start_function.
 simpl countrep. unfold crep.
@@ -101,7 +102,7 @@ entailer!.
 -
 destruct (zle 0 n); try omega.
 forward_if (PROP()LOCAL (temp _pp p)
-   SEP(crep (n+s) p; mem_mgr gv)).
+   SEP(crep (n+s) p; mem_mgr M gv)).
 +
 if_tac in H3; inv H3.
 forward.
@@ -128,13 +129,13 @@ Exists s' s'.
 entailer!.
 Qed.
 
-Lemma body_Pile_free: semax_body FastpileConcVprog FastpileConcGprog f_Pile_free (Pile_free_spec FASTPILECONC).
+Lemma body_Pile_free: semax_body FastpileConcVprog FastpileConcGprog f_Pile_free (Pile_free_spec M FASTPILECONC).
 Proof.
 start_function.
 simpl countrep. unfold crep.
 simpl count_freeable. unfold cfreeable. Intros s'.
 assert_PROP (p<>nullval) by entailer!. 
-forward_call (free_spec_sub (Tstruct _pile noattr))  (p, gv).
+forward_call (free_spec_sub M (Tstruct _pile noattr))  (p, gv).
 rewrite if_false by auto.
 cancel.
 forward.
@@ -145,7 +146,7 @@ Qed.
 Lemma body_surely_malloc: semax_body FastpileConcVprog FastpileConcGprog f_surely_malloc surely_malloc_spec.
 Proof.
 start_function.
-forward_call (malloc_spec_sub t) gv.
+forward_call (malloc_spec_sub M t) gv.
 Intros p.
 if_tac.
 { subst.

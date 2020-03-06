@@ -8,12 +8,13 @@ Require Import spec_fasttriang.
 Instance TriangCompSpecs : compspecs. make_compspecs prog. Defined.
 
 Section Triang_VSU.
+Variable M: MemMGRPredicates.
 Variable PILE: PilePredicates. (*triang is parametric in a pile predicate structure*)
 
 (*triang's Imported specs.*)
-  Definition triang_imported_specs:funspecs := PileASI PILE.
+  Definition triang_imported_specs:funspecs := PileASI M PILE.
 
-  Definition triang_internal_specs: funspecs := TriangASI.
+  Definition triang_internal_specs: funspecs := TriangASI M.
 
   Definition TriangVprog: varspecs. mk_varspecs prog. Defined.
   Definition TriangGprog: funspecs := triang_imported_specs ++ triang_internal_specs.
@@ -61,7 +62,7 @@ instantiate (1:=1001); omega.
 computable.
 Qed.
 
-Lemma body_Triang_nth: semax_body TriangVprog TriangGprog f_Triang_nth Triang_nth_spec.
+Lemma body_Triang_nth: semax_body TriangVprog TriangGprog f_Triang_nth (Triang_nth_spec M).
 Proof.
 start_function.
 forward_call gv.
@@ -69,7 +70,7 @@ Intros p.
 forward_for_simple_bound n
   (EX i:Z,
    PROP() LOCAL(temp _p p; temp _n (Vint (Int.repr n)); gvars gv)
-   SEP (pilerep PILE (decreasing (Z.to_nat i)) p; pile_freeable PILE p; mem_mgr gv)).
+   SEP (pilerep PILE (decreasing (Z.to_nat i)) p; pile_freeable PILE p; mem_mgr M gv)).
 -
  entailer!.
 - forward_call (p, i+1, decreasing(Z.to_nat i), gv).
@@ -96,13 +97,13 @@ simpl. congruence.
 Qed.
 
   Definition TriangComponent: @Component NullExtension.Espec TriangVprog _ 
-      nil triang_imported_specs prog TriangASI triang_internal_specs.
+      nil triang_imported_specs prog (TriangASI M) triang_internal_specs.
   Proof. 
     mkComponent. 
     + solve_SF_internal body_Triang_nth.
   Qed.
 
 Definition TriangVSU: @VSU NullExtension.Espec TriangVprog _ 
-      nil triang_imported_specs prog TriangASI.
+      nil triang_imported_specs prog (TriangASI M).
   Proof. eexists; apply TriangComponent. Qed.
 End Triang_VSU.

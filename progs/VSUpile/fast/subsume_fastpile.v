@@ -1,5 +1,6 @@
 Require Import VST.floyd.proofauto.
 Require Import fastpile.
+Require Import spec_stdlib.
 Require Import spec_fastpile.
 Require Import spec_fastpile_concrete.
 
@@ -16,11 +17,12 @@ an the ASIs, as follows:*)
 Section SubsumptionProofs_ASI.
 (*Since the specs are parametric in predicate bundles,
   let's do the same here*)
+Variable M: MemMGRPredicates.
 Variable FPC:FastpileConcretePredicates.
 Variable PILE:PilePredicates.
 Lemma sub_Pile_new: 
-  funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec FPC))
-              (snd (spec_fastpile.Pile_new_spec PILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec M FPC))
+              (snd (spec_fastpile.Pile_new_spec M PILE)).
 Proof.
 do_funspec_sub.
 rename w into gv; clear H.
@@ -31,12 +33,13 @@ Abort.
 (*But that can't work: the entailments left over as side conditions here
 can never be proven abstractly but only given concrete predicate definitions.
 One might think that imposing axioms countrep |-- pilerep and 
-count_freeable |-- pile_freeable would help. But the following proof attemt shows (unsirprsingly given the structure of funspec sub and the occurrence of the abstract predicates in pre- AND post-conditions)
+count_freeable |-- pile_freeable would help. But the following proof attempt shows 
+(unsurprsingly given the structure of funspec sub and the occurrence of the abstract predicates in pre- AND post-conditions)
 that one would additionally deen axioms in the opposite direction.*)
 
 Lemma sub_Pile_add: 
-  funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec FPC))
-              (snd (spec_fastpile.Pile_add_spec PILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec M FPC))
+              (snd (spec_fastpile.Pile_add_spec M PILE)).
 Proof.
 do_funspec_sub. destruct w as [[[p n] sigma] gv]; clear H. simpl. normalize.
 Exists (p,n, spec_fastpile.sumlist sigma,gv) emp. normalize.
@@ -51,9 +54,10 @@ Require Import verif_fastpile_concrete.
 Require Import verif_fastpile.
 
 Section SubsumptionProofs_FM.
+Variable M: MemMGRPredicates.
 Lemma sub_Pile_new:
-  funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec FASTPILECONC))
-              (snd (spec_fastpile.Pile_new_spec FASTPILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec M (FASTPILECONC M)))
+              (snd (spec_fastpile.Pile_new_spec M (FASTPILE M))).
 Proof.
 do_funspec_sub.
 rename w into gv; clear H.
@@ -67,8 +71,8 @@ Qed.
 (*The oder of remaining side conditions is swapped compared to the FM code base,
   presumably because of a reformulation of sunpec_sub or becuase of the introduction of do_funspec_sub*)
 Lemma sub_Pile_add: 
-  funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec FASTPILECONC))
-              (snd (spec_fastpile.Pile_add_spec FASTPILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec M (FASTPILECONC M)))
+              (snd (spec_fastpile.Pile_add_spec M (FASTPILE M))).
 Proof.
 do_funspec_sub. destruct w as [[[p n] sigma] gv]; clear H. simpl. normalize.
 Exists (p,n, spec_fastpile.sumlist sigma,gv) emp. normalize.
@@ -83,8 +87,8 @@ apply andp_right.
 Qed.
 
 Lemma sub_Pile_count: 
-  funspec_sub (snd (spec_fastpile_concrete.Pile_count_spec FASTPILECONC))
-              (snd (spec_fastpile.Pile_count_spec FASTPILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_count_spec (FASTPILECONC M)))
+              (snd (spec_fastpile.Pile_count_spec (FASTPILE M))).
 Proof.
 do_funspec_sub. destruct w as [p sigma]; clear H. simpl. normalize.
 Exists (p, spec_fastpile.sumlist sigma) emp. normalize. entailer.
@@ -103,8 +107,8 @@ apply andp_right.
 Qed.
 
 Lemma sub_Pile_free: 
-  funspec_sub (snd (spec_fastpile_concrete.Pile_free_spec FASTPILECONC))
-              (snd (spec_fastpile.Pile_free_spec FASTPILE)).
+  funspec_sub (snd (spec_fastpile_concrete.Pile_free_spec M (FASTPILECONC M)))
+              (snd (spec_fastpile.Pile_free_spec M (FASTPILE M))).
 Proof.
 do_funspec_sub. destruct w as [[p sigma] gv]. clear H; simpl; normalize.
 Exists (p, spec_fastpile.sumlist sigma, gv) emp. normalize. 
@@ -127,19 +131,21 @@ Definition ASI_sub (ASI1 ASI2: funspecs) :=
 (*Let's generalize a little, in stages. Stage 1: define a type that bundles
   subsumbption proofs for the four methods of pile, given
   FastpileConcretePredicates predicate bundle and a PilePredicates predicate bundle.*)
-Record PileSub (ConcPreds: FastpileConcretePredicates) (Preds:PilePredicates) := {
-  sub_new: funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec ConcPreds))
-                       (snd (spec_fastpile.Pile_new_spec Preds));
-  sub_add: funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec ConcPreds))
-                       (snd (spec_fastpile.Pile_add_spec Preds));
+Record PileSub (M:MemMGRPredicates) 
+               (ConcPreds: FastpileConcretePredicates)
+               (Preds:PilePredicates) := {
+  sub_new: funspec_sub (snd (spec_fastpile_concrete.Pile_new_spec M ConcPreds))
+                       (snd (spec_fastpile.Pile_new_spec M Preds));
+  sub_add: funspec_sub (snd (spec_fastpile_concrete.Pile_add_spec M ConcPreds))
+                       (snd (spec_fastpile.Pile_add_spec M Preds));
   sub_count: funspec_sub (snd (spec_fastpile_concrete.Pile_count_spec ConcPreds))
                          (snd (spec_fastpile.Pile_count_spec Preds));
-  sub_free: funspec_sub (snd (spec_fastpile_concrete.Pile_free_spec ConcPreds))
-                        (snd (spec_fastpile.Pile_free_spec Preds))
+  sub_free: funspec_sub (snd (spec_fastpile_concrete.Pile_free_spec M ConcPreds))
+                        (snd (spec_fastpile.Pile_free_spec M Preds))
 }.
 
 (*Indeed, the lemmas we proved in Section SubsumptionProofs_FM can be bundled in this way.*)
-Lemma PILE_SUB: PileSub FASTPILECONC FASTPILE.
+Lemma PILE_SUB M: PileSub M (FASTPILECONC M) (FASTPILE M).
 Proof.
   constructor.
   apply sub_Pile_new.
@@ -162,20 +168,20 @@ Record PileSpec :=
   }.
 
 (*Indeed, here are the two instances, by "constructive proofs" ending in "Defined."*)
-Definition Concspec : PileSpec.
+Definition Concspec (M: MemMGRPredicates): PileSpec.
 eapply (Build_PileSpec FastpileConcretePredicates).
-apply spec_fastpile_concrete.Pile_new_spec.
-apply spec_fastpile_concrete.Pile_add_spec.
+apply (spec_fastpile_concrete.Pile_new_spec M).
+apply (spec_fastpile_concrete.Pile_add_spec M).
 apply spec_fastpile_concrete.Pile_count_spec.
-apply spec_fastpile_concrete.Pile_free_spec.
+apply (spec_fastpile_concrete.Pile_free_spec M).
 Defined.
 
-Definition Fastspec : PileSpec.
+Definition Fastspec (M: MemMGRPredicates): PileSpec.
 eapply (Build_PileSpec PilePredicates).
-apply spec_fastpile.Pile_new_spec.
-apply spec_fastpile.Pile_add_spec.
+apply (spec_fastpile.Pile_new_spec M).
+apply (spec_fastpile.Pile_add_spec M).
 apply spec_fastpile.Pile_count_spec.
-apply spec_fastpile.Pile_free_spec.
+apply (spec_fastpile.Pile_free_spec M).
 Defined. 
 (*Interestingly, Coq accepts this, despite the fact that, for example,
 Check spec_fastpile.Pile_new_spec.  yields PilePredicates -> ident * funspec)
@@ -194,8 +200,8 @@ Record PileSpecsSub (PS1 PS2: PileSpec) (preds1:preds PS1) (preds2: preds PS2) :
 (*Here's a proof that the two bundles constructed in verif_fastpile_concrete and
   verif_fastpile satisfy this condition. Indeed, the four proofs we constructed in
   Lemma PILE_SUB can conveniently be reused here.*)
-Lemma MyPileSpecsSub: PileSpecsSub Concspec Fastspec FASTPILECONC FASTPILE.
-Proof. constructor; apply PILE_SUB. Qed.
+Lemma MyPileSpecsSub M: PileSpecsSub (Concspec M) (Fastspec M) (FASTPILECONC M) (FASTPILE M).
+Proof. constructor;  apply (PILE_SUB M). Qed.
 
 (*Stage3: let's abstract from the four functions, and instead construct a type of specs
   for any list of (function) identifiers.*)
@@ -208,22 +214,22 @@ Record SPEC (l: list ident) :=
 
 (*Here are the two instantiations - again as constructive proofs*)
 Definition Pile_SPEC := SPEC [_Pile_new; _Pile_add; _Pile_count; _Pile_free].
-Definition ConcSPEC : Pile_SPEC.
+Definition ConcSPEC (M: MemMGRPredicates): Pile_SPEC.
 eapply (Build_SPEC _ FastpileConcretePredicates
-           (fun p => map snd [ spec_fastpile_concrete.Pile_new_spec p; 
-                               spec_fastpile_concrete.Pile_add_spec p;
+           (fun p => map snd [ spec_fastpile_concrete.Pile_new_spec M p; 
+                               spec_fastpile_concrete.Pile_add_spec M p;
                                spec_fastpile_concrete.Pile_count_spec p;
-                               spec_fastpile_concrete.Pile_free_spec p])).
+                               spec_fastpile_concrete.Pile_free_spec M p])).
 reflexivity.
 reflexivity.
 Defined.
 
-Definition FastSPEC : Pile_SPEC.
+Definition FastSPEC (M: MemMGRPredicates): Pile_SPEC.
 eapply (Build_SPEC _ PilePredicates
-           (fun p => map snd [ spec_fastpile.Pile_new_spec p; 
-                               spec_fastpile.Pile_add_spec p;
+           (fun p => map snd [ spec_fastpile.Pile_new_spec M p; 
+                               spec_fastpile.Pile_add_spec M p;
                                spec_fastpile.Pile_count_spec p;
-                               spec_fastpile.Pile_free_spec p])).
+                               spec_fastpile.Pile_free_spec M p])).
 reflexivity.
 reflexivity.
 Defined. 
@@ -238,7 +244,7 @@ Record SPECS_Sub l (SPEC1 SPEC2: SPEC l) (preds1:SPEC_preds _ SPEC1) (preds2: SP
 (*Here's a proof that the two bundles constructed in verif_fastpile_concrete and
   verif_fastpile satisfy this condition. Indeed, the four proofs we constructed in
   Lemma PILE_SUB can conveniently be reused here.*)
-Lemma MyPile_SPECS_Sub: SPECS_Sub _ ConcSPEC FastSPEC FASTPILECONC FASTPILE.
+Lemma MyPile_SPECS_Sub M: SPECS_Sub _ (ConcSPEC M) (FastSPEC M) (FASTPILECONC M) (FASTPILE M).
 Proof. constructor. repeat constructor; apply PILE_SUB. Qed.
 
 (*Relaxing the condition that SPECS1 and SPEC2 be over the same list (instead requiring one be a sublist

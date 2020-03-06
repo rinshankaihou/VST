@@ -1,28 +1,33 @@
 Require Import VST.floyd.proofauto.
-Require Import stdlib. 
-Instance CompSpecs : compspecs. make_compspecs prog. Defined.
-Global Open Scope funspec_scope.
-Definition Vprog : varspecs. mk_varspecs prog. Defined.
+Require Import stdlib.
 
 Local Open Scope assert.
 
-Parameter mem_mgr: globals -> mpred.
-Parameter malloc_token': share -> Z -> val -> mpred.
-Parameter malloc_token'_valid_pointer: forall sh sz p, malloc_token' sh sz p |-- valid_pointer p.
-Axiom make_mem_mgr: forall gv, emp |-- mem_mgr gv.
+Record MemMGRPredicates := {
+   mem_mgr: globals -> mpred;
+   malloc_token': share -> Z -> val -> mpred;
+   malloc_token'_valid_pointer: forall sh sz p, 
+      malloc_token' sh sz p |-- valid_pointer p;
+   make_mem_mgr: forall gv, emp |-- mem_mgr gv;
+   malloc_token'_local_facts:  forall sh sz p, 
+      malloc_token' sh sz p |-- !! malloc_compatible sz p
+}.
 
-Definition malloc_token {cs: compspecs} sh t v := 
+Definition malloc_token {cs: compspecs} (M:MemMGRPredicates) sh t v := 
    !! field_compatible t [] v && 
-   malloc_token' sh (sizeof t) v.
-Lemma malloc_token_valid_pointer: forall {cs: compspecs} sh t p, malloc_token sh t p |-- valid_pointer p.
+   malloc_token' M sh (sizeof t) v.
+
+Lemma malloc_token_valid_pointer: forall {cs: compspecs} M sh t p, 
+      malloc_token M sh t p |-- valid_pointer p.
 Proof. intros. unfold malloc_token.
- apply andp_left2. apply malloc_token'_valid_pointer. Qed.
+ apply andp_left2. apply malloc_token'_valid_pointer.
+Qed.
 
 Hint Resolve malloc_token'_valid_pointer : valid_pointer.
 Hint Resolve malloc_token_valid_pointer : valid_pointer.
 
-Parameter malloc_token'_local_facts:  forall sh sz p, malloc_token' sh sz p |-- !! malloc_compatible sz p.
-Lemma malloc_token_local_facts:  forall {cs: compspecs} sh t p, malloc_token sh t p |-- !! (field_compatible t [] p /\ malloc_compatible (sizeof t) p).
+Lemma malloc_token_local_facts:  forall {cs: compspecs} M sh t p,
+      malloc_token M sh t p |-- !! (field_compatible t [] p /\ malloc_compatible (sizeof t) p).
 Proof. intros.
  unfold malloc_token.
  normalize. rewrite prop_and.
@@ -32,19 +37,22 @@ Qed.
 Hint Resolve malloc_token'_local_facts : saturate_local.
 Hint Resolve malloc_token_local_facts : saturate_local.
 
+Section MMASI.
+Variable M:MemMGRPredicates.
+
 Definition malloc_spec' :=
  DECLARE _malloc
    WITH n:Z, gv: globals
    PRE [ size_t ]
        PROP (0 <= n <= Ptrofs.max_unsigned)
        PARAMS (Vptrofs (Ptrofs.repr n)) GLOBALS (gv)
-       SEP (mem_mgr gv)
+       SEP (mem_mgr M gv)
     POST [ tptr tvoid ] EX p:_,
        PROP ()
        LOCAL (temp ret_temp p)
-       SEP (mem_mgr gv;
+       SEP (mem_mgr M gv;
              if eq_dec p nullval then emp
-            else (malloc_token' Ews n p * memory_block Ews n p)).
+            else (malloc_token' M Ews n p * memory_block Ews n p)).
 
 Definition free_spec' :=
  DECLARE _free
@@ -52,13 +60,13 @@ Definition free_spec' :=
    PRE [ tptr tvoid ]
        PROP ()
        PARAMS (p) GLOBALS (gv)
-       SEP (mem_mgr gv;
+       SEP (mem_mgr M gv;
               if eq_dec p nullval then emp
-              else (malloc_token' Ews n p * memory_block Ews n p))
+              else (malloc_token' M Ews n p * memory_block Ews n p))
     POST [ Tvoid ]
        PROP ()
        LOCAL ()
-       SEP (mem_mgr gv).
+       SEP (mem_mgr M gv).
 
 Definition exit_spec :=
  DECLARE _exit
@@ -68,17 +76,6 @@ Definition exit_spec :=
  POST [ tvoid ]
    PROP(False) LOCAL() SEP().
 
-Definition placeholder_spec :=
- DECLARE _placeholder
- WITH u: unit
- PRE [ ]
-   PROP (False) PARAMS () GLOBALS () SEP()
- POST [ tint ]
-   PROP() LOCAL() SEP().
-
-Definition ispecs := [placeholder_spec].
-Definition specs := [malloc_spec'; free_spec'; exit_spec].
-
 Definition malloc_spec  {cs: compspecs} (t: type) :=
  DECLARE _malloc
    WITH gv: globals
@@ -87,13 +84,13 @@ Definition malloc_spec  {cs: compspecs} (t: type) :=
                 complete_legal_cosu_type t = true;
                 natural_aligned natural_alignment t = true)
        PARAMS (Vptrofs (Ptrofs.repr (sizeof t))) GLOBALS (gv)
-       SEP (mem_mgr gv)
+       SEP (mem_mgr M gv)
     POST [ tptr tvoid ] EX p:_,
        PROP ()
        LOCAL (temp ret_temp p)
-       SEP (mem_mgr gv;
+       SEP (mem_mgr M gv;
              if eq_dec p nullval then emp
-            else (malloc_token Ews t p * data_at_ Ews t p)).
+            else (malloc_token M Ews t p * data_at_ Ews t p)).
 
 Definition free_spec  {cs: compspecs} (t: type) :=
  DECLARE _free
@@ -101,13 +98,13 @@ Definition free_spec  {cs: compspecs} (t: type) :=
    PRE [ tptr tvoid ]
        PROP ()
        PARAMS (p) GLOBALS (gv)
-       SEP (mem_mgr gv;
+       SEP (mem_mgr M gv;
               if eq_dec p nullval then emp
-              else (malloc_token Ews t p * data_at_ Ews t p))
+              else (malloc_token M Ews t p * data_at_ Ews t p))
     POST [ Tvoid ]
        PROP ()
        LOCAL ()
-       SEP (mem_mgr gv).
+       SEP (mem_mgr M gv).
 
 Lemma malloc_spec_sub:
  forall {cs: compspecs} (t: type), 
@@ -137,3 +134,8 @@ sep_apply data_at__memory_block_cancel.
 unfold malloc_token; entailer!.
 Qed.
 
+
+Definition MMASI:funspecs := [ malloc_spec'; free_spec'; exit_spec].
+
+End MMASI.
+(*Definition ispecs := [placeholder_spec].*)

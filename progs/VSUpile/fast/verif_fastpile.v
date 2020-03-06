@@ -6,6 +6,8 @@ Require Import spec_fastpile.
 Require Import spec_fastpile_private.
 
 Section Fastpile_VSU.
+Variable M: MemMGRPredicates.
+
 Lemma fastprep_local_facts:
   forall sigma p,
    fastprep sigma p |-- !! (isptr p /\ Forall (Z.le 0) sigma).
@@ -29,7 +31,7 @@ Qed.
 Hint Resolve fastprep_valid_pointer : valid_pointer.
 
 Definition pfreeable (p: val) : mpred :=
-            malloc_token Ews tpile p.
+            malloc_token M Ews tpile p.
 
 Definition FASTPILE: PilePredicates := Build_PilePredicates fastprep
               fastprep_local_facts fastprep_valid_pointer pfreeable.
@@ -44,22 +46,22 @@ Definition surely_malloc_spec :=
                 complete_legal_cosu_type t = true;
                 natural_aligned natural_alignment t = true)
        (LAMBDAx [gv] [Vint (Int.repr (sizeof t))]
-       (SEP (mem_mgr gv)))
+       (SEP (mem_mgr M gv)))
     POST [ tptr tvoid ] EX p:_,
        PROP ()
        LOCAL (temp ret_temp p)
-       SEP (mem_mgr gv; malloc_token Ews t p * data_at_ Ews t p).
+       SEP (mem_mgr M gv; malloc_token M Ews t p * data_at_ Ews t p).
 
-  Definition Fastpile_ASI: funspecs := PileASI FASTPILE.
+  Definition Fastpile_ASI: funspecs := PileASI M FASTPILE.
 
-  Definition fastpile_imported_specs:funspecs := spec_stdlib.specs.
+  Definition fastpile_imported_specs:funspecs := (*spec_stdlib.specs.*)MMASI M.
 
   Definition fastpile_internal_specs: funspecs := surely_malloc_spec::Fastpile_ASI.
 
   Definition FastpileVprog: varspecs. mk_varspecs prog. Defined.
   Definition FastpileGprog: funspecs := fastpile_imported_specs ++ fastpile_internal_specs.
 
-Lemma body_Pile_new: semax_body FastpileVprog FastpileGprog f_Pile_new (Pile_new_spec FASTPILE).
+Lemma body_Pile_new: semax_body FastpileVprog FastpileGprog f_Pile_new (Pile_new_spec M FASTPILE).
 Proof.
 start_function.
 forward_call (tpile, gv).
@@ -81,7 +83,7 @@ induction sigma; simpl. omega. inv H.
 apply IHsigma in H3; omega.
 Qed.
 
-Lemma body_Pile_add: semax_body FastpileVprog FastpileGprog f_Pile_add (Pile_add_spec FASTPILE).
+Lemma body_Pile_add: semax_body FastpileVprog FastpileGprog f_Pile_add (Pile_add_spec M FASTPILE).
 Proof.
 start_function.
 simpl pilerep. unfold fastprep.
@@ -106,7 +108,7 @@ destruct (zle n (Int.max_signed - s)).
 -
 forward_if (PROP()LOCAL (temp _pp p)
    SEP(data_at Ews tpile (Vint (Int.repr (s+n))) p;
-         mem_mgr gv)).
+         mem_mgr M gv)).
 forward.
 entailer!.
 inversion H3.
@@ -123,7 +125,7 @@ apply sumlist_nonneg in H1; omega.
 -
 forward_if (PROP()LOCAL (temp _pp p)
    SEP(data_at Ews tpile (Vint (Int.repr s)) p;
-         mem_mgr gv)).
+         mem_mgr M gv)).
 contradiction H3'; auto.
 forward.
 entailer!.
@@ -151,13 +153,13 @@ Exists s.
 entailer!.
 Qed.
 
-Lemma body_Pile_free: semax_body FastpileVprog FastpileGprog f_Pile_free (Pile_free_spec FASTPILE).
+Lemma body_Pile_free: semax_body FastpileVprog FastpileGprog f_Pile_free (Pile_free_spec M FASTPILE).
 Proof.
 start_function.
 simpl pilerep; unfold fastprep. 
 simpl pile_freeable; unfold pfreeable. Intros s.
 assert_PROP (p<>nullval) by entailer!.
-forward_call (free_spec_sub (Tstruct _pile noattr))  (p, gv).
+forward_call (free_spec_sub M (Tstruct _pile noattr))  (p, gv).
 rewrite if_false by auto.
 cancel.
 forward.
@@ -167,7 +169,7 @@ Qed.
 Lemma body_surely_malloc: semax_body FastpileVprog FastpileGprog f_surely_malloc surely_malloc_spec.
 Proof.
 start_function.
-forward_call (malloc_spec_sub t) gv.
+forward_call (malloc_spec_sub M t) gv.
 Intros p.
 if_tac.
 { subst.
@@ -196,7 +198,7 @@ Qed.
   Proof. eexists; apply FastpileComponent. Qed.
 
   Definition FastpilePrivateComponent: @Component NullExtension.Espec FastpileVprog _ 
-      nil fastpile_imported_specs prog (FastpilePrivateASI FASTPILEPRIV) fastpile_internal_specs.
+      nil fastpile_imported_specs prog (FastpilePrivateASI M FASTPILEPRIV) fastpile_internal_specs.
   Proof. 
     mkComponent.
     + solve_SF_internal body_surely_malloc.
@@ -207,6 +209,6 @@ Qed.
   Qed.
 
 Definition FastpilePrivateVSU: @VSU NullExtension.Espec FastpileVprog _ 
-      nil fastpile_imported_specs prog (FastpilePrivateASI FASTPILEPRIV).
+      nil fastpile_imported_specs prog (FastpilePrivateASI M FASTPILEPRIV).
   Proof. eexists; apply FastpileComponent. Qed.
 End Fastpile_VSU.

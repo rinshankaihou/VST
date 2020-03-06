@@ -13,15 +13,16 @@ Record OnePilePredicates := {
 Local Open Scope assert.
 
 Section OnepileASI.
+Variable M: MemMGRPredicates.
 Variable ONEPILE:OnePilePredicates.
  
 Definition Onepile_init_spec :=
  DECLARE _Onepile_init
  WITH gv: globals
  PRE [ ] 
-    PROP() PARAMS () GLOBALS (gv) SEP(onepile ONEPILE gv None; mem_mgr gv)
+    PROP() PARAMS () GLOBALS (gv) SEP(onepile ONEPILE gv None; mem_mgr M gv)
  POST[ tvoid ]
-    PROP() LOCAL() SEP(onepile ONEPILE gv (Some nil); mem_mgr gv).
+    PROP() LOCAL() SEP(onepile ONEPILE gv (Some nil); mem_mgr M gv).
 
 Definition Onepile_add_spec :=
  DECLARE _Onepile_add
@@ -29,10 +30,10 @@ Definition Onepile_add_spec :=
  PRE [ tint ]
     PROP(0 <= n <= Int.max_signed)
     PARAMS (Vint (Int.repr n)) GLOBALS (gv)
-    SEP(onepile ONEPILE gv (Some sigma); mem_mgr gv)
+    SEP(onepile ONEPILE gv (Some sigma); mem_mgr M gv)
  POST[ tvoid ]
     PROP() LOCAL()
-    SEP(onepile ONEPILE gv (Some (n::sigma)); mem_mgr gv).
+    SEP(onepile ONEPILE gv (Some (n::sigma)); mem_mgr M gv).
 
 (*Reuse definition from the model for pile, in spec_pile 
 Definition sumlist : list Z -> Z := List.fold_right Z.add 0.*)

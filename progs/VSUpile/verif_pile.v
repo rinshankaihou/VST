@@ -6,10 +6,11 @@ Require Import spec_pile.
 Require Import spec_pile_private.
 
 Section Pile_VSU.
+Variable M: MemMGRPredicates.
 
 Lemma listrep_local_facts:
   forall sigma p,
-   listrep sigma p |--
+   listrep M sigma p |--
    !! (is_pointer_or_null p 
       /\ (p=nullval <-> sigma=nil)
        /\ Forall (Z.le 0) sigma).
@@ -28,7 +29,7 @@ Hint Resolve listrep_local_facts : saturate_local.
 
 Lemma listrep_valid_pointer:
   forall sigma p,
-   listrep sigma p |-- valid_pointer p.
+   listrep M sigma p |-- valid_pointer p.
 Proof.
  destruct sigma; unfold listrep; fold listrep;
  intros; entailer!; auto with valid_pointer.
@@ -38,7 +39,7 @@ Hint Resolve listrep_valid_pointer : valid_pointer.
 
 Lemma prep_local_facts:
   forall sigma p,
-   prep sigma p |-- !! (isptr p /\ Forall (Z.le 0) sigma).
+   prep M sigma p |-- !! (isptr p /\ Forall (Z.le 0) sigma).
 Proof.
 intros.
 unfold prep.
@@ -49,7 +50,7 @@ Hint Resolve prep_local_facts : saturate_local.
 
 Lemma prep_valid_pointer:
   forall sigma p,
-   prep sigma p |-- valid_pointer p.
+   prep M sigma p |-- valid_pointer p.
 Proof. 
  intros.
  unfold prep. Intros x.
@@ -58,11 +59,11 @@ Qed.
 Hint Resolve prep_valid_pointer : valid_pointer.
 
 Definition pilefreeable (p: val) : mpred :=
-            malloc_token Ews tpile p.
+            malloc_token M Ews tpile p.
 
-Definition PILE: PilePredicates := Build_PilePredicates prep prep_local_facts prep_valid_pointer pilefreeable.
+Definition PILE: PilePredicates := Build_PilePredicates (prep M) prep_local_facts prep_valid_pointer pilefreeable.
 
-Definition PILEPRIV: PilePrivatePredicates := Build_PilePrivatePredicates PILE (eq_refl _).
+Definition PILEPRIV: PilePrivatePredicates M := Build_PilePrivatePredicates M PILE (eq_refl _).
 
 Definition surely_malloc_spec :=
   DECLARE _surely_malloc
@@ -72,15 +73,15 @@ Definition surely_malloc_spec :=
                 complete_legal_cosu_type t = true;
                 natural_aligned natural_alignment t = true)
        (LAMBDAx [gv] [Vint (Int.repr (sizeof t))]
-       (SEP (mem_mgr gv)))
+       (SEP (mem_mgr M gv)))
     POST [ tptr tvoid ] EX p:_,
        PROP ()
        LOCAL (temp ret_temp p)
-       SEP (mem_mgr gv; malloc_token Ews t p * data_at_ Ews t p).
+       SEP (mem_mgr M gv; malloc_token M Ews t p * data_at_ Ews t p).
 
-  Definition Pile_ASI: funspecs := PileASI PILE.
+  Definition Pile_ASI: funspecs := PileASI M PILE.
 
-  Definition pile_imported_specs:funspecs := spec_stdlib.specs.
+  Definition pile_imported_specs:funspecs := (*spec_stdlib.specs*)MMASI M.
 
   Definition pile_internal_specs: funspecs := surely_malloc_spec::Pile_ASI.
 
@@ -90,7 +91,7 @@ Definition surely_malloc_spec :=
 Lemma body_surely_malloc: semax_body PileVprog PileGprog f_surely_malloc surely_malloc_spec.
 Proof.
 start_function.
-forward_call (malloc_spec_sub t) gv.
+forward_call (malloc_spec_sub M t) gv.
 Intros p.
 if_tac.
 { subst.
@@ -103,7 +104,7 @@ forward_if True.
 + forward. Exists p. entailer!.
 Qed.
 
-Lemma body_Pile_new: semax_body PileVprog PileGprog f_Pile_new (Pile_new_spec PILE).
+Lemma body_Pile_new: semax_body PileVprog PileGprog f_Pile_new (Pile_new_spec M PILE).
 Proof.
 start_function.
 forward_call (tpile, gv).
@@ -115,7 +116,7 @@ unfold prep, listrep, pile_freeable.
 repeat step!.
 Qed.
 
-Lemma body_Pile_add: semax_body PileVprog PileGprog f_Pile_add (Pile_add_spec PILE).
+Lemma body_Pile_add: semax_body PileVprog PileGprog f_Pile_add (Pile_add_spec M PILE).
 Proof.
 start_function.
 forward_call (tlist, gv).
@@ -131,7 +132,7 @@ simpl pilerep; unfold prep.
 Exists q.
 unfold listrep at 2; fold listrep.
 Exists head.
-entailer!.
+entailer!; try apply derives_refl.
 Qed.
 
 Lemma body_Pile_count: semax_body PileVprog PileGprog f_Pile_count (Pile_count_spec PILE).
@@ -146,13 +147,13 @@ forward_loop (EX r:val, EX s2: list Z,
    LOCAL(temp _c (Vint (Int.repr (sumlist sigma - sumlist s2)));
               temp _p p; temp _q r)
    SEP (data_at Ews tpile head p; 
-          listrep s2 r -* listrep sigma head;
-          listrep s2 r))%assert
+          listrep M s2 r -* listrep M sigma head;
+          listrep M s2 r))%assert
    break: 
   (PROP()
    LOCAL(temp _c (Vint (Int.repr (sumlist sigma))); temp _p p)
    SEP (data_at Ews tpile head p; 
-          listrep sigma head))%assert.
+          listrep M sigma head))%assert.
 -
 Exists head sigma.
 entailer!. rewrite Z.sub_diag. auto.
@@ -167,14 +168,14 @@ forward.
 entailer!.
 assert (s2=nil) by intuition; subst s2.
 simpl. rewrite Z.sub_0_r; auto.
-sep_apply (modus_ponens_wand (listrep s2 nullval)).
+sep_apply (modus_ponens_wand (listrep M s2 nullval)).
 cancel.
 Intros.
 destruct s2.
 assert_PROP False; [ | contradiction]. {
  entailer!. assert (r=nullval) by intuition; subst r. congruence.
 }
-unfold listrep at 3; fold listrep.
+unfold listrep at 3; fold (listrep M).
 Intros r'.
 forward.
 forward. {
@@ -202,8 +203,8 @@ simpl in H0.
  f_equal; f_equal; omega.
 apply -> wand_sepcon_adjoint.
 match goal with |- _ * ?A * ?B * ?C |-- _ => 
- assert (A * B * C |-- listrep(z::s2) r) end.
-unfold listrep at 2; fold listrep. Exists r'. entailer!.
+ assert (A * B * C |-- listrep M (z::s2) r) end.
+unfold listrep at 2; fold (listrep M). Exists r'. entailer!.
 sep_apply H10.
 sep_apply modus_ponens_wand.
 auto.
@@ -214,7 +215,7 @@ Exists head.
 cancel.
 Qed.
 
-Lemma body_Pile_free: semax_body PileVprog PileGprog f_Pile_free (Pile_free_spec PILE).
+Lemma body_Pile_free: semax_body PileVprog PileGprog f_Pile_free (Pile_free_spec M PILE).
 Proof.
 start_function.
 simpl pilerep; unfold prep. 
@@ -224,16 +225,16 @@ forward_while (EX q:val, EX s2: list Z,
    PROP ( )
    LOCAL (temp _q q; temp _p p; gvars gv)
    SEP (data_at Ews tpile head p; 
-       listrep s2 q; malloc_token Ews tpile p;
-   mem_mgr gv))%assert.
+       listrep M s2 q; malloc_token M Ews tpile p;
+   mem_mgr M gv))%assert.
 { Exists head sigma; entailer!. }
 { entailer!. }
 { destruct s2.
    assert_PROP False; [|contradiction]. unfold listrep. entailer!.
-  unfold listrep; fold listrep.
+  unfold listrep; fold (listrep M).
   Intros y.
   forward.
-  forward_call (free_spec_sub (Tstruct _list noattr)) (q, gv).
+  forward_call (free_spec_sub M (Tstruct _list noattr)) (q, gv).
   rewrite if_false by (intro; subst; contradiction).
   cancel.
   forward.
@@ -241,7 +242,7 @@ forward_while (EX q:val, EX s2: list Z,
   entailer!. cancel. }
 subst.
 assert_PROP (p<>nullval). entailer!.
-forward_call (free_spec_sub (Tstruct _pile noattr))  (p, gv).
+forward_call (free_spec_sub M (Tstruct _pile noattr))  (p, gv).
 rewrite if_false by auto.
 cancel.
 forward.
@@ -266,7 +267,7 @@ Qed.
   Proof. eexists; apply PileComponent. Qed.
 
   Definition PilePrivateComponent: @Component NullExtension.Espec PileVprog _ 
-      nil pile_imported_specs prog (PilePrivateASI PILEPRIV) pile_internal_specs.
+      nil pile_imported_specs prog (PilePrivateASI M PILEPRIV) pile_internal_specs.
   Proof. 
     mkComponent.
     + solve_SF_internal body_surely_malloc.
@@ -277,6 +278,6 @@ Qed.
   Qed.
 
 Definition PilePrivateVSU: @VSU NullExtension.Espec PileVprog _ 
-      nil pile_imported_specs prog (PilePrivateASI PILEPRIV).
+      nil pile_imported_specs prog (PilePrivateASI M PILEPRIV).
   Proof. eexists; apply PileComponent. Qed.
 End Pile_VSU.

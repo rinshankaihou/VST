@@ -8,6 +8,7 @@ Require Import spec_onepile.
 Instance OnePileCompSpecs : compspecs. make_compspecs prog. Defined.
 
 Section Onepile_VSU.
+Variable M: MemMGRPredicates.
 Variable PILE: PilePredicates. (*onepile is parametric in a pile predicate structure*)
 
 Definition one_pile (gv: globals) (sigma: option (list Z)) : mpred :=
@@ -28,11 +29,11 @@ Qed.
 
 Definition ONEPILE: OnePilePredicates := Build_OnePilePredicates one_pile OnePileCompSpecs make_onepile.
 
-  Definition Onepile_ASI: funspecs := OnepileASI ONEPILE.
+  Definition Onepile_ASI: funspecs := OnepileASI M ONEPILE.
 
 (*onepile's Imported specs.*)
   Definition onepile_imported_specs:funspecs := 
-     [ Pile_new_spec PILE; Pile_add_spec PILE; Pile_count_spec PILE].
+     [ Pile_new_spec M PILE; Pile_add_spec M PILE; Pile_count_spec PILE].
 (*TODO: at present we're not permitted to overapproximate here: if we define
       onepile_imported_specs := PileASI PILE.  
   ie include the spec Pile_free_spec PILE, then the bodyproofs below won't fail, 
@@ -44,7 +45,7 @@ Definition ONEPILE: OnePilePredicates := Build_OnePilePredicates one_pile OnePil
   Definition OnepileVprog: varspecs. mk_varspecs prog. Defined.
   Definition OnepileGprog: funspecs := onepile_imported_specs ++ onepile_internal_specs.
 
-Lemma body_Onepile_init: semax_body OnepileVprog OnepileGprog f_Onepile_init (Onepile_init_spec ONEPILE).
+Lemma body_Onepile_init: semax_body OnepileVprog OnepileGprog f_Onepile_init (Onepile_init_spec M ONEPILE).
 Proof.
 start_function.
 forward_call gv.
@@ -56,7 +57,7 @@ Exists p.
 entailer!.
 Qed.
 
-Lemma body_Onepile_add: semax_body OnepileVprog OnepileGprog f_Onepile_add (Onepile_add_spec ONEPILE).
+Lemma body_Onepile_add: semax_body OnepileVprog OnepileGprog f_Onepile_add (Onepile_add_spec M ONEPILE).
 Proof.
 start_function.
 simpl onepile. unfold one_pile.
