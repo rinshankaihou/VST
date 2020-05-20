@@ -22,6 +22,8 @@ else
 PROGSDIR=progs
 endif
 
+replace_qed_bug: progs/verif_binary_heap.vo
+
 default_target: _CoqProject msl veric floyd $(PROGSDIR)
 
 
