@@ -611,9 +611,11 @@ Ltac entbang :=
         fail "entailer! found an assert entailment that is missing its 'local' left-hand-side part (that is, Delta)"
  | |- ?P ⊢ _ =>
     lazymatch type of P with
-    | ?T => tryif unify T mpred
-            then (clear_Delta; pull_out_props)
-            else fail "Unexpected type of entailment, neither mpred nor assert"
+    | ?T => tryif unify T assert
+                 then fail "entailer! found an assert entailment that is missing its 'local' left-hand-side part (that is, Delta)"
+                 else tryif unify T mpred
+                    then (clear_Delta; pull_out_props)
+                    else fail "Unexpected type of entailment, neither mpred nor assert"
     end
  | |- _ => fail "The entailer tactic works only on entailments  _ ⊢ _ "
  end;
