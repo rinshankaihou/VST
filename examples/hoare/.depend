@@ -1,1 +1,0 @@
-hoare.vo hoare.glob: hoare.v ../../msl/base.vo

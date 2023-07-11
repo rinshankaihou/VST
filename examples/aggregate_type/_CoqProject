@@ -1,1 +1,0 @@
--Q ../../compcert compcert  -Q ../../msl msl -Q demo1 AggregateType.demo1 -Q demo2 AggregateType.demo2
