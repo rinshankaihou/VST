@@ -1,4 +1,4 @@
-# Notes on VST-on-Iris 
+# Notes on VST-on-Iris
 
 ## Building
 
@@ -24,19 +24,14 @@ Compile the [proof for the list reverse function](./progs64/verif_reverse2.v):
 make progs64/verif_reverse2.vo -j
 ```
 
-Addtionally, to generate `_CoqProject`:
+## Developer's notes
 
-```(bash)
-make _CoqProject
-```
-
-## For now we use a slightly old version of `Iris` to avoid dealing with changed notations.
+For now we use a specific version of Iris to avoid fixing changed notations (notably, bi_wand & bi_emp_valid).
 
 Iris pinned to: 8f1ed633
 
-## `VST` and `VST_on_Iris` name conversion
-
-| VST                       | vst_on_iris                         | syntax                                      |
+### `VST` and `VST_on_Iris` name conversion
+| VST                       | vst_on_iris                  | syntax                                      |
 | ------------------------- | ---------------------------- | ------------------------------------------- |
 | prop_right                | bi.pure_intro                | φ → _ -∗ ⌜φ⌝                                |
 | andp                      | bi.and                       | ∧                                           |
@@ -46,7 +41,7 @@ Iris pinned to: 8f1ed633
 | andp_assoc                | bi.and_assoc                 | && left assoc, ∧ right assoc                |
 | andp_comm                 | bi.and_comm                  |                                             |
 | andp_derives              | bi.and_mono                  |                                             |
-|                           | >                            | ▷                                           |  |
+| \|>                       | ▷                            |                                             |
 | now_later                 | bi.later_intro               | P -∗ ▷ P                                    |
 | intro rho (environ_index) | raise_rho                    |                                             |
 | EX                        | ∃                            | becomes Prop                                |
@@ -56,7 +51,7 @@ Iris pinned to: 8f1ed633
 | exp_right                 | bi.exist_intro'              | (P -∗ Ψ a) → P -∗ ∃ a0, Ψ a0                |
 |                           | semax (E:coPset) Delta P c Q |                                             |
 | FF_left                   | bi.False_elim                | False -∗ _                                  |
-| \| --                     | ⊢                            |                                             |
+| \|--                      | ⊢                            |                                             |
 
 also change `apply andp_left1/2` to `rewrite bi.and_elim_l/r`.
 
@@ -67,5 +62,3 @@ Lemma derives_trans: forall {prop:bi} (P Q R:prop),
   (P -∗ Q) -> (Q -∗ R) -> (P -∗ R).
 Proof. intros. rewrite H H0 //. Qed.
 ```
-
-TODO: maybe move this to some library
