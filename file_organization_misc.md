@@ -8,8 +8,8 @@ each in a separate directory:
 - `zlist` - theory of concatenable sublists, and list theory solver
 - `sepcomp` - the theory and practice of how to specify shared-memory interaction
 - `veric` -  program logic (and soundness proof) for Verifiable C
-- `floyd` -  tactics for applying the separation logic (some tactics still require debugging)
-- `progs64` -  sample programs, with their verifications
+- `floyd` -  user level tactics for applying the program logic (some tactics still require debugging)
+- `progs64` -  sample program about linked list reversal, with their verifications
 
 The dependencies are:
 

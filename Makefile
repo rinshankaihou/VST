@@ -35,7 +35,7 @@ endif
 # Note:  You can make a CONFIGURE file with the below definitions or give them
 # on the make command line
 #
-# # Choosing compcert #
+# # Choosing compcert (only support 64-bit ones for now) #
 # COMPCERT=platform     (default, choose 32 or 64 bit platform supplied x86 variant, dependent on BITSIZE, ARCH can be left empty or must be x86)
 # COMPCERT=bundled      (build and use bundled 32 or 64 x86 variant, dependent on BITSIZE, ARCH can be left empty or must be x86)
 # COMPCERT=bundled_new  (build and use bundled compcert_new 32 or 64 x86 variant, dependent on BITSIZE, ARCH can be left empty or must be x86)
@@ -47,7 +47,7 @@ endif
 # ZLIST=bundled      (default, build and use bundled zlist)
 #
 # # Choosing BITSIZE #
-# BITSIZE=32 
+# For now we only support 64-bit pointers, although they are not fundamentally different 
 # BITSIZE=64
 #
 # # Choosing ARCHITECTURE #
@@ -59,16 +59,12 @@ endif
 # FLOCQ_PLATFORM (default, except for COMPCERT_BUNDLED_NEW)
 # FLOCQ_BUNDLED  (require for COMPCERT_BUNDLED_NEW, valid for COMPCERT_BUNDLED, COMPCERT_SRC_DIR)
 #
-# # Choosing Clightgen
-# Note:  By default, the rules for converting .c files to .v files are inactive.
-# To activate them, define
-# CLIGHTGEN=$(my_local_bin_path)/clightgen
 
 # # User settable variables #
-COMPCERT ?= platform
+COMPCERT ?= bundled
 ZLIST ?= bundled
 ARCH ?= 
-BITSIZE ?=
+BITSIZE ?= 64
 
 # # Internal variables #
 # Set to true if the bundled CompCert is used
