@@ -1,0 +1,65 @@
+License for CASCompCert
+
+1.  The "concurrency" subdirectories except for subdirectories/files in 
+paragraph 2, 3 and 4 are Copyright (c) 2016-2019 by Hanru Jiang, 
+Hongjin Liang, Siyang Xiao, Junpeng Zha, Xinyu Feng, Weijie Fan, and 
+Jianwei Song, and licensed according to the 2-clause BSD LICENSE:
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice, 
+this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation 
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+2.  The following files contain code snippets adapted from 
+Compositional CompCert (Copyright (c) 2013-2014 by Andrew W. Appel, 
+Lennart Beringer, Santiago Cuellar, and Gordon Stewart, and licensed 
+according to the terms set out in file "COMPCOMP_LICENSE"):
+
+    concurrency/common/FiniteMaps.v
+    concurrency/common/GlobDefs.v
+    concurrency/common/InteractionSemantics.v
+    concurrency/common/MemClosures.v
+    concurrency/common/loadframe.v
+    concurrency/common/ReachClose.v
+    concurrency/common/val_casted.v
+    concurrency/comp_correct/localize/MemClosures_local.v
+
+3.  The following files and subdirectories are adapted from CompCert,
+Copyright (c) 2004-2017 by Institut National de Recherche en Informatique 
+et en Automatique (INRIA) and licensed according to the terms set out 
+in file "COMPCERT_LICENSE":
+
+    concurrency/common/FMemory.v
+    concurrency/common/FMemtype.v
+    concurrency/common/GMemory.v   
+    concurrency/comp_correct/cfrontend/
+    concurrency/comp_correct/backend/
+    concurrency/comp_correct/AsmLang.v
+    concurrency/comp_correct/ClightLang.v
+    concurrency/x86TSO/AsmTSO.v
+
+4.  File "concurrency/x86TSO/LibTactics.v" is adapted from the
+Software Foundations book. This file is maintained by Arthur Chargueraud,
+and distributed under the terms set out in the LGPL-v3 license 
+(https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+5.  All other subdirectories are Copyright (c) 2004-2017 by 
+Institut National de Recherche en Informatique et en Automatique (INRIA) 
+and licensed according to the terms set out in file "COMPCERT_LICENSE".
