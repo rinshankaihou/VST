@@ -65,10 +65,10 @@ endif
 # CLIGHTGEN=$(my_local_bin_path)/clightgen
 
 # # User settable variables #
-COMPCERT ?= platform
+COMPCERT ?= bundled
 ZLIST ?= bundled
 ARCH ?= 
-BITSIZE ?=
+BITSIZE ?= 32
 
 # # Internal variables #
 # Set to true if the bundled CompCert is used
@@ -269,7 +269,7 @@ DIRS = $(VSTDIRS) $(OTHERDIRS)
 
 # ##### Compcert Flags #####
 
-COMPCERTDIRS=lib common $(ARCHDIRS) cfrontend export $(BACKEND)
+COMPCERTDIRS=lib common $(ARCHDIRS) cfrontend export $(BACKEND) concurrency
 
 ifeq ($(COMPCERT_EXPLICIT_PATH),true)
   COMPCERT_R_FLAGS= $(foreach d, $(COMPCERTDIRS), -R $(COMPCERT_INST_DIR)/$(d) compcert.$(d))
