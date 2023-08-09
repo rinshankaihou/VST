@@ -17,11 +17,11 @@ Definition ent_atom : ident := 2%positive.
 Definition ext_atom : ident := 3%positive.
 
 Definition print_sg: signature := 
-  {| sig_args := Tint :: nil; sig_res := None; sig_cc := cc_default |}.
+  {| sig_args := Tint :: nil; sig_res := Tvoid; sig_cc := cc_default |}.
 Definition ent_atom_sg: signature :=
-  {| sig_args := nil; sig_res := None; sig_cc := cc_default |}.
+  {| sig_args := nil; sig_res := Tvoid; sig_cc := cc_default |}.
 Definition ext_atom_sg: signature :=
-  {| sig_args := nil; sig_res := None; sig_cc := cc_default |}.
+  {| sig_args := nil; sig_res := Tvoid; sig_cc := cc_default |}.
 
 Definition not_primitive: ident -> Prop :=
   fun id =>

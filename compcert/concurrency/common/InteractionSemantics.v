@@ -493,9 +493,9 @@ Section LangProp.
     f_equal.
     destruct p,p0;inversion H1;inversion H0;subst;auto.
     
-    destruct H with (p0:=p).
+    destruct (H p).
     contradict H0. constructor.
-    destruct H with (p0:=p).
+    destruct (H p).
     contradict H1. constructor.
   Qed.
 
@@ -738,8 +738,8 @@ Section LangProp.
     assert(L1:unchanged_validity (belongsto (FP.reads fp2)) m1 m1').
     unfolds;intros. assert(belongsto (effects fp1) b ofs\/ ~belongsto (effects fp1) b ofs). apply Classical_Prop.classic. destruct H0. edestruct EffectMemEqPost0 as [[[] ] ];eauto. split;auto.
     apply contra_belongsto in H0.
-    edestruct MemContentPreserve0 as [[[] ] ],MemContentPreserve1 as [[[] ] ];eauto. 
-    clear e H3 H4 H7.
+    edestruct MemContentPreserve0 as [[[] ] ],MemContentPreserve1 as [[[] ] ];eauto.
+    clear H3 H4 H7.
     apply belongsto_subset with(l1:=(FP.reads(FP.union fp1 fp2))) in H.
     edestruct ReadMemEq0 as [[[] _] _];eauto.
     split;intro;auto.
@@ -749,7 +749,7 @@ Section LangProp.
     unfolds;intros. assert(belongsto (effects fp1) b ofs\/ ~belongsto (effects fp1) b ofs). apply Classical_Prop.classic. destruct H0. edestruct EffectMemEqPost0 as [[[] ] ];eauto. split;auto.
     apply contra_belongsto in H0.
     edestruct MemContentPreserve0 as [[[] ] ],MemContentPreserve1 as [[[] ] ];eauto. 
-    clear e H3 H4 H7.
+    clear H3 H4 H7.
     apply belongsto_subset with(l1:=(FP.cmps(FP.union fp1 fp2))) in H.
     edestruct CmpMemPermExists0 as [[] _];eauto.
     split;intro;auto.

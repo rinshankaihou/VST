@@ -97,7 +97,7 @@ Module Locs <: LocsType.
 
   Theorem belongsto_emp:
     forall b ofs, belongsto emp b ofs -> False.
-  Proof. firstorder. Qed.
+  Proof. firstorder. inversion H. Qed.
   Theorem belongsto_univ:
     forall b ofs, belongsto univ b ofs.
   Proof. firstorder. Qed.
@@ -147,7 +147,7 @@ Module Locs <: LocsType.
 
   (* partial order properties of subset *)
   Theorem subset_emp: forall x, subset emp x.
-  Proof. firstorder. Qed.
+  Proof. intros. unfold subset. firstorder. inversion H. Qed.
   Theorem subset_univ: forall x, subset x univ.
   Proof. firstorder. Qed.
   Theorem subset_refl: forall x, subset x x.
@@ -157,27 +157,27 @@ Module Locs <: LocsType.
   Theorem subset_antisym: forall x y, subset x y -> subset y x -> eq x y.
   Proof. (* firstorder with locs. *) intros; rewrite eq_subset. auto. Qed.
   Local Hint Resolve subset_emp subset_univ subset_refl subset_trans subset_antisym : locs.
-  
+  Require Import Rtauto.
   (* properties on union, intersect, and complement *)
   Theorem union_emp: forall x, eq (union x emp) x.
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_univ: forall x, eq (union x univ) univ.
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_sym: forall x y, eq (union x y) (union y x).
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_sym_eq: forall x y,union x y = union y x.
   Proof. intros. apply locs_eq. apply union_sym. Qed.
   Theorem union_refl: forall x, eq (union x x) x.
   Proof. unfolds. intros. apply orb_diag. Qed.
   Theorem union_assoc:
     forall x y z, eq (union x (union y z)) (union (union x y) z).
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_assoc_eq: forall x y z,union x (union y z) = (union (union x y) z).
   Proof. intros;apply locs_eq;apply union_assoc. Qed.
   Theorem union_incr: forall x y, subset x (union x y).
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_decr: forall x y z, subset (union x y) z -> subset x z.
-  Proof. unfolds. firstorder. Qed.
+  Proof. unfolds. intuition. Qed.
   Theorem union_subset:
     forall x y z, subset x z -> subset y z -> subset (union x y) z.
   Proof. unfolds; intros; specialize (H b ofs); specialize (H0 b ofs);
