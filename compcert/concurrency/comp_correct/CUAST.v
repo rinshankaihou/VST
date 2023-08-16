@@ -1,5 +1,5 @@
 Require Import Coqlib Integers Maps Errors Values String AST Globalenvs Memory
-MemClosures_local LDSimDefs.
+MemClosures_local LDSimDefs CompatibilityPatch.
 
 
 (** * general form of compilation unit, similar to AST.program *)
@@ -38,6 +38,7 @@ Lemma comp_unit_defmap_eq:
 Proof.
   destruct cu. unfold comp_unit_defmap, prog_defmap. auto.
 Qed.
+
 
 (** * general form of global environment, similar to Genv.globalenv, but extend genv_next *)
 (** extension of global environment, i.e. extending Genv.genv_next *)
@@ -508,7 +509,7 @@ Fixpoint load_store_init_data_fm {F V: Type} (ge: Genv.t F V)
     /\ load_store_init_data_fm ge m b (p + size_chunk Mptr) il'
   | Init_space n :: il' =>
     read_as_zero_fm ge m b p n
-    /\ load_store_init_data_fm ge m b (p + Zmax n 0) il'
+    /\ load_store_init_data_fm ge m b (p + Z.max n 0) il'
   end.
 
 Definition globals_initialized_fmem {F V: Type} (ge: Genv.t F V) (fm: FMemory.Mem.mem) : Prop :=

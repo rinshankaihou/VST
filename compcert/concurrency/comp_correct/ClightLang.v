@@ -293,7 +293,7 @@ Inductive eval_expr: expr -> val -> Prop :=
 (** [eval_lvalue ge e m a b ofs] defines the evaluation of expression [a]
   in l-value position.  The result is the memory location [b, ofs]
   that contains the value of the expression [a]. *)
-
+(* NOTE that this definition ignores bitfield *)
 with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
@@ -305,11 +305,11 @@ with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Ederef: forall a ty l ofs,
       eval_expr a (Vptr l ofs) ->
       eval_lvalue (Ederef a ty) l ofs
- | eval_Efield_struct:   forall a i ty l ofs id co att delta,
+ | eval_Efield_struct:   forall a i ty l ofs id co att delta bf,
       eval_expr a (Vptr l ofs) ->
       typeof a = Tstruct id att ->
       ge.(genv_cenv)!id = Some co ->
-      field_offset ge i (co_members co) = OK delta ->
+      field_offset ge i (co_members co) = OK (delta, bf) ->
       eval_lvalue (Efield a i ty) l (Ptrofs.add ofs (Ptrofs.repr delta))
  | eval_Efield_union:   forall a i ty l ofs id co att,
       eval_expr a (Vptr l ofs) ->
@@ -747,11 +747,10 @@ Definition after_external (c: core) (rv: option val) : option core :=
     Core_Callstate fd vargs k =>
     match fd with
     | External (EF_external name sig) tps tp cc =>
-      match rv, sig_res sig with
-        Some v, Some ty =>
-        if val_has_type_func v ty then  Some(Core_Returnstate v k)
+      match rv, proj_sig_res sig with
+        Some v, ty =>
+        if val_has_type_func v (proj_rettype ty) then Some(Core_Returnstate v k)
         else None
-      | None, None  => Some(Core_Returnstate Vundef k)
       | _,_ => None
       end
     | _ => None

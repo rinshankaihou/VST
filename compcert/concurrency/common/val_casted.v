@@ -393,7 +393,7 @@ Proof.
   assert (wd_args args tyl = true).
   { unfold wd_args in *. InvBooleans. simpl in H2, H0. InvBooleans.
     rewrite H4. assert (vals_defined args = true) by (destruct a; auto; discriminate). rewrite H0.
-    rewrite Zlength_cons in H. destruct zlt; auto. omega. }
+    rewrite Zlength_cons in H. destruct zlt; auto. Lia.lia. }
   eapply IHargs in H5; try eassumption. 
   unfold wd_args in *. InvBooleans. rewrite andb_true_iff; split.
   simpl in H0, H9|- * . InvBooleans. rewrite H4.
@@ -434,20 +434,20 @@ Proof.
     try (destruct v; inv vTyp; try congruence; rewrite Locmap.gss; auto; fail).
   rewrite Locmap.gss. rewrite Locmap.gso, Locmap.gss. simpl.
   destruct v; inversion vTyp; try contradiction. simpl. auto.
-  right. simpl; omega.
+  right. simpl; Lia.lia.
   (* n > 0 *)
   destruct (IHsig_args argsTyp argsDef (z + typesize a) n _ H1) as [v' [Hnth Hagree]].
   exists v'. split; [auto|]. simpl in H1|-* . 
   apply nth_error_in, loc_arguments_32_charact in H1.  
   destruct l; unfold Locmap.getpair; simpl in H1. 
   { destruct a; rewrite Locmap.gso; auto; 
-      try (destruct r; simpl in *; [auto| right; destruct sl; try tauto; omega; fail]).
-    simpl. rewrite Locmap.gso; auto. simpl. destruct r; auto; destruct sl; auto. simpl in H1. right. omega. }
+      try (destruct r; simpl in *; [auto| right; destruct sl; try tauto; Lia.lia; fail]).
+    simpl. rewrite Locmap.gso; auto. simpl. destruct r; auto; destruct sl; auto. simpl in H1. right. Lia.lia. }
   { destruct H1 as [Hhi Hlo].
     destruct a; repeat rewrite Locmap.gso; auto;
       repeat match goal with
              | |- Loc.diff _ ?x => destruct x; simpl in *; auto
-             | |- ?x <> ?x \/ _ => right; omega
+             | |- ?x <> ?x \/ _ => right; Lia.lia
              | |- _ <> ?x \/ _  => destruct x; auto
              end.
   }
@@ -472,15 +472,15 @@ Proof.
   apply val_has_type_funcP in vTyp.
   destruct v, a; try contradiction; simpl in *; try (rewrite Locmap.gss; simpl; auto; fail).
   rewrite Locmap.gss. rewrite Locmap.gso, Locmap.gss. simpl. rewrite Int64.ofwords_recompose; auto.
-  red; simpl; right; omega. inversion vTyp.
+  red; simpl; right; Lia.lia. inversion vTyp.
   specialize (IHsig_args argsTyp argsDef (z + typesize a)).
   rewrite IHsig_args at 1. clear. apply map_ext_in; intros.
   apply loc_arguments_32_charact in H. destruct a0; simpl in *.
   destruct r; simpl in *; try contradiction. destruct sl; try contradiction.
-  destruct a; simpl; repeat (rewrite Locmap.gso; [auto| red; right; simpl in *; omega]).
+  destruct a; simpl; repeat (rewrite Locmap.gso; [auto| red; right; simpl in *; Lia.lia]).
   destruct rhi, rlo; simpl in *; try intuition.
   destruct sl, sl0; simpl in *; try intuition.
-  destruct a; simpl; repeat (rewrite Locmap.gso; [auto| red; right; simpl in *; omega]).
+  destruct a; simpl; repeat (rewrite Locmap.gso; [auto| red; right; simpl in *; Lia.lia]).
 Qed.
 
 (** TODO: move to val_casted *)
@@ -522,18 +522,18 @@ Proof.
                        (Locmap.set ?lo ?vlo
                                    (Locmap.set ?head ?vhead _)) = _ =>
           rewrite (locmap_set_reorder lo head); 
-            [rewrite (locmap_set_reorder hi head);[|simpl;right;omega]
-            |simpl;right;omega]
+            [rewrite (locmap_set_reorder hi head);[|simpl;right;Lia.lia]
+            |simpl;right;Lia.lia]
         | |- Locmap.set ?x ?v (Locmap.set ?head ?vhead _) = _ =>
-          rewrite (locmap_set_reorder x head);[|simpl;right;omega]
+          rewrite (locmap_set_reorder x head);[|simpl;right;Lia.lia]
         end;
     try
       match goal with
       | |- context[?x + ?y + ?z] =>
-        replace (x + y + z) with (x + z + y) by omega;
+        replace (x + y + z) with (x + z + y) by Lia.lia;
           rewrite IHtyl;
-          [replace (x + z + y) with (x + y + z) by omega; auto|
-           simpl; omega]
+          [replace (x + z + y) with (x + y + z) by Lia.lia; auto|
+           simpl; Lia.lia]
       end.
 
   destruct args; [auto|]; fold set_arguments loc_arguments_32.
@@ -549,22 +549,22 @@ Proof.
         [rewrite (locmap_set_reorder hi headhi);
          [rewrite (locmap_set_reorder lo headlo);
           [rewrite (locmap_set_reorder hi headlo);
-           [|simpl;right;omega]
-          |simpl;right;omega]
-         |simpl;right;omega]
-        |simpl;right;omega]
+           [|simpl;right;Lia.lia]
+          |simpl;right;Lia.lia]
+         |simpl;right;Lia.lia]
+        |simpl;right;Lia.lia]
     | |- Locmap.set ?l ?v
                    (Locmap.set ?headhi ?vhi
                                (Locmap.set ?headlo ?vlo _)) = _ =>
       rewrite (locmap_set_reorder l headhi); 
-        [rewrite (locmap_set_reorder l headlo);[|simpl;right;omega]
-        |simpl;right;omega]
+        [rewrite (locmap_set_reorder l headlo);[|simpl;right;Lia.lia]
+        |simpl;right;Lia.lia]
     end;
     match goal with
     | |- context[set_arguments (loc_arguments_32 _ (?x + ?y + ?z))] =>
-      replace (x + y + z) with (x + z + y) by omega;
+      replace (x + y + z) with (x + z + y) by Lia.lia;
         rewrite IHtyl;
-        [replace (x + z + y) with (x + y + z) by omega; auto|
-         simpl; omega]
+        [replace (x + z + y) with (x + y + z) by Lia.lia; auto|
+         simpl; Lia.lia]
     end.
 Qed.

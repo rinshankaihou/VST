@@ -205,8 +205,8 @@ Proof.
   { intros. apply VALID'. unfold Bset.inj_to_meminj in H. destruct (Injections.inj mu b) eqn:INJ; inv H.
     eapply Bset.inj_range'; eauto. inv BINJ; eauto. }
   { unfold Mem.meminj_no_overlap. intros. apply INCR in H0. apply INCR in H1. inv H0; inv H1. auto. }
-  { intros. apply INCR in H; inv H. split. omega.
-    pose proof (Integers.Ptrofs.unsigned_range ofs). unfold Integers.Ptrofs.max_unsigned. omega. }
+  { intros. apply INCR in H; inv H. split. Lia.lia.
+    pose proof (Integers.Ptrofs.unsigned_range ofs). unfold Integers.Ptrofs.max_unsigned. Lia.lia. }
   { inv EXT. intros. apply INCR in H. inv H. rewrite Z.add_0_r in H0. eauto. }
 Qed.
 

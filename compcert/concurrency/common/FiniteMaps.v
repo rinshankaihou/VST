@@ -17,9 +17,9 @@ Proof.
   destruct IHt1 as [p1 N1]. destruct IHt2 as [p2 N2].
   exists (Pos.max (xO p1) (xI p2)); intros.
   destruct n; simpl.
-  apply N2. zify; omega. 
-  apply N1. zify; omega.
-  zify; omegaContradiction.
+  apply N2. zify; Lia.lia. 
+  apply N1. zify; Lia.lia.
+  zify; lia.
 Qed.
 
 Lemma ptree_finite_type:
@@ -94,7 +94,7 @@ Proof.
   destruct (pmap_finite m) as [p D].
   exists (-2 * Z.pos p); exists (2 * Z.pos p); intros.
   unfold ZMap.get. apply D. 
-  unfold ZIndexed.index. destruct n; zify; omega. 
+  unfold ZIndexed.index. destruct n; zify; Lia.lia. 
 Qed.
 
 Lemma zmap_finite_type:
@@ -105,7 +105,7 @@ Proof.
   destruct (pmap_finite_type m) as [p D].
   exists (-2 * Z.pos p); exists (2 * Z.pos p); intros.
   unfold ZMap.get. apply D. 
-  unfold ZIndexed.index. destruct n; zify; omega. 
+  unfold ZIndexed.index. destruct n; zify; Lia.lia. 
 Qed.
 
 Require Import Zwf.
@@ -122,17 +122,17 @@ Proof.
     intros x0; pattern x0; apply (well_founded_ind (Zwf_well_founded lo)); intros.
     destruct (zlt x lo).
   - (* Base case *)
-    exists (ZMap.init dfl). intros. rewrite ZMap.gi. symmetry. apply OUTSIDE. omega. 
+    exists (ZMap.init dfl). intros. rewrite ZMap.gi. symmetry. apply OUTSIDE. Lia.lia. 
   - (* Inductive case *)
     destruct (H (x - 1)) as [m P].
-    red. omega. omega. 
+    red. Lia.lia. Lia.lia. 
     exists (ZMap.set x (f x) m); intros.
     rewrite ZMap.gsspec. unfold ZIndexed.eq. destruct (zeq n x). 
     congruence.
-    apply P. omega. 
+    apply P. Lia.lia. 
   }
-  destruct (REC hi) as [m P]. omega. 
-  exists m; intros. apply P. omega.
+  destruct (REC hi) as [m P]. Lia.lia. 
+  exists m; intros. apply P. Lia.lia.
 Qed.
 
 Lemma zmap_construct_type:
@@ -147,17 +147,17 @@ Proof.
     intros x0. pattern x0. apply (well_founded_induction_type (Zwf_well_founded lo)); intros.
     destruct (zlt x lo).
   - (* Base case *)
-    exists (ZMap.init dfl). intros. rewrite ZMap.gi. symmetry. apply OUTSIDE. omega. 
+    exists (ZMap.init dfl). intros. rewrite ZMap.gi. symmetry. apply OUTSIDE. Lia.lia. 
   - (* Inductive case *)
     destruct (X (x - 1)) as [m P].
-    red. omega. omega. 
+    red. Lia.lia. Lia.lia. 
     exists (ZMap.set x (f x) m); intros.
     rewrite ZMap.gsspec. unfold ZIndexed.eq. destruct (zeq n x). 
     congruence.
-    apply P. omega. 
+    apply P. Lia.lia. 
   }
-  destruct (REC hi) as [m P]. omega. 
-  exists m; intros. apply P. omega.
+  destruct (REC hi) as [m P]. Lia.lia. 
+  exists m; intros. apply P. Lia.lia.
 Qed.
 
 End FINITE.
@@ -186,9 +186,9 @@ Proof.
   exists (Pos.max (xO p1) (xI p2));*)
   intros.
   destruct n; simpl in *.
-  apply IHt2. zify; omega. 
-  apply IHt1. zify; omega. 
-  zify; omegaContradiction.
+  apply IHt2. zify; Lia.lia. 
+  apply IHt1. zify; Lia.lia. 
+  zify; lia.
 Qed.
 
 Definition pmap_finite_c (m: PMap.t A) : positive :=
@@ -293,7 +293,7 @@ Proof.
   assert (D:= pmap_finite_sound_c m).
   unfold zmap_finite_c in H. inv H.
   unfold ZMap.get. apply D. 
-  unfold ZIndexed.index. destruct n; zify; omega.
+  unfold ZIndexed.index. destruct n; zify; Lia.lia.
 Qed. 
 
 Definition REC (f: Z -> A) (lo hi:Z) (dfl:A)
@@ -307,17 +307,17 @@ apply (well_founded_induction_type (Zwf_well_founded lo)); intros.
      exists (ZMap.init dfl).
       split. reflexivity.
       intros. rewrite ZMap.gi.
-              symmetry. apply OUTSIDE. omega.
+              symmetry. apply OUTSIDE. Lia.lia.
   - (* Inductive case *)
     destruct (X (x - 1)) as [m [Pdef P]].
-    red. omega. omega. 
+    red. Lia.lia. Lia.lia. 
     exists (ZMap.set x (f x) m); intros.
     simpl.
     split; trivial.
     intros. rewrite ZMap.gsspec. unfold ZIndexed.eq.
     destruct (zeq n x). 
            congruence.
-           apply P. omega.
+           apply P. Lia.lia.
 Defined.
 
 Definition zmap_construct_c
@@ -325,8 +325,8 @@ Definition zmap_construct_c
     (OUTSIDE: forall n, n < lo \/ n > hi -> f n = dfl) : 
   { m : ZMap.t A | fst m = dfl /\ forall n,  ZMap.get n m = f n}. 
  destruct (REC f lo hi dfl OUTSIDE hi) as [m [PDef P]].
-   omega.
-   exists m. split; trivial. intros. apply P. omega.
+   Lia.lia.
+   exists m. split; trivial. intros. apply P. Lia.lia.
 Defined. 
 
 End FINITE_CONSTRUCTIVE.

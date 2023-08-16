@@ -194,20 +194,20 @@ Proof.
   f_equal; f_equal.
   remember (size_chunk_nat chunk) as i.
   remember (BinInt.Z.add z (BinInt.Z.of_nat i)) as j.
-  assert(z = BinInt.Z.sub j (BinInt.Z.of_nat i)). Omega.omega.
+  assert(z = BinInt.Z.sub j (BinInt.Z.of_nat i)). Lia.lia.
   rewrite H4.
   assert(forall k, (k<= i)%nat ->  Mem.getN k (BinInt.Z.sub j (BinInt.Z.of_nat k))(Maps.PMap.get b (Mem.mem_contents m1)) = Mem.getN k (BinInt.Z.sub j (BinInt.Z.of_nat k))(Maps.PMap.get b (Mem.mem_contents m2))).
   induction k;intros;auto.
-  assert(k<=i)%nat. Omega.omega. Hsimpl.
+  assert(k<=i)%nat. Lia.lia. Hsimpl.
   simpl.
   rewrite Znat.Zpos_P_of_succ_nat.
   assert((BinInt.Z.add (BinInt.Z.sub j (BinInt.Z.succ (BinInt.Z.of_nat k))) 1) =  (BinInt.Z.sub j (BinInt.Z.of_nat k))).
-  Omega.omega.
+  Lia.lia.
   rewrite H7. clear H7.
   rewrite IHk. f_equal.
   apply eq_contents. simpl.
-  destruct v. apply Mem.perm_cur_max, H7. split. Omega.omega.
-  rewrite size_chunk_conv. rewrite <- Heqi. Omega.omega.
+  destruct v. apply Mem.perm_cur_max, H7. split. Lia.lia.
+  rewrite size_chunk_conv. rewrite <- Heqi. Lia.lia.
   eapply H5;eauto.
 Qed.
 Lemma fmem_alloc_exists:
@@ -254,14 +254,14 @@ Lemma setN_geteq:
 Proof.
   induction i;induction v;intros;rewrite H0.
   inversion H. 
-  assert(BinInt.Z.add z 0 = z). Omega.omega.
+  assert(BinInt.Z.add z 0 = z). Lia.lia.
   simpl. rewrite H1.
-  do 2 (rewrite Mem.setN_outside;try Omega.omega).
+  do 2 (rewrite Mem.setN_outside;try Lia.lia).
   do 2 rewrite Maps.ZMap.gss;auto.
 
   inversion H.
   simpl in H.
-  assert(i< length v)%nat. Omega.omega.
+  assert(i< length v)%nat. Lia.lia.
   assert(BinInt.Z.of_nat i = BinInt.Z.of_nat i). auto.
   eapply IHi in H1;try apply H2;eauto.
 
@@ -288,11 +288,11 @@ Proof.
   remember (BinInt.Z.to_nat(BinInt.Z.sub ofs i)) as k.
   assert(k<length v)%nat.
   rewrite Heqk. rewrite <- Znat.Nat2Z.id.  
-  apply Znat.Z2Nat.inj_lt;try Omega.omega.
-  assert(ofs = BinInt.Z.add i (BinInt.Z.sub ofs i)). Omega.omega.
+  apply Znat.Z2Nat.inj_lt;try Lia.lia.
+  assert(ofs = BinInt.Z.add i (BinInt.Z.sub ofs i)). Lia.lia.
   rewrite H2.
   eapply setN_geteq  in H1;eauto.
-  rewrite Heqk. rewrite Z_of_nat_zify;Omega.omega.
+  rewrite Heqk. rewrite Z_of_nat_zify;Lia.lia.
 Qed.
 Lemma fmem_eq_store:
   forall m1 m2 chunk b z v m1',
@@ -434,7 +434,7 @@ Proof.
   exploit FMemory.Mem.perm_alloc_4; eauto.
   subst. unfold GMemory.GMem.valid_block in *. destruct m0; simpl in *.
   unfold FMemory.Mem.nextblock in *; simpl in *.
-  intro. subst. eapply valid_wd in H2; eauto. omega.
+  intro. subst. eapply valid_wd in H2; eauto. Lia.lia.
 Qed.
 
 Lemma store_forward:
@@ -530,7 +530,7 @@ Proof.
     inv H. rewrite Locs.emp_union_locs in H1.
     rewrite Maps.PMap.gsspec. destruct peq;subst;[|split];auto.
     unfold FMemOpFP.range_locset in H1.
-    ex_match. assert(sz + (b0 - sz) = b0). OmegaPlugin.omega.
+    ex_match. assert(sz + (b0 - sz) = b0). OmegaPlugin.Lia.lia.
     rewrite <- H,H1. split;auto.
 
     constructor;auto. split;auto.
@@ -538,7 +538,7 @@ Proof.
     inv H.
     unfold FMemOpFP.range_locset in H1.
     ex_match. subst. rewrite Maps.PMap.gss.
-    assert(sz + (b0 - sz) = b0). OmegaPlugin.omega.
+    assert(sz + (b0 - sz) = b0). OmegaPlugin.Lia.lia.
     rewrite <- H,H1. split;auto.
     rewrite Maps.PMap.gso;auto. split;auto.
     
@@ -547,7 +547,7 @@ Proof.
     unfold FMemOpFP.range_locset.
     destruct peq;subst;try congruence.
     destruct Values.eq_block;try congruence.
-    assert(sz + (b0 - sz) = b0). OmegaPlugin.omega.
+    assert(sz + (b0 - sz) = b0). OmegaPlugin.Lia.lia.
     rewrite H. clear H.
     destruct (zle sz ofs && zlt ofs b0);auto.
 
@@ -555,7 +555,7 @@ Proof.
     unfold FMemOpFP.range_locset.
     destruct peq;subst;try congruence.
     destruct Values.eq_block;try congruence.
-    assert(sz + (b0 - sz) = b0). OmegaPlugin.omega.
+    assert(sz + (b0 - sz) = b0). OmegaPlugin.Lia.lia.
     rewrite H. clear H.
     destruct (zle sz ofs && zlt ofs b0);auto.
   }
@@ -665,7 +665,7 @@ Proof.
       unfold FMemOpFP.range_locset in H2.
       destruct Values.eq_block;try congruence.
       rewrite Mem.setN_outside. auto.
-      destruct zle eqn:?;[|left;Omega.omega].
+      destruct zle eqn:?;[|left;Lia.lia].
       destruct zlt eqn:?;inv H2.
       right. rewrite encode_val_length. auto.
       rewrite <-size_chunk_conv.
@@ -736,7 +736,7 @@ Proof.
   eapply H2;eauto.
 
   destruct Values.eq_block;try congruence.
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
 Qed.
 Lemma range_locset_belongsto:
   forall b0 i a (b : Values.block) (ofs : Z),
@@ -748,7 +748,7 @@ Proof.
   unfold FMemOpFP.range_locset,belongsto,Locs.belongsto;intros.
   destruct Values.eq_block;split;try congruence;intro;Hsimpl;
     try (split;auto;destruct zle,zlt;inv H;auto).
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
   congruence.
 Qed.
 Lemma range_locset_belongsto2:
@@ -761,7 +761,7 @@ Proof.
   unfold FMemOpFP.range_locset,belongsto,Locs.belongsto;intros.
   destruct Values.eq_block;split;try congruence;intro;Hsimpl;
     try (split;auto;destruct zle,zlt;inv H;auto).
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
 Qed.
 Lemma get_eq_getN_eq:
   forall i k p0 p1,
@@ -772,7 +772,7 @@ Proof.
 
   assert(forall t, (t<=k)%nat-> Mem.getN t (i+Z.of_nat (k-t)) p0 = Mem.getN t (i+Z.of_nat (k-t)) p1).
   induction t;intros;auto.
-  assert(t<=k)%nat. omega. Hsimpl.
+  assert(t<=k)%nat. Lia.lia. Hsimpl.
   simpl.
   assert(i + Z.of_nat (k - S t) + 1 = i + Z.of_nat(k - t)).
   Lia.lia.
@@ -961,7 +961,7 @@ Lemma unchanged_perm_cmp:
 Proof.
   unfold FMemOpFP.weak_valid_pointer_fp;intros.
   unfold Mem.valid_pointer in *.
-  destruct Mem.perm_dec,Mem.perm_dec;auto;simpl in *;eapply H in p;eauto;try contradiction; unfold belongsto;Locs.unfolds; unfold FMemOpFP.range_locset;destruct Values.eq_block;auto;destruct zle,zlt;auto;try omega.
+  destruct Mem.perm_dec,Mem.perm_dec;auto;simpl in *;eapply H in p;eauto;try contradiction; unfold belongsto;Locs.unfolds; unfold FMemOpFP.range_locset;destruct Values.eq_block;auto;destruct zle,zlt;auto;try Lia.lia.
 Qed.
 Lemma unchanged_perm_cmp2:
   forall m m' b i,
@@ -979,14 +979,14 @@ Proof.
 
   unfold belongsto,FMemOpFP.range_locset;Locs.unfolds.
   destruct Values.eq_block;try congruence.
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
 
   contradict n0.
   eapply H in p;eauto.
 
   unfold belongsto,FMemOpFP.range_locset;Locs.unfolds.
   destruct Values.eq_block;try congruence.
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
 Qed.  
 Lemma unchanged_perm_cmp_valid_pointer:
    forall m m' b i,
@@ -1008,10 +1008,10 @@ Proof.
   destruct Mem.perm_dec,Mem.perm_dec;auto.
   contradict n. eapply H;eauto.
   unfold belongsto;Locs.unfolds. destruct Values.eq_block;auto.
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
   contradict n. eapply H;eauto.
   unfold belongsto;Locs.unfolds. destruct Values.eq_block;auto.
-  destruct zle,zlt;try omega;auto.
+  destruct zle,zlt;try Lia.lia;auto.
 Qed.
 Lemma union_refl_eq:  forall l, Locs.union l l = l.  intros;eapply Locs.locs_eq. eapply Locs.union_refl. Defined.
 Lemma unchanged_perm_split:
@@ -1098,7 +1098,7 @@ Proof.
   intros.
   destruct Values.eq_block;auto.
   subst.
-  repeat destruct zle;repeat destruct zlt;auto;try omega.
+  repeat destruct zle;repeat destruct zlt;auto;try Lia.lia.
 Qed.
 
 Lemma fp_union_refl_eq:
@@ -1168,7 +1168,7 @@ Proof.
   rewrite Locs.emp_union_locs.
   unfold belongsto,FMemOpFP.range_locset;Locs.unfolds.
   ex_match2.
-  destruct zle,zlt;auto;try omega.
+  destruct zle,zlt;auto;try Lia.lia.
 Qed.
 Lemma MemPre_dep_range_perm_eq:
   forall m m' fp b sz a p,
@@ -1181,7 +1181,7 @@ Proof.
   apply H1 in H2 as ?.
   Locs.unfolds.
   assert(FMemOpFP.range_locset b 0 sz b ofs = true).
-  unfold FMemOpFP.range_locset. destruct Values.eq_block;auto. destruct zle,zlt;auto;omega.
+  unfold FMemOpFP.range_locset. destruct Values.eq_block;auto. destruct zle,zlt;auto;Lia.lia.
   specialize (H0 _ _ H4).
   unfold depends in H0. simpl in H0.
   Locs.unfolds.
@@ -1209,7 +1209,7 @@ Proof.
   unfold belongsto,Locs.belongsto. erewrite <- H0;eauto.
   unfold FMemOpFP.range_locset. Locs.unfolds.
   destruct Values.eq_block;auto.
-  destruct zle,zlt;auto;try omega.
+  destruct zle,zlt;auto;try Lia.lia.
 Qed.
 
 Lemma LPre_mem_free_LPost:
@@ -1246,11 +1246,11 @@ Proof.
 
     rewrite Locs.emp_union_locs in H0. apply range_locset_belongsto in H0 as [].
     rewrite H0,Maps.PMap.gss,Maps.PMap.gss.
-    destruct zle,zlt;try omega;simpl. split;auto.
+    destruct zle,zlt;try Lia.lia;simpl. split;auto.
 
     rewrite Locs.emp_union_locs in H0. apply range_locset_belongsto in H0 as [].
     rewrite H0,Maps.PMap.gss in H1.
-    destruct zle,zlt;try omega;simpl in H1. contradiction.
+    destruct zle,zlt;try Lia.lia;simpl in H1. contradiction.
   }
   {
     rewrite Heqm1.
@@ -1291,11 +1291,11 @@ Proof.
 
     rewrite Locs.emp_union_locs in H. apply range_locset_belongsto in H as [].
     rewrite H,Maps.PMap.gss,Maps.PMap.gss.
-    destruct zle,zlt;try omega;simpl. split;auto.
+    destruct zle,zlt;try Lia.lia;simpl. split;auto.
 
     rewrite Locs.emp_union_locs in H. apply range_locset_belongsto in H as [].
     rewrite H,Maps.PMap.gss in H0.
-    destruct zle,zlt;try omega;simpl in H0. contradiction.
+    destruct zle,zlt;try Lia.lia;simpl in H0. contradiction.
   }
   {
     unfold strip,Mem.unchecked_free,FreelistEq in *;gmem_unfolds; simpl in *.
@@ -1358,7 +1358,7 @@ Proof.
   intros.
   ex_match2.
   subst.
-  destruct zle,zlt,zle,zlt;auto;try omega.
+  destruct zle,zlt,zle,zlt;auto;try Lia.lia.
 Qed.
 Lemma locs_subset_union:
   forall l l1 l2,

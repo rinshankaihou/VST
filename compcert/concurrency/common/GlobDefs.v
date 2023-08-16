@@ -1062,12 +1062,13 @@ Record InitRel (mu: Mu) (SGE TGE: GlobEnv.t) (sgm tgm: gmem) : Prop :=
 Definition res_has_type (res: val) (sg: signature) : Prop :=
   Val.has_type res (proj_sig_res sg).
 
-Definition res_sg (sg: signature) (res: val) : val :=
+(* NOTE keep return type option val so is compatible with caller. Maybe okay to change to val? *)
+Definition res_sg (sg: signature) (res: val) : option val :=
   (* match (sg.(sig_res)) with
   | None => None
-  | Some _ => Some res
+  | Some _ => 
   end. *)
-  res.
+  Some res.
 
 Definition not_pointer (v: val) : Prop :=
   match v with

@@ -468,7 +468,7 @@ Proof.
   exploit Mem.mi_representable; eauto.
   rewrite Mem.weak_valid_pointer_spec, Mem.valid_pointer_nonempty_perm, Mem.valid_pointer_nonempty_perm in H0.
   instantiate (1:=ofs). generalize H0; clear. intro H. destruct H as [H|H]; apply Mem.perm_cur_max in H; auto.
-  intros [DELTA OFS]. split. omega. generalize OFS. clear. destruct ofs. intros. simpl in *. omega.
+  intros [DELTA OFS]. split. Lia.lia. generalize OFS. clear. destruct ofs. intros. simpl in *. Lia.lia.
   intros [tv [TBINARITH TVALINJ]].
   
   unfold sem_binarith, sem_binarith_fp in *.
@@ -987,18 +987,18 @@ Proof.
          constructor; simpl; try apply emp_locs_mapped.
        constructor; intros.
        rewrite range_locset_loc in H3. inv H3.
-       apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+       apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
        apply range_locset_loc. intuition.
        constructor; intros.
        rewrite range_locset_loc in H3. inv H3.
-       apply Loc_Mapped with b0 (tofs - delta0) delta0; [|auto|omega].
+       apply Loc_Mapped with b0 (tofs - delta0) delta0; [|auto|Lia.lia].
        apply range_locset_loc. intuition.
 
        1-3: clear VALID H1 H0 i. 4-6: clear VALID0 H2 H i0.
        1-6: (exploit Mem.valid_pointer_inject_no_overflow; eauto;
              exploit Mem.mi_representable; eauto;
              try rewrite Mem.valid_pointer_nonempty_perm in *; eauto with mem;
-             intros; try destruct i0; try destruct i; simpl in *; try omega).
+             intros; try destruct i0; try destruct i; simpl in *; try Lia.lia).
 
     ** destruct Val.cmp_different_blocks; try discriminate. inv FP.
        eexists. split; auto.

@@ -342,14 +342,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _
@@ -593,8 +593,8 @@ Proof.
       lia.
       unfold MemOpFP.alloc_fp. erewrite Mem.mext_next; eauto.
       eresolvfp.
-      omega.
-      omega.
+      Lia.lia.
+      Lia.lia.
     }
     {
       exploit external_call_mem_extends; eauto.

@@ -1151,11 +1151,11 @@ Ltac Ex_index :=
   end.
 
 Ltac Lt_index :=
-  apply lt_index_intro; simpl; try omega.
+  apply lt_index_intro; simpl; try Lia.lia.
 
 
 (*Ltac Lt_state :=
-  apply lt_state_intro; simpl; try omega.
+  apply lt_state_intro; simpl; try Lia.lia.
 *)
 Require Import Wellfounded.
 
@@ -1363,14 +1363,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | _ => idtac
   end.
 

@@ -494,14 +494,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _
@@ -716,8 +716,8 @@ Proof.
       resolv_ls. eapply match_locset0_match_ld;eauto. rewrite stacksize_preserved. eresolvfp.
     }
     {
-      assert ((fn_stacksize f) <= (fn_stacksize (transf_function f)) ). simpl. omega.
-      assert (0 <= 0) by omega. eapply Mem.alloc_extends in H0 as ?; eauto. destruct H2. 
+      assert ((fn_stacksize f) <= (fn_stacksize (transf_function f)) ). simpl. Lia.lia.
+      assert (0 <= 0) by Lia.lia. eapply Mem.alloc_extends in H0 as ?; eauto. destruct H2. 
       destruct H2. Right. econstructor;eauto. split. eresolvfp. 
       rewrite stacksize_preserved;eauto. 
       unfold MemOpFP.alloc_fp. inv H11. rewrite mext_next. eresolvfp. splitMS. resolv_ls.

@@ -110,7 +110,7 @@ Program Definition mod_add_global_fresh (ge: Genv.t F V) (idg: ident * globdef F
     (Genv.genv_public ge)
     (PTree.set idg#1 ge.(Genv.genv_next) ge.(Genv.genv_symb))
     (PTree.set ge.(Genv.genv_next) idg#2 ge.(Genv.genv_defs))
-    (Psucc ge.(Genv.genv_next))
+    (Pos.succ ge.(Genv.genv_next))
     _ _ _.
 Next Obligation.
   destruct ge; simpl in *.
@@ -140,7 +140,7 @@ Program Definition mod_add_global_old (ge: Genv.t F V) (idg: ident * globdef F V
     (Genv.genv_public ge)
     (PTree.set idg#1 b ge.(Genv.genv_symb))
     (PTree.set b idg#2 ge.(Genv.genv_defs))
-    (Psucc ge.(Genv.genv_next))
+    (Pos.succ ge.(Genv.genv_next))
     _ _ _.
 Next Obligation.
   destruct ge; simpl in *.
@@ -256,7 +256,7 @@ Program Definition add_global (ge: t) (idg: ident * globdef F V) : t :=
     ge.(genv_public)
     (PTree.set idg#1 ge.(genv_next) ge.(genv_symb))
     (PTree.set ge.(genv_next) idg#2 ge.(genv_defs))
-    (Psucc ge.(genv_next))
+    (Pos.succ ge.(genv_next))
     _ _ _.
 Next Obligation.
   destruct ge; simpl in *.

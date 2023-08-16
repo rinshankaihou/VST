@@ -143,7 +143,7 @@ Proof.
       specialize (fid_valid (or_introl eq_refl)).
       destruct fid_valid as (nF&HnF&HF). subst F.
       destruct (peq i t).
-      { subst. apply (FLists.thread_fl_norep _ (GlobEnv.wd_fl _ H0)); omega. }
+      { subst. apply (FLists.thread_fl_norep _ (GlobEnv.wd_fl _ H0)); Lia.lia. }
       { apply (FLists.thread_fl_disj _ (GlobEnv.wd_fl _ H0)); auto. }
     }
     exfalso.
@@ -155,7 +155,7 @@ Proof.
     unfold ThreadPool.push in H_tp_push.
     destruct ((ThreadPool.content thdp)!!t); try discriminate.
     inversion H_tp_push. subst. simpl in *.
-    destruct peq; subst; omega. }
+    destruct peq; subst; Lia.lia. }
   (* *)
   { apply tp_valid_freelist_free.
     unfold ThreadPool.pop in H_tp_pop.

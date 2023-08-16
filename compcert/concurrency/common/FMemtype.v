@@ -387,7 +387,7 @@ Axiom load_loadbytes:
 Axiom loadbytes_length:
   forall m b ofs n bytes,
   loadbytes m b ofs n = Some bytes ->
-  length bytes = nat_of_Z n.
+  length bytes = Z.to_nat n.
 
 Axiom loadbytes_empty:
   forall m b ofs n,
@@ -636,7 +636,7 @@ Axiom alloc_result:
 (*
 Axiom nextblock_alloc:
   forall m1 lo hi m2 b, alloc m1 lo hi = (m2, b) ->
-  nextblock m2 = Psucc (nextblock m1).
+  nextblock m2 = Pos.succ (nextblock m1).
  *)
 
 (* Here we lost the information of nextblock after alloc, thus we need

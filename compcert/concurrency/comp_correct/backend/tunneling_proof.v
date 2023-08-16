@@ -79,7 +79,7 @@ Proof.
 (* The new instruction *)
   rewrite (U.repr_union_2 u pc s); auto. rewrite U.repr_union_3.
   unfold measure_edge. destruct (peq (U.repr u s) pc). auto. right. split. auto.
-  rewrite PC. rewrite peq_true. omega.
+  rewrite PC. rewrite peq_true. Lia.lia.
 (* An old instruction *)
   assert (U.repr u pc' = pc' -> U.repr (U.union u pc s) pc' = pc').
     intro. rewrite <- H2 at 2. apply U.repr_union_1. congruence.
@@ -87,7 +87,7 @@ Proof.
   intros [P | [P Q]]. left; auto. right.
   split. apply U.sameclass_union_2. auto.
   unfold measure_edge. destruct (peq (U.repr u s) pc). auto.
-  rewrite P. destruct (peq (U.repr u s0) pc). omega. auto.
+  rewrite P. destruct (peq (U.repr u s0) pc). Lia.lia. auto.
 Qed.
 
 Definition record_gotos' (f: function) :=
@@ -405,7 +405,7 @@ Lemma storev_unmapped_closed_preserved:
     Val.lessdef a a' ->
     MemClosures_local.unmapped_closed mu m2 m2'.
 Proof.
-  intros. destruct a; inversion H3. destruct a'; inversion H4. inversion H5; subst. apply (MemClosures_local.store_val_inject_unmapped_closed_preserved mu m1 m1' chunk inject_id b0 (Ptrofs.unsigned i0) v m2 b0 0 v' m2'); auto. apply H. apply H. apply H. replace (Ptrofs.unsigned i0 + 0) with (Ptrofs.unsigned i0). auto. omega.
+  intros. destruct a; inversion H3. destruct a'; inversion H4. inversion H5; subst. apply (MemClosures_local.store_val_inject_unmapped_closed_preserved mu m1 m1' chunk inject_id b0 (Ptrofs.unsigned i0) v m2 b0 0 v' m2'); auto. apply H. apply H. apply H. replace (Ptrofs.unsigned i0 + 0) with (Ptrofs.unsigned i0). auto. Lia.lia.
 Qed.
 
 Lemma free_unmapped_closed_preserved:
@@ -420,7 +420,7 @@ Lemma free_unmapped_closed_preserved:
     Mem.free m1' b lo hi = Some m2' ->
     MemClosures_local.unmapped_closed mu m2 m2'.
 Proof.
-  intros. apply (MemClosures_local.free_inject_unmapped_closed_preserved mu m1 m1' inject_id b lo hi m2 b 0 lo hi m2'); auto. apply H. apply H. apply H. omega. omega.
+  intros. apply (MemClosures_local.free_inject_unmapped_closed_preserved mu m1 m1' inject_id b lo hi m2 b 0 lo hi m2'); auto. apply H. apply H. apply H. Lia.lia. Lia.lia.
 Qed.
 
 Lemma list_nth_z_property:
@@ -543,14 +543,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _
@@ -665,7 +665,7 @@ Proof.
             remember (record_gotos_correct f pc) as Hbranch; clear HeqHbranch.
             rewrite H0 in Hbranch.
             destruct Hbranch as [Hbranch | [H_branch_target Hcount]].
-            congruence. rewrite H_branch_target. Left. simpl. omega. splitMS.
+            congruence. rewrite H_branch_target. Left. simpl. Lia.lia. splitMS.
           }
         }
       }
@@ -759,7 +759,7 @@ Proof.
         Right. econstructor; eauto. split. eresolvfp. splitMS.
       }
       {
-        left. exists (measure (Core_State s f sp pc rs sigres)). split. simpl. omega. splitMS.
+        left. exists (measure (Core_State s f sp pc rs sigres)). split. simpl. Lia.lia. splitMS.
       }
     }
     {
@@ -791,9 +791,9 @@ Proof.
     {
       inversion H_match_state; subst.
       assert (H_mem: exists Lm', Mem.alloc Lm 0 (fn_stacksize (tunnel_function f)) = (Lm', sp) /\ Mem.extends Hm' Lm').
-      eapply Mem.alloc_extends; eauto. omega.
+      eapply Mem.alloc_extends; eauto. Lia.lia.
       assert (H_stacksize_preserved: fn_stacksize (tunnel_function f) = fn_stacksize f).
-      apply stacksize_preserved. omega.
+      apply stacksize_preserved. Lia.lia.
       destruct H_mem as [Lm' [H_mem H_extends]]. Right. econstructor; eauto. split. eresolvfp.
       rewrite stacksize_preserved. eapply fp_match_subset_T'.
       apply fp_match_id; apply H_mu_id. unfold MemOpFP.alloc_fp.

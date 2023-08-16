@@ -993,7 +993,7 @@ Proof.
       resolv_ls.
       { inv STACKS. simpl. intro. auto. simpl. inv H1. auto. }
       inv AGMU. eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto.
-      unfold inject_id. eauto. omega. omega.
+      unfold inject_id. eauto. Lia.lia. Lia.lia.
 
     + (* Lbuiltin *)
       right. exploit eval_builtin_args_lessdef; eauto. intros [vl' [A B]].
@@ -1067,14 +1067,14 @@ Proof.
       resolv_ls.
       { inv STACKS. simpl. intro. auto. simpl. inv H1. auto. }
       inv AGMU. eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto.
-      unfold inject_id; eauto. omega. 
-      rewrite (stacksize_preserved _ _ TRF). omega.
+      unfold inject_id; eauto. Lia.lia. 
+      rewrite (stacksize_preserved _ _ TRF). Lia.lia.
 
     + (* initial call *)
       assert (REACH: (reachable f)!!(LTL.fn_entrypoint f) = true).
       apply reachable_entrypoint.
       monadInv H8. 
-      exploit Mem.alloc_extends; eauto. instantiate (1:= 0); omega. instantiate (1:= LTL.fn_stacksize f); omega.
+      exploit Mem.alloc_extends; eauto. instantiate (1:= 0); Lia.lia. instantiate (1:= LTL.fn_stacksize f); Lia.lia.
       rewrite <- (stacksize_preserved _ _ EQ). intros [Lm' [A B]].
       right. eexists 0%nat, _, _, _. split.
       eapply plus_two. econstructor. econstructor; eauto.
@@ -1099,7 +1099,7 @@ Proof.
       assert (REACH: (reachable f)!!(LTL.fn_entrypoint f) = true).
       apply reachable_entrypoint.
       monadInv H15.
-      exploit Mem.alloc_extends; eauto. instantiate (1:= 0); omega. instantiate (1:= LTL.fn_stacksize f); omega.
+      exploit Mem.alloc_extends; eauto. instantiate (1:= 0); Lia.lia. instantiate (1:= LTL.fn_stacksize f); Lia.lia.
       rewrite <- (stacksize_preserved _ _ EQ). intros [Lm' [A B]].
       right. eexists 0%nat, _, _, _. split.
       apply plus_one. eapply exec_function_internal; eauto.

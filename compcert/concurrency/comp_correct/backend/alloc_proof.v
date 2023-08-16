@@ -502,7 +502,7 @@ Proof.
   unfold select_reg_l; intros. destruct H.
   red in H. congruence.
   rewrite Pos.leb_le in *. red in H. destruct H as [A | [A B]].
-  red in A. zify; omega.
+  red in A. zify; Lia.lia.
   rewrite <- A; auto.
 Qed.
 
@@ -514,7 +514,7 @@ Proof.
   unfold select_reg_h; intros. destruct H.
   red in H. congruence.
   rewrite Pos.leb_le in *. red in H. destruct H as [A | [A B]].
-  red in A. zify; omega.
+  red in A. zify; Lia.lia.
   rewrite A; auto.
 Qed.
 
@@ -522,7 +522,7 @@ Remark select_reg_charact:
   forall r q, select_reg_l r q = true /\ select_reg_h r q = true <-> ereg q = r.
 Proof.
   unfold select_reg_l, select_reg_h; intros; split.
-  rewrite ! Pos.leb_le. unfold reg; zify; omega.
+  rewrite ! Pos.leb_le. unfold reg; zify; Lia.lia.
   intros. rewrite H. rewrite ! Pos.leb_refl; auto.
 Qed.
 
@@ -1839,7 +1839,7 @@ Proof.
   eexists; intuition. unfold Bset.inject_block. eauto. apply FMemOpFP.range_locset_loc.
   split; auto.
   generalize ALIGN ARCHI H0 H4. simpl. clear; intros.
-  apply Mem.addressing_int64_split in ALIGN; auto. rewrite ALIGN in *. omega.
+  apply Mem.addressing_int64_split in ALIGN; auto. rewrite ALIGN in *. Lia.lia.
 Qed.
 
 Lemma store_int64_fp_split:
@@ -1866,7 +1866,7 @@ Proof.
   eexists; intuition. unfold Bset.inject_block. eauto. apply FMemOpFP.range_locset_loc.
   split; auto.
   generalize ALIGN ARCHI H0 H4. simpl. clear; intros.
-  apply Mem.addressing_int64_split in ALIGN; auto. rewrite ALIGN in *. omega.
+  apply Mem.addressing_int64_split in ALIGN; auto. rewrite ALIGN in *. Lia.lia.
 Qed.
 
 Lemma add_equations_builtin_arg_fp_lessdef:
@@ -2415,7 +2415,7 @@ Proof.
       intros. eapply Mem.valid_block_free_1; eauto.
       intros. eapply Mem.valid_block_free_1; eauto.
       eapply MemClosures_local.free_inject_unmapped_closed_preserved; try (inv AGMU; eauto; fail).
-      cbv; eauto. omega. omega.
+      cbv; eauto. Lia.lia. Lia.lia.
 
     (* builtin *)
     + exploit (exec_moves mv1); eauto. intros [ls1 [A1 B1]].
@@ -2489,7 +2489,7 @@ Proof.
         intros. eapply Mem.valid_block_free_1; eauto.
         intros. eapply Mem.valid_block_free_1; eauto.
         eapply MemClosures_local.free_inject_unmapped_closed_preserved; try (inv AGMU; eauto; fail).
-        cbv; eauto. omega. omega.
+        cbv; eauto. Lia.lia. Lia.lia.
       ++ (* with an argument *)
         exploit (exec_moves mv); eauto. intros [ls1 [A1 B1]].
         PLUS. eapply plus_left. econstructor; eauto.
@@ -2511,7 +2511,7 @@ Proof.
         intros. eapply Mem.valid_block_free_1; eauto.
         intros. eapply Mem.valid_block_free_1; eauto.
         eapply MemClosures_local.free_inject_unmapped_closed_preserved; try (inv AGMU; eauto; fail).
-        cbv; eauto. omega. omega. 
+        cbv; eauto. Lia.lia. Lia.lia. 
 
     + (* internal function *)
       revert HSG HTG; monadInv FUN. simpl in *.

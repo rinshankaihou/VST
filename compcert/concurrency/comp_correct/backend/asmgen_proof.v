@@ -163,7 +163,7 @@ Lemma transf_function_no_overflow:
   transf_function f = OK tf -> list_length_z (fn_code tf) <= Ptrofs.max_unsigned.
 Proof.
   intros. monadInv H. destruct (zlt Ptrofs.max_unsigned (list_length_z (fn_code x))); monadInv EQ0.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma exec_straight_exec:
@@ -417,8 +417,8 @@ Proof.
   split. unfold goto_label. rewrite P. rewrite H1. auto.
   split. rewrite Pregmap.gss. constructor; auto.
   rewrite Ptrofs.unsigned_repr. replace (pos' - 0) with pos' in Q.
-  auto. omega.
-  generalize (transf_function_no_overflow _ _ H0). omega.
+  auto. Lia.lia.
+  generalize (transf_function_no_overflow _ _ H0). Lia.lia.
   intros. apply Pregmap.gso; auto.
 Qed.
 
@@ -1286,7 +1286,7 @@ Proof.
       apply Mem.nextblock_free in E. rewrite E. auto.
 
       inv AGMU. eapply free_inject_unmapped_closed_preserved; try exact E; eauto.
-      svalid. svalid. reflexivity. omega. omega.
+      svalid. svalid. reflexivity. Lia.lia. Lia.lia.
       
     ++ (* Direct call *)
       generalize (code_tail_next_int _ _ _ _ NOOV H9). intro CT1.
@@ -1316,7 +1316,7 @@ Proof.
       apply Mem.nextblock_free in E. rewrite E. auto.
       
       inv AGMU. eapply free_inject_unmapped_closed_preserved; try exact E; eauto.
-      svalid. svalid. reflexivity. omega. omega.
+      svalid. svalid. reflexivity. Lia.lia. Lia.lia.
 
     + (* Mtailcall external *)
       assert (f0 = f) by congruence.  subst f0.
@@ -1378,7 +1378,7 @@ Proof.
       apply Mem.nextblock_free in E. rewrite E. auto.
 
       inv AGMU. eapply free_inject_unmapped_closed_preserved; try exact E; eauto.
-      svalid. svalid. reflexivity. omega. omega.
+      svalid. svalid. reflexivity. Lia.lia. Lia.lia.
       
     ++ (* Direct call *)
       generalize (code_tail_next_int _ _ _ _ NOOV H12). intro CT1.
@@ -1420,7 +1420,7 @@ Proof.
       apply Mem.nextblock_free in E. rewrite E. auto.
 
       inv AGMU. eapply free_inject_unmapped_closed_preserved; try exact E; eauto.
-      svalid. svalid. reflexivity. omega. omega.
+      svalid. svalid. reflexivity. Lia.lia. Lia.lia.
 
     + (* Mbuiltin *)
       revert HSG HTG. inv AT. monadInv H6.
@@ -1490,7 +1490,7 @@ Proof.
       apply Mem.nextblock_free in E. rewrite E. auto.
 
       inv AGMU. eapply free_inject_unmapped_closed_preserved; try exact E; eauto.
-      svalid. svalid. reflexivity. omega. omega.
+      svalid. svalid. reflexivity. Lia.lia. Lia.lia.
       
     + (* internal function *)
       exploit functions_translated. rewrite <-HSG, Genv.find_funct_find_funct_ptr. eauto.
@@ -1526,7 +1526,7 @@ Proof.
       rewrite <- HSG. eauto.
       unfold nextinstr. rewrite Pregmap.gss. repeat rewrite Pregmap.gso; auto with asmgen.
       rewrite ATPC. simpl. constructor; eauto. rewrite <- HSG. eauto.
-      unfold fn_code. eapply code_tail_next_int. simpl in g. omega.
+      unfold fn_code. eapply code_tail_next_int. simpl in g. Lia.lia.
       constructor.
       apply agree_nextinstr. eapply agree_change_sp; eauto.
       Transparent destroyed_at_function_entry.
@@ -1573,7 +1573,7 @@ Proof.
       
     + (* return *)
       inv STACKS. simpl in *.
-      left. exists 0%nat. split. unfold Nat.lt. omega.
+      left. exists 0%nat. split. unfold Nat.lt. Lia.lia.
       econstructor; eauto. rewrite ATPC; eauto. congruence.
       rewrite FP.fp_union_emp; auto.
       

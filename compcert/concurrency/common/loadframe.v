@@ -109,10 +109,10 @@ Proof.
          end.
   apply IHargs in Heqo. destruct Heqo.
   assert (4 | typesize t) by
-      (destruct t; simpl; try replace 8 with (4 * 2) by omega; try apply Z.divide_mul_l; try apply Z.divide_refl).
+      (destruct t; simpl; try replace 8 with (4 * 2) by Lia.lia; try apply Z.divide_mul_l; try apply Z.divide_refl).
   split; [apply Z.divide_add_r; auto|].
   simpl. rewrite Heqb. rewrite H0. f_equal.
-  rewrite <- typesize_agree, Z_div_plus_full_l; auto. omega.
+  rewrite <- typesize_agree, Z_div_plus_full_l; auto. Lia.lia.
 Qed.
 
 Lemma args_length_bytes:
@@ -136,10 +136,10 @@ Lemma args_len_rec_non_neg:
     z >= 0.
 Proof.
   clear; induction args; simpl; intros.
-  destruct tyl; inv H. omega.
+  destruct tyl; inv H. Lia.lia.
   destruct tyl; inv H. destruct val_has_type_func; inv H1. destruct args_len_rec eqn:H; inv H0.
   apply IHargs in H. 
-  unfold Locations.typesize; destruct t; try omega.
+  unfold Locations.typesize; destruct t; try Lia.lia.
 Qed.
 
 Lemma args_len_rec_exists:
@@ -156,7 +156,7 @@ Proof.
   rewrite H in IHargs0; clear H.
   destruct zlt. exploit IHargs0; auto. intros (z & Hz). rewrite Hz. eauto.
   generalize g H1; clear. intros. exfalso.
-  destruct zlt; inv H1. rewrite Zlength_cons in l. omega.
+  destruct zlt; inv H1. rewrite Zlength_cons in l. Lia.lia.
 Qed.
 
 Lemma args_len_rec_bound:
@@ -165,10 +165,10 @@ Lemma args_len_rec_bound:
     z <= (2 * Zlength args0).
 Proof.
   clear. induction args0; intros.
-  simpl in H. destruct tyl0; inv H. simpl. omega.
+  simpl in H. destruct tyl0; inv H. simpl. Lia.lia.
   simpl in H. destruct tyl0; inv H. destruct val_has_type_func; inv H1.
   destruct args_len_rec eqn:C; inv H0. apply IHargs0 in C; clear IHargs0.
-  rewrite Zlength_cons. destruct t; unfold Locations.typesize; try omega.
+  rewrite Zlength_cons. destruct t; unfold Locations.typesize; try Lia.lia.
 Qed.
 
 Lemma store_args_rec_exists:
@@ -193,63 +193,63 @@ Proof.
   simpl; unfold store_stack, Mach.store_stack, Mem.storev.
   destruct a; simpl.
   { edestruct (Mem.valid_access_store m Mint32 sp0 ofs v).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x0.
-    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. omega.
+    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. Lia.lia.
     destruct v; auto; inv H0.
-    apply Z.divide_add_r; auto. apply Z.divide_refl. omega. unfold Locations.typesize in *. omega.
-    replace (ofs + 4 * (Locations.typesize Tint + z0)) with (ofs + 4 + 4 * z0) in H4 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. omega. }
+    apply Z.divide_add_r; auto. apply Z.divide_refl. Lia.lia. unfold Locations.typesize in *. Lia.lia.
+    replace (ofs + 4 * (Locations.typesize Tint + z0)) with (ofs + 4 + 4 * z0) in H4 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. Lia.lia. }
   { edestruct (Mem.valid_access_store m Mfloat64 sp0 ofs v).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x0.
-    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. omega.
+    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. Lia.lia.
     destruct v; auto; inv H0.
-    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by omega. apply Z.divide_mul_l, Z.divide_refl.
-    omega. unfold Locations.typesize in *. omega.
-    replace (ofs + 4 * (Locations.typesize Tfloat + z0)) with (ofs + 8 + 4 * z0) in H3 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize. omega. }
+    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by Lia.lia. apply Z.divide_mul_l, Z.divide_refl.
+    Lia.lia. unfold Locations.typesize in *. Lia.lia.
+    replace (ofs + 4 * (Locations.typesize Tfloat + z0)) with (ofs + 8 + 4 * z0) in H3 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize. Lia.lia. }
   { destruct v; inv Heqb. inv H0.
     edestruct (Mem.valid_access_store m Mint32 sp0 (ofs + 4) (Vint (Int64.hiword i))).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     apply Z.divide_add_r; auto. apply Z.divide_refl.
     edestruct (Mem.valid_access_store x Mint32 sp0 ofs (Vint (Int64.loword i))).
     unfold Mem.valid_access. simpl. split; auto.
-    intros ? ?; eapply Mem.perm_store_1, H4; eauto; unfold Locations.typesize; try omega.
+    intros ? ?; eapply Mem.perm_store_1, H4; eauto; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x1. 
     repeat rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, e0; eauto.
-    unfold Locations.typesize in *. omega.
-    unfold Locations.typesize in *. omega.
+    unfold Locations.typesize in *. Lia.lia.
+    unfold Locations.typesize in *. Lia.lia.
     auto.
-    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by omega. apply Z.divide_mul_l, Z.divide_refl.
-    omega. unfold Locations.typesize in *; omega. 
-    replace (ofs + 4 * (Locations.typesize Tlong + z0)) with (ofs + 8 + 4 * z0) in H4 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, Mem.perm_store_1, H4; eauto. omega. }
+    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by Lia.lia. apply Z.divide_mul_l, Z.divide_refl.
+    Lia.lia. unfold Locations.typesize in *; Lia.lia. 
+    replace (ofs + 4 * (Locations.typesize Tlong + z0)) with (ofs + 8 + 4 * z0) in H4 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, Mem.perm_store_1, H4; eauto. Lia.lia. }
   { edestruct (Mem.valid_access_store m Mfloat32 sp0 ofs v).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x0.
-    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. omega.
+    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. Lia.lia.
     destruct v; inv Heqb. inv H0. auto.
-    apply Z.divide_add_r; auto. apply Z.divide_refl. omega. unfold Locations.typesize in *. omega.
-    replace (ofs + 4 * (Locations.typesize Tsingle + z0)) with (ofs + 4 + 4 * z0) in H4 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. omega. }
+    apply Z.divide_add_r; auto. apply Z.divide_refl. Lia.lia. unfold Locations.typesize in *. Lia.lia.
+    replace (ofs + 4 * (Locations.typesize Tsingle + z0)) with (ofs + 4 + 4 * z0) in H4 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. Lia.lia. }
   { edestruct (Mem.valid_access_store m Many32 sp0 ofs v).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x0.
-    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. omega.
+    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. Lia.lia.
     destruct v; inv Heqb; inv H0; auto.
-    apply Z.divide_add_r; auto. apply Z.divide_refl. omega. unfold Locations.typesize in *. omega.
-    replace (ofs + 4 * (Locations.typesize Tint + z0)) with (ofs + 4 + 4 * z0) in H3 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize; omega. }
+    apply Z.divide_add_r; auto. apply Z.divide_refl. Lia.lia. unfold Locations.typesize in *. Lia.lia.
+    replace (ofs + 4 * (Locations.typesize Tint + z0)) with (ofs + 4 + 4 * z0) in H3 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize; Lia.lia. }
   { edestruct (Mem.valid_access_store m Many64 sp0 ofs v).
-    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try omega.
+    unfold Mem.valid_access. simpl. split; auto. intros ? ?; apply H4; unfold Locations.typesize; try Lia.lia.
     eapply IHtyl0 in Heqo. destruct Heqo. exists x0.
-    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. omega.
+    rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr. rewrite e, H; auto. unfold Locations.typesize in *. Lia.lia.
     destruct v; inv Heqb; inv H0; auto.
-    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by omega. apply Z.divide_mul_l, Z.divide_refl.
-    omega. unfold Locations.typesize in *. omega.
-    replace (ofs + 4 * (Locations.typesize Tany64 + z0)) with (ofs + 8 + 4 * z0) in H3 by (unfold Locations.typesize; omega).
-    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize; omega. }
+    apply Z.divide_add_r; auto. replace 8 with (4 * 2) by Lia.lia. apply Z.divide_mul_l, Z.divide_refl.
+    Lia.lia. unfold Locations.typesize in *. Lia.lia.
+    replace (ofs + 4 * (Locations.typesize Tany64 + z0)) with (ofs + 8 + 4 * z0) in H3 by (unfold Locations.typesize; Lia.lia).
+    intros ofs' RANGE. eapply Mem.perm_store_1, H4; eauto. unfold Locations.typesize; Lia.lia. }
 Qed.
 
 Lemma args_len_rec_inject:
@@ -293,20 +293,20 @@ Lemma tyl_length_size_arguments_32:
 Proof.
   clear. induction tyl; auto. simpl. rewrite <- IHtyl. 
   generalize tyl (Locations.typesize a). clear. induction tyl.
-  intros. simpl. omega.
-  simpl. intros. rewrite (IHtyl (Locations.typesize a)). rewrite (IHtyl (z + Locations.typesize a)). omega.
+  intros. simpl. Lia.lia.
+  simpl. intros. rewrite (IHtyl (Locations.typesize a)). rewrite (IHtyl (z + Locations.typesize a)). Lia.lia.
 Qed.
             
 Lemma tyl_bytes_app:
   forall tyl tyl',
     tyl_bytes (tyl ++ tyl') = tyl_bytes tyl + tyl_bytes tyl'.
 Proof.
-  clear. induction tyl; simpl; intros; auto. rewrite IHtyl. omega.
+  clear. induction tyl; simpl; intros; auto. rewrite IHtyl. Lia.lia.
 Qed.
 Lemma tyl_bytes_non_neg:
   forall tyl, tyl_bytes tyl >= 0.
 Proof.
-  clear. induction tyl as[|ty tyl]; simpl; [| pose proof (AST.typesize_pos ty)]; omega.
+  clear. induction tyl as[|ty tyl]; simpl; [| pose proof (AST.typesize_pos ty)]; Lia.lia.
 Qed.
 
 
@@ -326,13 +326,13 @@ Proof.
   clear.
   unfold wd_args. intros. exploit store_args_rec_exists; eauto.
   repeat rewrite andb_true_iff in H. destruct vals_defined; intuition.
-  apply Z.divide_0_r. omega.
+  apply Z.divide_0_r. Lia.lia.
   repeat rewrite andb_true_iff in H. intuition.
   destruct zlt; inv H3.
   pose proof (args_len_rec_bound _ _ _ H0).
   assert (Int.max_unsigned = Ptrofs.max_unsigned).
   { clear. reflexivity. }
-  omega.
+  Lia.lia.
   intros ? ?. eapply Mem.perm_alloc_2 in H1; eauto. eapply Mem.perm_implies; eauto. constructor.
 Qed.
 
@@ -388,9 +388,9 @@ Ltac red_ptr :=
   | H: context[Ptrofs.add Ptrofs.zero _] |- _ => rewrite Ptrofs.add_zero_l in H
   | |- context[Ptrofs.add Ptrofs.zero _] => rewrite Ptrofs.add_zero_l
   | |- context[Ptrofs.unsigned (Ptrofs.repr _)] =>
-    try (rewrite Ptrofs.unsigned_repr; [| unfold Ptrofs.max_unsigned; try omega; fail])
+    try (rewrite Ptrofs.unsigned_repr; [| unfold Ptrofs.max_unsigned; try Lia.lia; fail])
   | H: context[Ptrofs.unsigned (Ptrofs.repr _)] |- _ =>
-    try (rewrite Ptrofs.unsigned_repr in H;[| unfold Ptrofs.max_unsigned; try omega; fail])
+    try (rewrite Ptrofs.unsigned_repr in H;[| unfold Ptrofs.max_unsigned; try Lia.lia; fail])
   end.
 Ltac red_triv :=
   match goal with
@@ -428,23 +428,23 @@ Proof.
   unfold store_args_rec in H0. destruct args; inv H1.
   apply Mem.unchanged_on_refl.
   destruct args. inversion H1. simpl in H1. 
-  assert (0 < typesize a <= 8) by (destruct a; simpl; omega).
-  assert (Zlength args >= 0) by (rewrite Zlength_correct; omega).
-  assert (4 * (2 * Zlength args) >= 0) by omega.
+  assert (0 < typesize a <= 8) by (destruct a; simpl; Lia.lia).
+  assert (Zlength args >= 0) by (rewrite Zlength_correct; Lia.lia).
+  assert (4 * (2 * Zlength args) >= 0) by Lia.lia.
   assert (typesize a <= 4 * (2 * Zlength (v :: args))).
-  { rewrite Zlength_cons, <- Zmult_succ_r_reverse, Z.mul_add_distr_l. omega. }
+  { rewrite Zlength_cons, <- Zmult_succ_r_reverse, Z.mul_add_distr_l. Lia.lia. }
   rewrite Zlength_cons, <- Zmult_succ_r_reverse, Z.mul_add_distr_l in H0.
   repeat red_triv; 
     repeat match goal with
            | H: store_stack _ _ _ _ _ = Some _ |- _ => apply store_stack_unchanged_on in H; red_ptr
-           | H: store_args_rec _ _ _ _ _ = _ |- _ => eapply IHtyl in H; try omega
+           | H: store_args_rec _ _ _ _ _ = _ |- _ => eapply IHtyl in H; try Lia.lia
            end;
     try (eapply (Mem.unchanged_on_trans _ m m0 m');
-         eapply Mem.unchanged_on_implies; simpl; eauto; intros; simpl; try intros [? ?]; red_ptr; red_triv; omega; fail).
+         eapply Mem.unchanged_on_implies; simpl; eauto; intros; simpl; try intros [? ?]; red_ptr; red_triv; Lia.lia; fail).
 
   eapply (Mem.unchanged_on_trans _ m m1 m');
     [eapply (Mem.unchanged_on_trans _ m m0 m1)|];
-    eapply Mem.unchanged_on_implies; simpl; eauto; intros; simpl; try intros [? ?]; red_ptr; red_triv; omega.
+    eapply Mem.unchanged_on_implies; simpl; eauto; intros; simpl; try intros [? ?]; red_ptr; red_triv; Lia.lia.
 Qed.
 
 
@@ -483,15 +483,15 @@ Proof.
   destruct args; simpl in *; [trivial|congruence].
   destruct args as [|v args']. simpl in *. congruence.
   rewrite Zlength_cons, <- Zmult_succ_r_reverse, Z.mul_add_distr_l in H1.
-  assert (0 < typesize ty <= 8) by (destruct ty; simpl; omega).
-  assert (Zlength args' >= 0) by (rewrite Zlength_correct; omega).
-  assert (4 * (2 * Zlength args') >= 0) by omega.
+  assert (0 < typesize ty <= 8) by (destruct ty; simpl; Lia.lia).
+  assert (Zlength args' >= 0) by (rewrite Zlength_correct; Lia.lia).
+  assert (4 * (2 * Zlength args') >= 0) by Lia.lia.
   assert (typesize ty + 4 * (2 * Zlength args') <= 4 * (2 * (Zlength args' + 1))).
-  { rewrite Z.mul_add_distr_l. omega. }
-  replace (4 * 2) with 8 in * by omega.
+  { rewrite Z.mul_add_distr_l. Lia.lia. }
+  replace (4 * 2) with 8 in * by Lia.lia.
   repeat match goal with
          | H: context[4 * (2 * ?x)] |- _ =>
-           replace (4 * (2 * x)) with (8 * x) in H by omega
+           replace (4 * (2 * x)) with (8 * x) in H by Lia.lia
          | H: context[_ * (_ + _)] |- _ =>
            rewrite Z.mul_add_distr_l in H
          | H: context[?x + (?y + ?z)] |- _ =>
@@ -503,7 +503,7 @@ Proof.
     assert (vals_defined args' = true) by (destruct v; inv H8; auto).
     rewrite H9, H10. rewrite andb_true_l. 
     generalize H7. clear. rewrite Zlength_cons. intros H.
-    apply zlt_true. destruct zlt; [omega| inv H]. }
+    apply zlt_true. destruct zlt; [Lia.lia| inv H]. }
   assert (Val.has_type v ty /\ v <> Vundef) as [? ?].
   { unfold wd_args in *. repeat rewrite andb_true_iff in H.
     destruct H. destruct H. simpl in H. rewrite andb_true_iff in H. destruct H.
@@ -513,21 +513,21 @@ Proof.
   destruct ty; repeat red_triv; repeat red_ptr;
     match goal with
     | H: store_args_rec _ _ _ _ _ = Some _ |- _ =>
-      exploit store_args_rec_unchanged_on_weak; try eexact H; try omega; eauto;
-      eapply IHtyl' in H; try omega; auto
+      exploit store_args_rec_unchanged_on_weak; try eexact H; try Lia.lia; eauto;
+      eapply IHtyl' in H; try Lia.lia; auto
     end;
     repeat split; auto; unfold load_stack, Mach.load_stack, Mem.loadv; simpl; repeat red_ptr;
       try (eapply Mem.load_unchanged_on; eauto;
-           [simpl; intros; destruct eq_block; auto; omega
+           [simpl; intros; destruct eq_block; auto; Lia.lia
            |eapply Mem.load_store_same in Heqo; simpl in Heqo; repeat red_ptr; rewrite Heqo; destruct v; inv H8; auto; fail 
            ]; fail).
 
   exploit store_stack_unchanged_on; try eexact Heqo0. intros.
-  eapply Mem.load_unchanged_on; eauto; [simpl; intros; destruct eq_block; auto; omega|]. clear H10.
-  eapply Mem.load_unchanged_on; eauto. simpl; intros; Cintro. repeat red_ptr. omega. clear H11.
+  eapply Mem.load_unchanged_on; eauto; [simpl; intros; destruct eq_block; auto; Lia.lia|]. clear H10.
+  eapply Mem.load_unchanged_on; eauto. simpl; intros; Cintro. repeat red_ptr. Lia.lia. clear H11.
   eapply Mem.load_store_same in Heqo; simpl in Heqo; repeat red_ptr. rewrite Heqo; destruct v; inv H8; auto.
   
-  eapply Mem.load_unchanged_on; eauto; [simpl; intros; destruct eq_block; auto; omega|].   
+  eapply Mem.load_unchanged_on; eauto; [simpl; intros; destruct eq_block; auto; Lia.lia|].   
   eapply Mem.load_store_same in Heqo0; simpl in Heqo0; repeat red_ptr. rewrite Heqo0; destruct v; inv H8; auto.
 Qed.
   

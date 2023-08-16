@@ -77,7 +77,7 @@ Lemma slot_outgoing_argument_valid:
 Proof.
   intros. exploit loc_arguments_acceptable_2; eauto. intros [A B].
   unfold slot_valid. unfold proj_sumbool.
-  rewrite zle_true by omega.
+  rewrite zle_true by Lia.lia.
   rewrite pred_dec_true by auto.
   auto.
 Qed.
@@ -169,7 +169,7 @@ Proof.
   destruct (wt_function f); simpl negb.
   destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
   intros; discriminate.
-  intros. unfold fe. unfold b. omega.
+  intros. unfold fe. unfold b. Lia.lia.
   intros; discriminate.
 Qed.
 
@@ -238,7 +238,7 @@ Next Obligation.
 - exploit H4; eauto. intros (v & A & B). exists v; split; auto.
   eapply Mem.load_unchanged_on; eauto.
   simpl; intros. rewrite size_type_chunk, typesize_typesize in H8. 
-  split; auto. omega.
+  split; auto. Lia.lia.
 Qed.
 Next Obligation.
   (* clear unused context... *)
@@ -256,7 +256,7 @@ Remark valid_access_location:
 Proof.
   intros; split.
 - red; intros. apply Mem.perm_implies with Freeable; auto with mem. 
-  apply H0. rewrite size_type_chunk, typesize_typesize in H4. omega.
+  apply H0. rewrite size_type_chunk, typesize_typesize in H4. Lia.lia.
 - rewrite align_type_chunk. apply Z.divide_add_r. 
   apply Zdivide_trans with 8; auto.
   exists (8 / (4 * typealign ty)); destruct ty; reflexivity.
@@ -274,7 +274,7 @@ Proof.
   intros. destruct H as (D & E & F & G & H).
   exploit H; eauto. intros (v & U & V). exists v; split; auto.
   unfold load_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; auto.
-  unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
+  unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). Lia.lia.
 Qed.
 
 Lemma set_location:
@@ -296,19 +296,19 @@ Proof.
   { red; intros; eauto with mem. }
   exists m'; split.
 - unfold store_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; eauto.
-  unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
+  unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). Lia.lia.
 - simpl. intuition auto.
 + unfold Locmap.set. 
   destruct (Loc.eq (S sl ofs ty) (S sl ofs0 ty0)); [|destruct (Loc.diff_dec (S sl ofs ty) (S sl ofs0 ty0))].
 * (* same location *)
   inv e. rename ofs0 into ofs. rename ty0 into ty.
   exists (Val.load_result (chunk_of_type ty) v'); split.
-  eapply Mem.load_store_similar_2; eauto. omega. 
+  eapply Mem.load_store_similar_2; eauto. Lia.lia. 
   apply Val.load_result_inject; auto.
 * (* different locations *)
   exploit H; eauto. intros (v0 & X & Y). exists v0; split; auto.
   rewrite <- X; eapply Mem.load_store_other; eauto.
-  destruct d. congruence. right. rewrite ! size_type_chunk, ! typesize_typesize. omega.
+  destruct d. congruence. right. rewrite ! size_type_chunk, ! typesize_typesize. Lia.lia.
 * (* overlapping locations *)
   destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
   apply Mem.valid_access_implies with Writable; auto with mem. 
@@ -317,7 +317,7 @@ Proof.
 + apply (m_invar P) with m; auto. 
   eapply Mem.store_unchanged_on; eauto. 
   intros i; rewrite size_type_chunk, typesize_typesize. intros; red; intros.
-  eelim C; eauto. simpl. split; auto. omega.
+  eelim C; eauto. simpl. split; auto. Lia.lia.
 Qed.
 
 Lemma initial_locations:
@@ -1032,8 +1032,8 @@ Local Opaque mreg_type.
   { unfold pos1. apply Zdivide_trans with sz.
     unfold sz; rewrite <- size_type_chunk. apply align_size_chunk_divides.
     apply align_divides; auto. }
-  apply range_drop_left with (mid := pos1) in SEP; [ | omega ].
-  apply range_split with (mid := pos1 + sz) in SEP; [ | omega ].
+  apply range_drop_left with (mid := pos1) in SEP; [ | Lia.lia ].
+  apply range_split with (mid := pos1 + sz) in SEP; [ | Lia.lia ].
   unfold sz at 1 in SEP. rewrite <- size_type_chunk in SEP.
   apply range_contains in SEP; auto.
   exploit (contains_set_stack (fun v' => Val.inject j (ls (R r)) v') (rs r)).
@@ -1227,7 +1227,7 @@ Local Opaque b fe.
   instantiate (1 := fe_stack_data fe + bound_stack_data b). rewrite Z.max_comm. reflexivity.
   
   generalize (bound_stack_data_pos b) (size_no_overflow) LAYOUT1. 
-  clear; intros. destruct LAYOUT1. subst b fe. omega. 
+  clear; intros. destruct LAYOUT1. subst b fe. Lia.lia. 
   
   tauto.
   tauto.
@@ -1533,7 +1533,7 @@ Qed.
 Lemma tyl_length_non_neg:
   forall l, loadframe.tyl_length l >= 0.
 Proof.
-  clear. induction l as[|a h']; simpl; [| pose proof (typesize_pos a)]; omega.
+  clear. induction l as[|a h']; simpl; [| pose proof (typesize_pos a)]; Lia.lia.
 Qed.
 Lemma stack_contains_match_stacks_args_agree_rec:
   forall j f0 ls0 sp0 args0 tyl0 m,
@@ -1565,8 +1565,8 @@ Proof.
     { clear. induction l; auto. }
     rewrite Nat.sub_0_r, H5. rewrite <- H3, H5. exists nil. simpl. auto.
   -
-    assert (n<=length tyl0)%nat by omega. specialize (IHn H5); clear H5.
-    assert (Datatypes.S (length tyl0 - Datatypes.S n) = length tyl0 - n)%nat by omega.
+    assert (n<=length tyl0)%nat by Lia.lia. specialize (IHn H5); clear H5.
+    assert (Datatypes.S (length tyl0 - Datatypes.S n) = length tyl0 - n)%nat by Lia.lia.
     assert (forall A (l: list A) n, n < length l ->
                                exists a, l = (firstn n l) ++ a :: (skipn (n + 1) l))%nat.
     { clear. intros.
@@ -1581,13 +1581,13 @@ Proof.
       { clear Heqh Heqt. generalize dependent n. clear. intros n H C.
         pose proof (firstn_skipn n l).
         pose proof (app_length (firstn n l) (skipn n l)).
-        rewrite firstn_length_le in H1; try omega.
-        rewrite H0 in H1. assert (length (skipn n l) > 0)%nat by omega.
-        rewrite C in H2. simpl in H2. omega. }
+        rewrite firstn_length_le in H1; try Lia.lia.
+        rewrite H0 in H1. assert (length (skipn n l) > 0)%nat by Lia.lia.
+        rewrite C in H2. simpl in H2. Lia.lia. }
       destruct (skipn n l) eqn:?; [contradiction|].
-      exists a. simpl. auto. rewrite Heqh. apply firstn_length_le; omega. }
-    exploit (H6 _ tyl0 headN). subst headN; omega. intros [ty Htyl0].
-    exploit (H6 _ args0 headN). subst headN; omega. intros [v Hargs0].
+      exists a. simpl. auto. rewrite Heqh. apply firstn_length_le; Lia.lia. }
+    exploit (H6 _ tyl0 headN). subst headN; Lia.lia. intros [ty Htyl0].
+    exploit (H6 _ args0 headN). subst headN; Lia.lia. intros [v Hargs0].
     replace tyl with (ty :: skipn (length tyl0 - n) tyl0).
     replace args with (v :: skipn (length tyl0 - n) args0).
     unfold loadframe.agree_args_contains_aux.
@@ -1598,7 +1598,7 @@ Proof.
     pose proof (tyl_length_non_neg headn).
     assert (ofsn + typesize ty <= loadframe.tyl_length tyl0).
     { rewrite Htyl0. subst ofsn headn. generalize (firstn headN tyl0) (skipn (headN+1) tyl0).
-      clear. intros l l0. induction l; intros; simpl; pose proof (tyl_length_non_neg l0); omega. }
+      clear. intros l l0. induction l; intros; simpl; pose proof (tyl_length_non_neg l0); Lia.lia. }
     destruct IHn as [args' [AGREE' INJLIST']].
     assert (Val.has_type v ty /\ v <> Vundef) as [? ?].
     { generalize H3 H0 Htyl0 Hargs0; clear. generalize headN. clear. intros n H.
@@ -1606,7 +1606,7 @@ Proof.
       { destruct (le_dec n (length args0)).
         rewrite firstn_length_le; try congruence.
         rewrite firstn_length_le; try congruence.
-        rewrite firstn_all2; try omega. rewrite firstn_all2; try omega. }
+        rewrite firstn_all2; try Lia.lia. rewrite firstn_all2; try Lia.lia. }
       unfold wd_args. repeat rewrite andb_true_iff. intros ((? & ?) & ?) ? ? .
       apply val_has_type_list_func_charact in H1. rewrite Htyl0, Hargs0 in H1. rewrite Hargs0 in H2.
       apply has_type_list_tail in H1; auto. apply vals_defined_tail in H2. simpl in H1, H2.
@@ -1623,17 +1623,17 @@ Proof.
                                    ).
     exploit Hls0.
     { unfold loc_arguments. destruct Archi.ptr64 eqn:C; inversion C; clear C. rewrite H1.
-      rewrite Htyl0. generalize H4 H5 Htyl0 Heqofsn. clear. intros. assert (headN < length tyl0)%nat by (subst headN; omega).
+      rewrite Htyl0. generalize H4 H5 Htyl0 Heqofsn. clear. intros. assert (headN < length tyl0)%nat by (subst headN; Lia.lia).
       rewrite (Zplus_0_r_reverse (loadframe.tyl_length headn)) in Heqofsn.
       subst headN headn. generalize H Htyl0 Heqofsn; clear. generalize (length tyl0 - Datatypes.S n)%nat. generalize 0.
       induction tyl0. intros until 1. inversion H.
       intros. destruct n0.
       simpl in *. subst; auto.
-      simpl in *. apply IHtyl0; clear IHtyl0; [omega|congruence|omega]. }
+      simpl in *. apply IHtyl0; clear IHtyl0; [Lia.lia|congruence|Lia.lia]. }
     intros (v' & Hargs_v' & Val_v'); clear Hls0.
     assert (v = v').
     { generalize Hargs_v' Hargs0 H3. clear. intros. subst headN. rewrite Hargs0, <-H3 in Hargs_v'. clear Hargs0 H3.
-      assert (length args0 - (Datatypes.S n) <= length args0)%nat by omega.
+      assert (length args0 - (Datatypes.S n) <= length args0)%nat by Lia.lia.
       revert H Hargs_v'. generalize (length args0 - Datatypes.S n)%nat. clear. intros.
       rewrite nth_error_app2, firstn_length_le, Nat.sub_diag in Hargs_v'; auto. inversion Hargs_v'; auto.
       rewrite firstn_length_le; auto. }
@@ -1643,9 +1643,9 @@ Proof.
     { clear. destruct ty; auto; right; intro C; inv C. }
     (* Tlong *)    
     { subst ty. simpl. 
-      exploit (H8 (loadframe.tyl_length headn) Tint); try (simpl in *; omega; fail). apply Z.divide_1_l. 
+      exploit (H8 (loadframe.tyl_length headn) Tint); try (simpl in *; Lia.lia; fail). apply Z.divide_1_l. 
       rewrite <- Heqofsn. intros (vlo & LOAD2 & INJ2).
-      exploit (H8 (loadframe.tyl_length headn + 1) Tint); try (simpl in *; omega; fail). apply Z.divide_1_l.
+      exploit (H8 (loadframe.tyl_length headn + 1) Tint); try (simpl in *; Lia.lia; fail). apply Z.divide_1_l.
       rewrite <- Heqofsn, Z.mul_add_distr_l, Z.add_assoc, Z.mul_1_r.
       intros (vhi & LOAD1 & INJ1).
       exists (v'::args'). destruct v'; inversion H11; try congruence.
@@ -1664,7 +1664,7 @@ Proof.
       (* Vlo *)
       split. subst ofs headn. loadframe.red_ptr.
       assert (0 <= loadframe.tyl_bytes (firstn headN tyl0) < 4 * loadframe.tyl_length tyl0).
-      { match goal with |- context[loadframe.tyl_bytes ?x] => pose proof (loadframe.tyl_bytes_non_neg x); omega end. }
+      { match goal with |- context[loadframe.tyl_bytes ?x] => pose proof (loadframe.tyl_bytes_non_neg x); Lia.lia end. }
       repeat loadframe.red_ptr. rewrite Heqofsn, Z.mul_comm, Z.add_0_l, loadframe.tyl_length_agree in LOAD2.
       simpl in LOAD2. rewrite LOAD2. f_equal.
       generalize INJ1 INJ2 Val_v'; clear. unfold Locmap.getpair, Val.longofwords.
@@ -1678,10 +1678,10 @@ Proof.
       subst ofs.
       cut (headn ++ Tlong :: nil = firstn (length tyl0 - n) tyl0). intro A. rewrite <- A.
       rewrite loadframe.tyl_bytes_app. auto. rewrite <- H5. subst headn headN.
-      assert (length tyl0 - Datatypes.S n < length tyl0)%nat by omega.
+      assert (length tyl0 - Datatypes.S n < length tyl0)%nat by Lia.lia.
       generalize (length tyl0 - Datatypes.S n)%nat Htyl0 H15. clear.
       { intro n. generalize (skipn (n + 1) tyl0)%nat. intros l Htyl0 H0.
-        assert (length (firstn n tyl0) = n) by (apply firstn_length_le; omega).
+        assert (length (firstn n tyl0) = n) by (apply firstn_length_le; Lia.lia).
         generalize (firstn n tyl0) H0 H Htyl0. clear. intros. rewrite Htyl0. clear Htyl0 H0 tyl0.
         subst n. induction l0; auto.
         simpl in *. destruct (l0 ++ Tlong :: l) eqn:C. destruct l0; inv C.
@@ -1690,12 +1690,12 @@ Proof.
       rewrite Htyl0. subst headn. clear. rewrite loadframe.tyl_bytes_app.
       unfold loadframe.tyl_bytes; fold loadframe.tyl_bytes. unfold AST.typesize.
       pose proof (loadframe.tyl_bytes_non_neg (firstn headN tyl0)).
-      pose proof (loadframe.tyl_bytes_non_neg (skipn (headN + 1) tyl0)). omega.
+      pose proof (loadframe.tyl_bytes_non_neg (skipn (headN + 1) tyl0)). Lia.lia.
     }
     
     (* not Tlong *)
     {
-      exploit H8; eauto; try omega; try (destruct ty; try contradiction; apply Z.divide_1_l).
+      exploit H8; eauto; try Lia.lia; try (destruct ty; try contradiction; apply Z.divide_1_l).
       intros (v0 & LOAD & INJ). rewrite Z.add_0_l, Z.mul_comm in LOAD.
       replace ofs with (ofsn * 4).
       assert (ls0 (S Outgoing ofsn ty) = v') as Val_v.
@@ -1705,12 +1705,12 @@ Proof.
         rewrite Htyl0 at 2. subst headn headN. generalize H5 H4. clear. 
         generalize (skipn (length tyl0 - Datatypes.S n + 1) tyl0). intro l'.
         intro. rewrite <- H5. clear H5. generalize (Datatypes.S n)%nat. clear. intros.
-        pose proof (firstn_length_le tyl0). specialize (H (length tyl0 - n)%nat). exploit H; try omega.
+        pose proof (firstn_length_le tyl0). specialize (H (length tyl0 - n)%nat). exploit H; try Lia.lia.
         clear. generalize (length tyl0 - n)%nat, (firstn (length tyl0 - n) tyl0). clear.
-        intros. rewrite <- Nat.add_1_r, <- H, firstn_app_2, loadframe.tyl_bytes_app. simpl. omega. }
+        intros. rewrite <- Nat.add_1_r, <- H, firstn_app_2, loadframe.tyl_bytes_app. simpl. Lia.lia. }
       assert (0 <= ofsn * 4 <= Ptrofs.max_unsigned).
-      { subst ofsn headn. split; try omega. generalize H10 H. clear. intros.
-        pose proof (typesize_pos ty). unfold Ptrofs.max_unsigned. omega. }
+      { subst ofsn headn. split; try Lia.lia. generalize H10 H. clear. intros.
+        pose proof (typesize_pos ty). unfold Ptrofs.max_unsigned. Lia.lia. }
       clear Val_v'. exists (v0 :: args'). split.
       destruct ty;
         try contradiction;
@@ -1992,15 +1992,15 @@ Proof.
     exploit Val.loword_inject; eauto.
     intros INJLO INJHI.
     exploit set_location; try exact INJHI.
-    exact H3. instantiate (1:=z + 1). omega. instantiate (1:=Tint). simpl.
+    exact H3. instantiate (1:=z + 1). Lia.lia. instantiate (1:=Tint). simpl.
     apply Zle_trans with (size_arguments_32 tyl (z + typesize Tlong));
-      [apply Zle_trans with (z + typesize Tlong);[simpl;omega|apply size_arguments_32_above] |omega].
+      [apply Zle_trans with (z + typesize Tlong);[simpl;Lia.lia|apply size_arguments_32_above] |Lia.lia].
     simpl; apply Z.divide_1_l.
     intros (m'0 & STOREHI & SEP').
     exploit set_location; try exact INJLO.
-    exact SEP'. instantiate (1:=z). omega. instantiate (1:=Tint). simpl.
+    exact SEP'. instantiate (1:=z). Lia.lia. instantiate (1:=Tint). simpl.
     apply Zle_trans with (size_arguments_32 tyl (z + typesize Tlong));
-      [apply Zle_trans with (z + typesize Tlong);[simpl;omega|apply size_arguments_32_above] |omega].
+      [apply Zle_trans with (z + typesize Tlong);[simpl;Lia.lia|apply size_arguments_32_above] |Lia.lia].
     simpl; apply Z.divide_1_l.
     intros (m'1 & STORELO & SEP'').
     assert (STOREARGS': loadframe.store_args_rec m'1 (Vptr sp Ptrofs.zero)
@@ -2008,7 +2008,7 @@ Proof.
     { clear IHargs. destruct v'; try (simpl in H2; discriminate; fail).
       rewrite <- H2. clear H2.
       unfold loadframe.store_args_rec at 2. unfold loadframe.store_stack.
-      unfold fe_ofs_arg in *. replace (0 + 4 * z + 4) with (0 + 4 * (z + 1)) by omega.
+      unfold fe_ofs_arg in *. replace (0 + 4 * z + 4) with (0 + 4 * (z + 1)) by Lia.lia.
       unfold Val.hiword in STOREHI. unfold Val.loword in STORELO.
       rewrite STOREHI, STORELO. auto. }
     eapply (IHargs vl' m'1 sp (z + typesize Tlong) tyl m' bound) in SEP''; eauto.
@@ -2016,14 +2016,14 @@ Proof.
     unfold set_arguments at 1, loc_arguments_32 at 1 in H.
     unfold set_arguments at 1, loc_arguments_32 at 1. fold set_arguments loc_arguments_32.
     rewrite H. unfold set_arguments at 2, loc_arguments_32 at 2. rewrite locmap_set_reorder. auto.
-    simpl. right; simpl; omega. omega. simpl; omega.
+    simpl. right; simpl; Lia.lia. Lia.lia. simpl; Lia.lia.
     rewrite typesize_typesize in STOREARGS'. rewrite Z.mul_add_distr_l. auto.
     
   * assert (TALIGN: typealign t = 1) by (destruct t; auto; contradiction).
-    assert (SIZEPOS: typesize t > 0) by (destruct t; simpl; omega).
+    assert (SIZEPOS: typesize t > 0) by (destruct t; simpl; Lia.lia).
     exploit set_location; eauto. instantiate (1:= t). 
     apply Zle_trans with (size_arguments_32 tyl (z + typesize t));
-      [apply size_arguments_32_above| omega].
+      [apply size_arguments_32_above| Lia.lia].
     rewrite TALIGN. apply Z.divide_1_l.
     intros (m'0 & STORE & SEP').
     assert (STOREARGS': loadframe.store_args_rec m'0 (Vptr sp Ptrofs.zero) (4 * z + AST.typesize t) vl' tyl = Some m').
@@ -2031,16 +2031,16 @@ Proof.
       unfold loadframe.store_args_rec at 2. unfold loadframe.store_stack. 
       unfold fe_ofs_arg in *. rewrite STORE.
       destruct t; auto; discriminate. }
-    assert (OFSABOVE: 0 <= z + typesize t) by (destruct t; simpl; omega).
+    assert (OFSABOVE: 0 <= z + typesize t) by (destruct t; simpl; Lia.lia).
     replace (4 * z + AST.typesize t) with (4 * (z + typesize t)) in STOREARGS'
-      by (rewrite typesize_typesize; omega).
+      by (rewrite typesize_typesize; Lia.lia).
     specialize (IHargs vl' m'0 sp (z + typesize t) tyl m' bound
                        (Locmap.set (S Outgoing z t) a rs) P H8 OFSABOVE H1 STOREARGS' SEP').
     pose proof (set_arguments_reorder t a tyl args z z rs).
     unfold set_arguments at 1, loc_arguments_32 at 1 in H.
     unfold set_arguments at 1, loc_arguments_32 at 1. fold set_arguments loc_arguments_32.
     rewrite H. unfold set_arguments at 2, loc_arguments_32 at 2. 
-    destruct t; auto. contradiction. omega. 
+    destruct t; auto. contradiction. Lia.lia. 
 Qed.
         
 (** * Semantic preservation *)
@@ -2166,7 +2166,7 @@ Proof.
 + simpl in SEP. unfold parent_sp0.
   assert (slot_valid f Outgoing pos ty = true).
   { destruct H0. unfold slot_valid, proj_sumbool. 
-    rewrite zle_true by omega. rewrite pred_dec_true by auto. reflexivity. }
+    rewrite zle_true by Lia.lia. rewrite pred_dec_true by auto. reflexivity. }
   assert (slot_within_bounds (function_bounds f) Outgoing pos ty) by eauto.
   exploit frame_get_outgoing; eauto. intros (v & A & B).
   exists v; split.
@@ -2243,7 +2243,7 @@ Proof.
   destruct (Injections.inj mu b1) eqn:?;[|discriminate].
   inv H4. split. unfold Bset.inject_block. auto.
   clear H5. rewrite Ptrofs.add_zero in l0. rewrite Ptrofs.add_zero in l.
-  destruct zle, zlt; try omega; auto.
+  destruct zle, zlt; try Lia.lia; auto.
 Qed.
 
 Lemma storev_fp_match:
@@ -2274,7 +2274,7 @@ Proof.
   destruct (Injections.inj mu b1) eqn:?;[|discriminate].
   inv H4. split. unfold Bset.inject_block. auto.
   clear H5. rewrite Ptrofs.add_zero in l0. rewrite Ptrofs.add_zero in l.
-  destruct zle, zlt; try omega; auto.
+  destruct zle, zlt; try Lia.lia; auto.
 Qed.
 
 Lemma loadv_fp_belongsto:
@@ -2892,12 +2892,12 @@ Proof.
                        Val.inject j ((set_arguments (loc_arguments (Linear.fn_sig fd0))
                                                     args0_src (Locmap.init Vundef)) (S Outgoing ofs ty)) v).
           { apply sep_pick2 in SEP. exploit loc_arguments_acceptable_2; eauto. intros [? ?].
-            eapply get_location; eauto; try omega.
+            eapply get_location; eauto; try Lia.lia.
             apply Zle_trans with (m:=size_arguments (Linear.fn_sig fd0)).
             apply loc_arguments_bounded; auto.
             unfold size_arguments.
             rewrite loadframe.tyl_length_size_arguments_32.
-            destruct Archi.ptr64 eqn:C; inv C. destruct ARGSTYP. rewrite H3. omega. }
+            destruct Archi.ptr64 eqn:C; inv C. destruct ARGSTYP. rewrite H3. Lia.lia. }
           destruct H1 as  (v & A & B).
           eexists _, _, Lm. split.
           apply plus_one. eapply exec_Mgetparam; eauto.
@@ -3090,11 +3090,11 @@ Proof.
       replace (Ptrofs.unsigned (Ptrofs.add ofs1 (Ptrofs.repr delta))) with (Ptrofs.unsigned ofs1 + delta) in C; eauto.
       exploit Mem.mi_representable; eauto. instantiate (1:= ofs1). left.
       exploit Mem.store_valid_access_3. exact H0. intros [RANGE _].
-      eapply Mem.perm_implies. eapply Mem.perm_cur_max. eapply RANGE. destruct chunk; simpl; omega.
+      eapply Mem.perm_implies. eapply Mem.perm_cur_max. eapply RANGE. destruct chunk; simpl; Lia.lia.
       constructor. intros [GE RANGE].
       rewrite Ptrofs.add_unsigned. do 2 rewrite Ptrofs.unsigned_repr. auto.
-      pose proof (Ptrofs.unsigned_range_2 ofs1). omega. auto.
-      pose proof (Ptrofs.unsigned_range_2 ofs1). omega. 
+      pose proof (Ptrofs.unsigned_range_2 ofs1). Lia.lia. auto.
+      pose proof (Ptrofs.unsigned_range_2 ofs1). Lia.lia. 
 
       auto.
     + (* Lcall internal/external *)
@@ -3408,24 +3408,24 @@ Proof.
       assert (m''|= contains_locations j sp0'  fe_ofs_arg z Outgoing rs0 **
                  minjection j m ** globalenv_inject sge j).
       { (** TODO: store_args -> stack contains corresponding vars *)
-        exploit alloc_rule; eauto; try omega.
+        exploit alloc_rule; eauto; try Lia.lia.
         apply loadframe.args_len_rec_bound in ARGLEN; eauto.
         
         apply val_inject_length in ARGSREL.
         unfold wd_args in WDARGS0. destruct zlt. generalize l ARGLEN ARGSREL. clear.
         unfold Ptrofs.modulus, Int.max_unsigned, Int.modulus, Int.wordsize, Ptrofs.wordsize,
         Wordsize_32.wordsize, Wordsize_Ptrofs.wordsize. destruct Archi.ptr64 eqn:C;[inv C|].
-        repeat rewrite Zlength_correct. intros. rewrite ARGSREL in *. clear ARGSREL. omega.
+        repeat rewrite Zlength_correct. intros. rewrite ARGSREL in *. clear ARGSREL. Lia.lia.
         simpl in WDARGS0; InvBooleans. discriminate.
-        intro ALLOCSEP. replace (4 * z) with (0 + 4 * z) in ALLOCSEP by omega.
+        intro ALLOCSEP. replace (4 * z) with (0 + 4 * z) in ALLOCSEP by Lia.lia.
         exploit (initial_locations j sp0' 0 z). eauto. apply Z.divide_0_r.
         intros. instantiate (2:= Locmap.init Vundef). unfold Locmap.init; auto.
         instantiate (1:= Outgoing). clear ALLOCSEP; intros ALLOCSEP.
         generalize (minjection j m ** globalenv_inject sge j) ALLOCSEP STOREARGS ARGLEN WDARGS0 ARGSREL ARGSVAL ARGSTYP.
         clear. intro P; intros. destruct ARGSTYP as [ARGSTYP _].
-        subst rs0. eapply store_args_rec_contains_locations; eauto. omega.
-        erewrite ARGSTYP, loadframe.tyl_length_size_arguments_32, <- arg_len_rec_val; eauto. omega.
-        unfold loadframe.store_args in STOREARGS. rewrite ARGSTYP. replace (4*0) with 0 by omega. auto.
+        subst rs0. eapply store_args_rec_contains_locations; eauto. Lia.lia.
+        erewrite ARGSTYP, loadframe.tyl_length_size_arguments_32, <- arg_len_rec_val; eauto. Lia.lia.
+        unfold loadframe.store_args in STOREARGS. rewrite ARGSTYP. replace (4*0) with 0 by Lia.lia. auto.
       }
       assert (exists tfd, tf = Internal tfd) as [tfd INTERNAL].
       { monadInv TRANSL; eauto. }

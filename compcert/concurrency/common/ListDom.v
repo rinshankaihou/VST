@@ -10,10 +10,10 @@ Proof.
   remember (Pos.to_nat B) as N.
   assert (B = Pos.of_nat N). subst. rewrite Pos2Nat.id; auto. rewrite H. clear B HeqN H.
   assert (forall s, 0 < N -> seq s (S N - 1) = seq s (N - 1) ++ (s + (N - 1)) :: nil)%nat.
-  { clear. induction N. intros. omega.
+  { clear. induction N. intros. Lia.lia.
     destruct N; simpl in *. intro. rewrite Nat.add_0_r. auto.
-    intros. rewrite (IHN (S s));[|omega]. simpl. repeat f_equal; omega. }
-  rewrite H; auto. rewrite map_app. replace (1 + (N - 1))%nat with N by omega. simpl. auto.
+    intros. rewrite (IHN (S s));[|Lia.lia]. simpl. repeat f_equal; Lia.lia. }
+  rewrite H; auto. rewrite map_app. replace (1 + (N - 1))%nat with N by Lia.lia. simpl. auto.
 Qed.
 
 Lemma dom_length: forall B, length (dom B) = (Pos.to_nat B - 1)%nat.
@@ -24,10 +24,10 @@ Proof.
   intros. split; intros.
   unfold dom. rewrite <- (Pos2Nat.id b). apply in_map. auto.
   apply in_seq. pose proof (Pos2Nat.is_pos b); pose proof (Pos2Nat.is_pos B).
-  rewrite Nat.add_sub_assoc, minus_plus; try split; try omega. apply Pos2Nat.inj_lt; auto.
+  rewrite Nat.add_sub_assoc, minus_plus; try split; try Lia.lia. apply Pos2Nat.inj_lt; auto.
   unfold dom in H. apply in_map_iff in H. destruct H as [x [Hb IN]].
-  apply in_seq in IN. pose proof (Pos2Nat.is_pos B). rewrite Nat.add_sub_assoc, minus_plus in IN; try omega.
-  assert (Pos.to_nat b = x). rewrite <- Hb. apply Nat2Pos.id. omega. rewrite <- H0 in IN. destruct IN as [_ IN].
+  apply in_seq in IN. pose proof (Pos2Nat.is_pos B). rewrite Nat.add_sub_assoc, minus_plus in IN; try Lia.lia.
+  assert (Pos.to_nat b = x). rewrite <- Hb. apply Nat2Pos.id. Lia.lia. rewrite <- H0 in IN. destruct IN as [_ IN].
   destruct (plt b B); auto. apply Pos2Nat.inj_lt in IN. congruence.
 Qed.
 

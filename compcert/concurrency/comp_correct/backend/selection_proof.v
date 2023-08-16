@@ -536,7 +536,7 @@ Lemma sel_switch_correct_fp:
   eval_exitexpr_fp tge sp e m le
      (XElet arg (sel_switch make_cmp_eq make_cmp_ltu make_sub make_to_int O t)) fp .
 Proof.
-  intros. exploit validate_switch_correct; eauto. omega. intros [A B].
+  intros. exploit validate_switch_correct; eauto. Lia.lia. intros [A B].
   exploit sel_switch_correct_rec_fp; eauto.
   instantiate (2:= varg :: le). instantiate (1:= 0%nat). auto. intros [C D].
   split; econstructor; eauto; TrivFP.
@@ -563,7 +563,7 @@ Proof.
   unfold Val.cmp in B. simpl in B. revert B.
   predSpec Int.eq Int.eq_spec n0 (Int.repr n); intros B; inv B.
   rewrite Int.unsigned_repr. unfold proj_sumbool; rewrite zeq_true; auto.
-  unfold Int.max_unsigned; omega.
+  unfold Int.max_unsigned; Lia.lia.
   unfold proj_sumbool; rewrite zeq_false; auto.
   red; intros; elim H2. rewrite <- (Int.repr_unsigned n0). congruence.
 - clear. intros. inv H1.
@@ -577,7 +577,7 @@ Proof.
   unfold Val.cmpu in B. simpl in B.
   unfold Int.ltu in B. rewrite Int.unsigned_repr in B.
   destruct (zlt (Int.unsigned n0) n); inv B; auto.
-  unfold Int.max_unsigned; omega.
+  unfold Int.max_unsigned; Lia.lia.
 - clear; intros. inv H1. exploit eval_compu_opt. exact H. instantiate (2:=  Eop (Ointconst (Int.repr n)) Enil).
   repeat econstructor; eauto. simpl. eauto. intros [vc [A B]].
   inv B. exploit (eval_compu_opt_fp tge sp e m Clt). exact H. eauto. 3: exact A.
@@ -590,7 +590,7 @@ Proof.
      with (Int.unsigned (Int.sub n0 (Int.repr n))).
   constructor.
   unfold Int.sub. rewrite Int.unsigned_repr_eq. f_equal. f_equal.
-  apply Int.unsigned_repr. unfold Int.max_unsigned; omega.
+  apply Int.unsigned_repr. unfold Int.max_unsigned; Lia.lia.
 - clear. intros. inv H1. exploit eval_sub. exact H. instantiate (2:= (Eop (Ointconst (Int.repr n)) Enil)).
   repeat econstructor; eauto. intros [vb [A B]].
   exploit eval_sub_fp. exact H. eauto. instantiate (2:= (Eop (Ointconst (Int.repr n)) Enil)).
@@ -615,7 +615,7 @@ Proof.
   1-3:try gegen; eauto with gegen. exacteval EVAL. apply eval_longconst with (n := Int64.repr n).
   inv R. unfold Val.cmpl. simpl. f_equal; f_equal. unfold Int64.eq.
   rewrite Int64.unsigned_repr. destruct (zeq (Int64.unsigned n0) n); auto.
-  unfold Int64.max_unsigned; omega.
+  unfold Int64.max_unsigned; Lia.lia.
 - intros until n. intros EVAL EVALFP R RANGE. inv R.
   exploit (eval_cmpl_fp tcu tge TGEINIT); simpl. exact EVAL. eauto. instantiate (2:= longconst (Int64.repr n)).
   1-2: repeat econstructor; eauto. instantiate (2:= Ceq). unfold Val.cmpl. simpl; eauto. TrivFP.
@@ -623,7 +623,7 @@ Proof.
   1-3:try gegen; eauto with gegen. exacteval EVAL. apply eval_longconst with (n := Int64.repr n).
   inv R. unfold Val.cmplu. simpl. f_equal; f_equal. unfold Int64.ltu.
   rewrite Int64.unsigned_repr. destruct (zlt (Int64.unsigned n0) n); auto.
-  unfold Int64.max_unsigned; omega.
+  unfold Int64.max_unsigned; Lia.lia.
 - intros until n. intros EVAL EVALFP R RANGE. inv R.
   exploit (eval_cmplu_fp tcu tge TGEINIT); simpl. exact EVAL. eauto. instantiate (2:= longconst (Int64.repr n)).
   1-2: repeat econstructor; eauto. instantiate (2:= Clt). unfold Val.cmplu. simpl; eauto. simpl. eauto. TrivFP.
@@ -635,7 +635,7 @@ Proof.
      with (Int64.unsigned (Int64.sub n0 (Int64.repr n))).
   constructor.
   unfold Int64.sub. rewrite Int64.unsigned_repr_eq. f_equal. f_equal.
-  apply Int64.unsigned_repr. unfold Int64.max_unsigned; omega.
+  apply Int64.unsigned_repr. unfold Int64.max_unsigned; Lia.lia.
 - intros until n; intros EVAL EVALFP R RANGE.
   exploit eval_subl; auto. exacteval EVAL. apply eval_longconst with (n := Int64.repr n).
   intros (vb & A & B). evalge A.
@@ -1124,14 +1124,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _
@@ -1294,7 +1294,7 @@ Proof.
       erewrite stackspace_function_translated; eauto.
       FP. repeat apply Injections.fp_match_union'; resolvfp.
       splitMS. eapply call_cont_commut; eauto.
-      erewrite stackspace_function_translated; eauto. omega.
+      erewrite stackspace_function_translated; eauto. Lia.lia.
     + (* Seq *)
       Right. constructor. FP. splitMS. econstructor; eauto. 
     + (* Sifthenelse *)

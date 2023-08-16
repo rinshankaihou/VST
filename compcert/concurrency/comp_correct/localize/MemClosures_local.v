@@ -17,7 +17,7 @@ Inductive reach' (m: mem) (B: Bset.t) : list (block * ptrofs) -> block -> Prop :
 | reach_nil: forall b, Bset.belongsto B b -> reach' m B nil b
 | reach_cons: forall b L b' z ofs q n,
     reach' m B L b' ->
-    perm m b' z Max Readable ->
+    perm m b' z Cur Readable ->
     ZMap.get z (mem_contents m)!!b' = Fragment (Vptr b ofs) q n->
     reach' m B ((b',ofs)::L) b.
 
@@ -32,11 +32,11 @@ Record reach_closed (m: mem) (B: Bset.t) : Prop :=
     reachable_closure: forall b, reachable m B b -> Bset.belongsto B b;
     no_undef: forall b z,
         Bset.belongsto B b ->
-        perm m b z Max Readable ->
+        perm m b z Cur Readable ->
         (~ ZMap.get z (mem_contents m) !! b = Undef);
     no_vundef: forall b z q n,
         Bset.belongsto B b ->
-        perm m b z Max Readable ->
+        perm m b z Cur Readable ->
         (~ ZMap.get z (mem_contents m) !! b = Fragment Vundef q n);
   }.
 
@@ -122,7 +122,9 @@ Proof.
        simpl. econstructor; eauto.
        exploit reachable_closure; eauto. econstructor. instantiate (2:=(b1,ofs1)::nil).
        econstructor. constructor. eapply Bset.inj_dom'.
-       inv INJECT; eauto. unfold Bset.inj_to_meminj in H. destruct (inj mu b1); inv H; eauto. eauto. eauto.
+       inv INJECT; eauto. unfold Bset.inj_to_meminj in H. destruct (inj mu b1); inv H; eauto.
+       eauto.
+       eauto.
        intro. exploit Bset.inj_dom; eauto. intros [b' INJ].
        unfold Bset.inj_to_meminj in *. destruct (inj mu b0) eqn:?; inv INJ.
        exploit INCR. rewrite Heqo; eauto. intro. rewrite H4 in H5; inv H5; auto.
@@ -310,23 +312,23 @@ Record unmapped_closed (mu: Mu) (m m': mem) : Prop :=
       forall b' z b0 ofs0 q n,
         Bset.belongsto (SharedTgt mu) b' ->
         (* unmapped *)
-        (forall b, (inj mu) b = Some b' -> ~ perm m b z Max Readable) ->
-        perm m' b' z Max Readable ->
+        (forall b, (inj mu) b = Some b' -> ~ perm m b z Cur Readable) ->
+        perm m' b' z Cur Readable ->
         ZMap.get z (mem_contents m') !! b' = Fragment (Vptr b0 ofs0) q n ->
         Bset.belongsto (SharedTgt mu) b0;
     unmapped_no_undef:
       forall b' z,
         Bset.belongsto (SharedTgt mu) b' ->
         (* unmapped *)
-        (forall b, (inj mu) b = Some b' -> ~ perm m b z Max Readable) ->
-        perm m' b' z Max Readable ->
+        (forall b, (inj mu) b = Some b' -> ~ perm m b z Cur Readable) ->
+        perm m' b' z Cur Readable ->
         ZMap.get z (mem_contents m') !! b' <> Undef;
     unmapped_no_vundef:
       forall b' z q n,
         Bset.belongsto (SharedTgt mu) b' ->
         (* unmapped *)
-        (forall b, (inj mu) b = Some b' -> ~ perm m b z Max Readable) ->
-        perm m' b' z Max Readable ->
+        (forall b, (inj mu) b = Some b' -> ~ perm m b z Cur Readable) ->
+        perm m' b' z Cur Readable ->
         ZMap.get z (mem_contents m') !! b' <> Fragment Vundef q n;
   }.
 
@@ -388,22 +390,22 @@ Proof.
     inv H7. auto.
     inv H7. apply IHL in H9. clear IHL.
     exploit Bset.inj_range; eauto. inv H0; eauto. intros (b'0 & INJ).
-    destruct (perm_dec m b'0 z Max Readable).
+    destruct (perm_dec m b'0 z Cur Readable).
     (* mapped *)
-    exploit mi_memval. inv H3; eauto. eapply H. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
+    ** exploit mi_memval. inv H3; eauto. eapply H. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r, H12. intro INJVAL; inv INJVAL. inv H8. inv H14.
     exploit H. unfold Bset.inj_to_meminj. rewrite INJ. eauto. intro A; inv A.
     eapply EQS. eapply reachable_closure; eauto.
     apply Reachable with ((b', ofs1)::nil).
-    econstructor; eauto. constructor. apply EQS. auto.
-    exfalso. eapply no_vundef; eauto. eapply Bset.inj_dom'; eauto. inv H0; eauto.
-    exfalso. eapply no_undef; eauto. eapply Bset.inj_dom'; eauto. inv H0; eauto.
+    econstructor; eauto with mem. constructor. apply EQS. auto.
+    exfalso. eapply no_vundef; eauto with mem. eapply Bset.inj_dom'; eauto. inv H0; eauto.
+    exfalso. eapply no_undef; eauto with mem. eapply Bset.inj_dom'; eauto. inv H0; eauto.
     (* unmapped *)
-    eapply unmapped_closure; eauto.
-    intros. exploit Bset.inj_injective. inv H0; eauto. exact INJ. exact H6. intro EQ; subst; auto.
+    ** eapply unmapped_closure; eauto.
+    intros. exploit Bset.inj_injective. inv H0; eauto. exact INJ. exact H6. intro EQ; subst; eauto.
   * intros. 
     exploit Bset.inj_range; eauto. inv H0; eauto. intros (b0 & INJ).
-    destruct (perm_dec m b0 z Max Readable).
+    destruct (perm_dec m b0 z Cur Readable).
     exploit mi_memval. inv H3; eauto. eapply H. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r. intro INJVAL; inv INJVAL; try discriminate. 
     exfalso. eapply no_undef; eauto. eapply Bset.inj_dom'; eauto. inv H0; eauto.
@@ -411,7 +413,7 @@ Proof.
     intros. exploit Bset.inj_injective. inv H0; eauto. exact INJ. exact H8. intro EQ; subst; auto.
   * intros. 
     exploit Bset.inj_range; eauto. inv H0; eauto. intros (b0 & INJ).
-    destruct (perm_dec m b0 z Max Readable).
+    destruct (perm_dec m b0 z Cur Readable).
     exploit mi_memval. inv H3; eauto. eapply H. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r. intro INJVAL; inv INJVAL; try discriminate. 
     inv H10; try discriminate. exfalso. eapply no_vundef; eauto. eapply Bset.inj_dom'; eauto. inv H0; eauto.
@@ -436,7 +438,7 @@ Proof.
     inv H6; auto.
     inv H6. apply IHL in H8. clear IHL.
     exploit Bset.inj_range; eauto. inv H; eauto. intros (b'0 & INJ).
-    destruct (perm_dec m b'0 z Max Readable).
+    destruct (perm_dec m b'0 z Cur Readable).
     exploit mi_memval. inv H2; eauto. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r, H11. intro INJVAL; inv INJVAL. inv H7.
     unfold Bset.inj_to_meminj in H13. destruct (inj mu b1) eqn:INJ'; [|discriminate]. inv H13.
@@ -447,7 +449,7 @@ Proof.
     intros. exploit Bset.inj_injective. inv H; eauto. exact INJ. exact H5. intro EQ; subst; auto.
   * intros. 
     exploit Bset.inj_range; eauto. inv H; eauto. intros (b0 & INJ).
-    destruct (perm_dec m b0 z Max Readable).
+    destruct (perm_dec m b0 z Cur Readable).
     exploit mi_memval. inv H2; eauto. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r. intro INJVAL; inv INJVAL; try discriminate. 
     exfalso. eapply no_undef; eauto. eapply Bset.inj_dom'; eauto. inv H; eauto.
@@ -455,7 +457,7 @@ Proof.
     intros. exploit Bset.inj_injective. inv H; eauto. exact INJ. exact H7. intro EQ; subst; auto.
   * intros. 
     exploit Bset.inj_range; eauto. inv H; eauto. intros (b0 & INJ).
-    destruct (perm_dec m b0 z Max Readable).
+    destruct (perm_dec m b0 z Cur Readable).
     exploit mi_memval. inv H2; eauto. unfold Bset.inj_to_meminj; rewrite INJ. eauto. eauto.
     rewrite Z.add_0_r. intro INJVAL; inv INJVAL; try discriminate. 
     inv H9; try discriminate. exfalso. eapply no_vundef; eauto. eapply Bset.inj_dom'; eauto. inv H; eauto.
@@ -553,7 +555,7 @@ Lemma store_val_inject_unmapped_closed_preserved:
 Proof.
   intros mu m1 m1' chunk j b ofs v m2 b' delta v' m2'
          INJECT SHAREDVALID SHAREDVALID' INCR SEPINJ RCINV STORE INJPTR STORE'.
-  assert (MAPPED: forall z, ofs <= z < ofs + size_chunk chunk -> perm m2 b z Max Readable).
+  assert (MAPPED: forall z, ofs <= z < ofs + size_chunk chunk -> perm m2 b z Cur Readable).
   { intros. eapply perm_store_1; eauto. exploit store_valid_access_3; try exact STORE. 
     unfold valid_access. intros [RANGEPERM _]. apply perm_implies with Writable; auto using Mem.perm_cur_max. constructor. }
   constructor. 
@@ -566,7 +568,7 @@ Proof.
     exploit Bset.inj_range; try exact H. inv INJECT; eauto. intros [b1 INJ1].
     exploit SEPINJ. unfold Bset.inj_to_meminj. rewrite INJ1. eauto. eauto. unfold Bset.inj_to_meminj; intro C.
     destruct (inj mu b) eqn:INJ2; inv C. exploit Bset.inj_injective. inv INJECT; eauto. exact INJ1. exact INJ2. intro; subst.
-    exfalso. eapply H0; eauto. apply MAPPED. split; omega.
+    exfalso. eapply H0; eauto. apply MAPPED. split; Lia.lia.
     rewrite setN_outside in H2; [|rewrite encode_val_length, <- size_chunk_conv; auto].
     eapply unmapped_closure; eauto. intros. intro; eapply H0; eauto. eapply perm_store_1; eauto. eapply perm_store_2; eauto.
     rewrite PMap.gso in H2; auto.
@@ -580,7 +582,7 @@ Proof.
     exploit Bset.inj_range; try exact H. inv INJECT; eauto. intros [b1 INJ1].
     exploit SEPINJ. unfold Bset.inj_to_meminj. rewrite INJ1. eauto. eauto. unfold Bset.inj_to_meminj; intro C.
     destruct (inj mu b) eqn:INJ2; inv C. exploit Bset.inj_injective. inv INJECT; eauto. exact INJ1. exact INJ2. intro; subst.
-    exfalso. eapply H0; eauto. apply MAPPED. split; omega.
+    exfalso. eapply H0; eauto. apply MAPPED. split; Lia.lia.
     rewrite setN_outside; [|rewrite encode_val_length, <- size_chunk_conv; auto].
     eapply unmapped_no_undef; eauto. intros. intro; eapply H0; eauto. eapply perm_store_1; eauto. eapply perm_store_2; eauto.
     rewrite PMap.gso; auto.
@@ -594,7 +596,7 @@ Proof.
     exploit Bset.inj_range; try exact H. inv INJECT; eauto. intros [b1 INJ1].
     exploit SEPINJ. unfold Bset.inj_to_meminj. rewrite INJ1. eauto. eauto. unfold Bset.inj_to_meminj; intro C.
     destruct (inj mu b) eqn:INJ2; inv C. exploit Bset.inj_injective. inv INJECT; eauto. exact INJ1. exact INJ2. intro; subst.
-    exfalso. eapply H0; eauto. apply MAPPED. split; omega.
+    exfalso. eapply H0; eauto. apply MAPPED. split; Lia.lia.
     rewrite setN_outside; [|rewrite encode_val_length, <- size_chunk_conv; auto].
     eapply unmapped_no_vundef; eauto. intros. intro; eapply H0; eauto. eapply perm_store_1; eauto. eapply perm_store_2; eauto.
     rewrite PMap.gso; auto.
@@ -624,16 +626,16 @@ Proof.
   (** unmapped are less *)
   assert (forall b' z,
              Bset.belongsto (SharedTgt mu) b' ->
-             (forall b, inj mu b = Some b' -> ~ perm m2 b z Max Readable) ->
-             perm m2' b' z Max Readable ->
-             (forall b, inj mu b = Some b' -> ~ perm m1 b z Max Readable)).
+             (forall b, inj mu b = Some b' -> ~ perm m2 b z Cur Readable) ->
+             perm m2' b' z Cur Readable ->
+             (forall b, inj mu b = Some b' -> ~ perm m1 b z Cur Readable)).
   { intros. intro. eapply H0. eauto.
     exploit perm_free_3; eauto. intro.
     eapply perm_free_1; eauto.
     destruct (eq_block b0 b); auto. subst. right.
-    destruct (zlt z lo); auto. destruct (zle hi z); [omega|]. exfalso.
+    destruct (zlt z lo); auto. destruct (zle hi z); [Lia.lia|]. exfalso.
     exploit INCR. unfold Bset.inj_to_meminj. rewrite H2. eauto. intro A. rewrite INJPTR in A; inv A.
-    eapply perm_free_2; eauto.  omega. }
+    eapply perm_free_2; eauto.  Lia.lia. }
   constructor. 
   * intros. exploit perm_free_3; eauto. intro. 
     erewrite unchanged_on_contents in H3.

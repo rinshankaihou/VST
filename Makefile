@@ -205,6 +205,12 @@ ifeq ($(COMPCERT_NEW),true)
   BACKEND=backend
 endif
 
+# FIXME better place for this? Add CompCert backend folder for compcert (cas compcert)
+
+ifeq ($(COMPCERT_NEW),false)
+  BACKEND=backend
+endif
+
 # Choose VST programs folder
 
 ifeq ($(BITSIZE),64)

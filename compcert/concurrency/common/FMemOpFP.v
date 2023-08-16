@@ -258,12 +258,11 @@ Proof.
   - destruct (eq_block b b'); [subst | discriminate].
     split; [auto|]. 
     rewrite andb_true_iff in H; destruct H. 
-    split. destruct Z_le_gt_dec. omega. inversion H.
+    split. destruct Z_le_gt_dec. Lia.lia. inversion H.
     destruct Z_lt_dec. auto. inversion H0.
   - destruct (eq_block b b');
       try destruct Z_le_gt_dec; 
-      try destruct Z_lt_dec; auto; try omega.
-    destruct H; congruence.
+      try destruct Z_lt_dec; auto; try Lia.lia.
 Qed.
 
 Lemma range_locset_inj_fp_mapped:
@@ -274,9 +273,9 @@ Proof.
   constructor; intros.
   unfold Locs.belongsto, range_locset in *.
   destruct eq_block; inv H0.
-  apply Loc_Mapped with b (tofs-delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs-delta) delta; [|auto|Lia.lia].
   unfold Locs.belongsto. destruct eq_block; [|congruence].
-  repeat destruct zle, zlt; auto; omega.
+  repeat destruct zle, zlt; auto; Lia.lia.
 Qed.
 
 Local Hint Resolve range_locset_loc range_locset_inj_fp_mapped.
@@ -289,12 +288,12 @@ Definition uncheck_alloc_fp (b: block) (lo hi: Z) : footprint :=
   FP empls empls empls (fun b' _ => if peq b b' then true else false).
 
 Definition alloc_fp (m: mem) (lo hi: Z) : footprint :=
-  uncheck_alloc_fp m.(Mem.nextblock) lo hi.
+  uncheck_alloc_fp (Mem.nextblock m) lo hi.
 
 Lemma alloc_fp_loc:
   forall m lo hi b ofs,
     Locs.belongsto (FP.frees (alloc_fp m lo hi)) b ofs <->
-    b = m.(Mem.nextblock).
+    b = (Mem.nextblock m).
 Proof.
   unfold alloc_fp, uncheck_alloc_fp; simpl; intros.
   Locs.unfolds. destruct peq; subst; try tauto.
@@ -312,7 +311,7 @@ Proof.
   constructor; intros; Locs.unfolds.
   destruct peq; subst.
   econstructor; eauto. Locs.unfolds. destruct peq; congruence.
-  instantiate (1:= tofs - delta). omega.
+  instantiate (1:= tofs - delta). Lia.lia.
   discriminate.
 Qed.
 
@@ -388,7 +387,7 @@ Proof.
   unfold store_fp. intros until delta. intros MEMINJ STORE INJ.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros. apply range_locset_loc in H. inv H.
-  apply Loc_Mapped with b (tofs-delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs-delta) delta; [|auto|Lia.lia].
   rewrite range_locset_loc. intuition.
 Qed.
   
@@ -419,14 +418,14 @@ Proof.
   unfold loadv_fp; intros.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros. rewrite range_locset_loc in H2. inv H2.
-  eapply Loc_Mapped with b (tofs-delta) delta; [|eauto|omega].
+  eapply Loc_Mapped with b (tofs-delta) delta; [|eauto|Lia.lia].
   exploit Mem.load_valid_access; eauto. intro.
   exploit Mem.mi_representable; [eauto|eauto|eauto with mem |]. intro.
   unfold Ptrofs.add in *. do 2 rewrite Ptrofs.unsigned_repr in H4; auto. 
   apply range_locset_loc. intuition.
-  destruct ofs; simpl in *. omega.
-  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. omega.
-  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. omega.
+  destruct ofs; simpl in *. Lia.lia.
+  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. Lia.lia.
+  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. Lia.lia.
 Qed.
 
 Local Hint Resolve loadv_fp_loc.
@@ -456,14 +455,14 @@ Proof.
   unfold storev_fp; intros.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros. rewrite range_locset_loc in H2. inv H2.
-  apply Loc_Mapped with b (tofs-delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs-delta) delta; [|auto|Lia.lia].
   exploit Mem.store_valid_access_3; eauto. intro.
   exploit Mem.mi_representable; [eauto|eauto|eauto with mem |]. intro.
   unfold Ptrofs.add in *. do 2 rewrite Ptrofs.unsigned_repr in H4; auto. 
   apply range_locset_loc. intuition.
-  destruct ofs; simpl in *. omega.
-  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. omega.
-  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. omega.
+  destruct ofs; simpl in *. Lia.lia.
+  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. Lia.lia.
+  rewrite Ptrofs.unsigned_repr; [tauto|]. destruct ofs; simpl in *. Lia.lia.
 Qed.
 
 Local Hint Resolve storev_fp_loc storev_inj_fp_mapped.
@@ -492,15 +491,14 @@ Proof.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros.
   apply range_locset_loc in H. inv H.
-  apply Loc_Mapped with b (tofs-delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs-delta) delta; [|auto|Lia.lia].
   apply range_locset_loc.
   destruct (zlt 0 n).
-  exploit Mem.loadbytes_range_perm; eauto. instantiate (1:= Ptrofs.unsigned ofs). omega. intro.
+  exploit Mem.loadbytes_range_perm; eauto. instantiate (1:= Ptrofs.unsigned ofs). Lia.lia. intro.
   exploit Mem.mi_representable; [eauto|eauto|eauto with mem |]. intro.
   unfold Ptrofs.add in H1.
-  do 2 rewrite Ptrofs.unsigned_repr in H1; auto; try rewrite Ptrofs.unsigned_repr; destruct ofs; simpl in *; try omega. 
+  do 2 rewrite Ptrofs.unsigned_repr in H1; auto; try rewrite Ptrofs.unsigned_repr; destruct ofs; simpl in *; try Lia.lia. 
   intuition.
-  omega.
 Qed.
 
 Local Hint Resolve loadbytes_fp_loc loadbytes_inj_fp_mapped.
@@ -530,17 +528,16 @@ Proof.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros.
   rewrite range_locset_loc in H. inv H.
-  apply Loc_Mapped with b (tofs-delta) delta; [|auto|omega].
-  destruct H1. destruct bytes. simpl in *. omega.
+  apply Loc_Mapped with b (tofs-delta) delta; [|auto|Lia.lia].
+  destruct H1. destruct bytes. simpl in *. Lia.lia.
   exploit Mem.storebytes_range_perm; eauto. instantiate (1:= Ptrofs.unsigned ofs). 
-  simpl. clear. pose proof (Zgt_pos_0 (Pos.of_succ_nat (length bytes))). omega. intro.
+  simpl. clear. pose proof (Zgt_pos_0 (Pos.of_succ_nat (length bytes))). Lia.lia. intro.
   exploit Mem.mi_representable; [eauto|eauto|eauto with mem |]. intro.
   unfold Ptrofs.add in *.
   destruct ofs; simpl in *.
   apply range_locset_loc. 
-  do 2 rewrite Ptrofs.unsigned_repr in H0; auto; try rewrite Ptrofs.unsigned_repr; try omega.
-  do 2 rewrite Ptrofs.unsigned_repr in H; auto; try rewrite Ptrofs.unsigned_repr; try omega.
-  intuition.
+  do 2 rewrite Ptrofs.unsigned_repr in H0; auto; try rewrite Ptrofs.unsigned_repr; try Lia.lia.
+  do 2 rewrite Ptrofs.unsigned_repr in H; auto; try rewrite Ptrofs.unsigned_repr; try Lia.lia.
 Qed.
 
 Local Hint Resolve storebytes_fp_loc storebytes_inj_fp_mapped.
@@ -567,9 +564,9 @@ Proof.
   rewrite orb_true_iff. rewrite IHbl, H. clear IHbl H.
   split; intros.
   - destruct H ; [exists lo0, hi0| destruct H as (lo'&hi'&H_in&H_ofs); eauto].
-    destruct H; subst. split; [auto|omega].
+    destruct H; subst. split; [auto|Lia.lia].
   - destruct H as (lo' & hi' & [H|H] & Hofs & Hofs');
-      [left; inv H; split; [auto|omega]
+      [left; inv H; split; [auto|Lia.lia]
       |right; eauto].
 Qed.
 
@@ -602,7 +599,7 @@ Lemma valid_pointer_fp_loc:
     b = b' /\ ofs = ofs'.
 Proof.
   unfold valid_pointer_fp. simpl. intros. rewrite range_locset_loc.
-  split; intros; (split; [intuition | omega]).
+  split; intros; (split; [intuition | Lia.lia]).
 Qed.
 
 Lemma valid_pointer_inj_fp_mapped:
@@ -618,16 +615,16 @@ Proof.
   { exploit Mem.valid_pointer_inject_no_overflow; eauto.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite Mem.valid_pointer_nonempty_perm in H0. eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
   assert (TOFS: 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned).
   { exploit Mem.valid_pointer_inject_no_overflow; eauto.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite Mem.valid_pointer_nonempty_perm in H0. eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
   unfold Ptrofs.add. do 2 rewrite Ptrofs.unsigned_repr; auto.
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros. apply range_locset_loc in H2. inv H2. 
-  apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
   rewrite range_locset_loc. intuition.
 Qed.
 
@@ -651,10 +648,10 @@ Proof.
   unfold weak_valid_pointer_fp. intros.
   destruct (Mem.valid_pointer m b ofs); simpl; rewrite range_locset_loc.
   split; intros.
-  split; [intuition|left; split; [auto|try omega]].
+  split; [intuition|left; split; [auto|try Lia.lia]].
   split; [intuition|destruct H as [H [H'|H']]; intuition].
   split; intros.
-  split; [intuition|right; split; [auto|try omega]].
+  split; [intuition|right; split; [auto|try Lia.lia]].
   split; [intuition|destruct H as [H [H'|H']]; intuition].
 Qed.
 
@@ -672,30 +669,30 @@ Proof.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite orb_true_iff, 2 Mem.valid_pointer_nonempty_perm in H0.
     destruct H0; [left|right]; eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
   assert (TOFS: 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned).
   { exploit Mem.weak_valid_pointer_inject_no_overflow; eauto.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite orb_true_iff, 2 Mem.valid_pointer_nonempty_perm in H0.
     destruct H0; [left|right]; eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
 
   unfold Ptrofs.add. do 2 rewrite Ptrofs.unsigned_repr; auto.
   destruct (Mem.valid_pointer m b (Ptrofs.unsigned ofs)) eqn:VALID.
   * exploit Mem.valid_pointer_inject; eauto. intro.
     rewrite H2. constructor; simpl; try apply emp_locs_mapped.
     constructor. intros. apply range_locset_loc in H3. inv H3. 
-    apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+    apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
     rewrite range_locset_loc. intuition.
   * rewrite orb_true_iff in H0. destruct H0; [discriminate|].
     destruct (Mem.valid_pointer tm tb _).
     ** constructor; simpl; try apply emp_locs_mapped.
        constructor. intros. apply range_locset_loc in H2. inv H2.
-       apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+       apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
        rewrite range_locset_loc. intuition.
     ** constructor; simpl; try apply emp_locs_mapped.
        constructor. intros. apply range_locset_loc in H2. inv H2.
-       apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+       apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
        rewrite range_locset_loc. intuition.
 Qed.
 
@@ -719,7 +716,7 @@ Proof.
     unfold Mem.weak_valid_pointer. erewrite H0, orb_true_r. auto.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite Mem.valid_pointer_nonempty_perm in H0. eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
   assert (TOFS: 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned).
   { rewrite orb_true_iff in H0.
     destruct H0; try discriminate.
@@ -727,11 +724,11 @@ Proof.
     unfold Mem.weak_valid_pointer. erewrite H0, orb_true_r. auto.
     exploit Mem.mi_representable; [eauto|eauto| |]. instantiate (1:=ofs).
     rewrite Mem.valid_pointer_nonempty_perm in H0. eauto with mem.
-    intros. destruct ofs. simpl in *. omega. }
+    intros. destruct ofs. simpl in *. Lia.lia. }
   
   constructor; simpl; try apply emp_locs_mapped.
   constructor. intros. apply range_locset_loc in H2. inv H2. 
-  apply Loc_Mapped with b (tofs - delta) delta; [|auto|omega].
+  apply Loc_Mapped with b (tofs - delta) delta; [|auto|Lia.lia].
   rewrite range_locset_loc. unfold Ptrofs.add in H4. rewrite 2 Ptrofs.unsigned_repr in H4; auto. intuition.
   rewrite Ptrofs.unsigned_repr; auto.
 Qed.
@@ -750,5 +747,5 @@ Proof.
   exploit Mem.mi_representable; eauto. rewrite Mem.valid_pointer_nonempty_perm in H0. eauto with mem. intro.
   unfold Ptrofs.add at 1. rewrite 2 Ptrofs.unsigned_repr at 1; auto.
   rewrite H2. eapply valid_pointer_inj_fp_mapped; eauto.
-  destruct ofs. simpl in *. omega.
+  destruct ofs. simpl in *. Lia.lia.
 Qed.
