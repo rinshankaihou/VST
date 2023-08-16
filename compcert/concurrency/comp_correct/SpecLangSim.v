@@ -189,7 +189,7 @@ Proof.
   
   apply tfl_free in H0.
   unfold Bset.belongsto in H0.
-  split;intro;try contradiction;try omega.
+  split;intro;try contradiction;try Lia.lia.
 Qed.
 
 
@@ -302,7 +302,7 @@ Proof.
   eapply decode_val_related;eauto.
   unfold Bset.inj_inject. intros.
   eapply H in H0;try apply H3;eauto.
-  repeat (econstructor;[eapply H;eauto;eapply r;eauto;  simpl; omega|]).
+  repeat (econstructor;[eapply H;eauto;eapply r;eauto;  simpl; Lia.lia|]).
   constructor.
 Qed.
 Lemma storemax_permeq:
@@ -601,7 +601,7 @@ Proof.
       unfold storemax in R.
       ex_match. clear R.
       apply Mem_writable_imp_readable in r as ?.
-      exploit H5. split;eauto. omega.
+      exploit H5. split;eauto. Lia.lia.
       intro. eapply storemax_permeq in H3;eauto.
       eapply H3;eauto.
     }
@@ -642,7 +642,7 @@ Proof.
       unfold storemax in R.
       ex_match. clear R.
       apply Mem_writable_imp_readable in r as ?.
-      exploit H5. split;eauto. omega.
+      exploit H5. split;eauto. Lia.lia.
       intro. eapply storemax_permeq in H3;eauto.
       eapply H3;eauto.
     }
@@ -683,7 +683,7 @@ Proof.
       unfold storemax in R.
       ex_match. clear R.
       apply Mem_writable_imp_readable in r as ?.
-      exploit H5. split;eauto. omega.
+      exploit H5. split;eauto. Lia.lia.
       intro. eapply storemax_permeq in H3;eauto.
       eapply H3;eauto.
     }
@@ -991,7 +991,7 @@ Proof.
   }
   {
     intros. ex_match. inv H6.
-    split;auto. omega.
+    split;auto. Lia.lia.
     rewrite Z.add_0_r.
     apply Ptrofs.unsigned_range_2.
   }

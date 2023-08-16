@@ -458,7 +458,7 @@ Section Complex_reorder.
       apply atomblockstarN_SN_N1_split in H0 as (?&?&?&?&?&?&?&?&?).
       eapply atomblockstarN_1_cons_sw in H2;eauto.
       eapply atomblockstarN_cons' in H2;eauto.
-      assert(i+1=S i). Omega.omega.
+      assert(i+1=S i). Lia.lia.
       congruence.
     Qed.
     Lemma atomblockstarN_cons_swstar:
@@ -1019,7 +1019,7 @@ Section Complex_reorder.
         specialize (H3 (S j)). subst.
         simpl in H3. contradiction.
     
-        Omega.omega.
+        Lia.lia.
       }
     Qed.
     Definition list_matched{A:Type}(l:list A)(p:A):=
@@ -1074,7 +1074,7 @@ Section Complex_reorder.
       assert(length (cons a x) = S i). simpl. rewrite H2. auto.
     
       intros.
-      assert(0<S i). Omega.omega.
+      assert(0<S i). Lia.lia.
       specialize (H0 0 H6).
       intro.
       unfold List.nth_error in H0.
@@ -1086,7 +1086,7 @@ Section Complex_reorder.
       assert(List.nth_error (cons a l) (S j) = List.nth_error l j). auto.
       rewrite <- H3.
       apply H0.
-      Omega.omega.
+      Lia.lia.
     Qed.
       
       
@@ -1397,7 +1397,7 @@ Section Complex_reorder.
         assert(x1=FP.emp). inversion H2;auto. subst.
         rewrite FP.fp_union_emp.
         Esimpl;eauto. constructor.
-        Omega.omega.
+        Lia.lia.
         rewrite FP.fp_union_emp. auto.
       }
       {
@@ -1410,7 +1410,7 @@ Section Complex_reorder.
         econstructor;eauto. constructor.
         eapply tau_N_cons in H5;eauto.
         Esimpl;eauto. 
-        Omega.omega.
+        Lia.lia.
         rewrite <- FP.fp_union_assoc;auto.
       }
       apply swstar_l3 in H3 as [];subst;auto.
@@ -1464,7 +1464,7 @@ Section Complex_reorder.
         split. inversion H6;subst. eapply gettop_valid_tid;eauto. solv_thread.
         intro. inversion H6;solv_thread.
         Esimpl;eauto.
-        Omega.omega.
+        Lia.lia.
         rewrite T2,FP.emp_union_fp;auto.
       }
     Qed.
@@ -1756,8 +1756,8 @@ Section Complex_reorder.
             repeat rewrite FP.emp_union_fp in *.
             do 5 eexists;eauto.
           }
-          Omega.omega.
-          Omega.omega.
+          Lia.lia.
+          Lia.lia.
           apply swstar_l1 in H4.
           apply type_glob_step_elim in H5.
           eapply GE_mod_wd_tp_inv in H5;eauto.
@@ -1766,7 +1766,7 @@ Section Complex_reorder.
         {
           apply npnswstep_l3 in H5;auto. clear H9.
           assert(atom_bit x1 = O). apply swstar_l1 in H4. rewrite H4 in H6. simpl in H6. congruence.
-          assert(x3<S i). Omega.omega.
+          assert(x3<S i). Lia.lia.
           apply swstar_l1 in H4 as ?.
           assert(invpc x). rewrite H11. auto.
           apply npnsw_step_thdpinv in H5 as ?;auto.
@@ -1812,7 +1812,7 @@ Section Complex_reorder.
             
             apply swstar_l1 in H14 as ?.
             assert(invpc x5). rewrite H17;auto.
-            apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Omega.omega.
+            apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Lia.lia.
             assert(glob_step x1 sw FP.emp x5).
             destruct x1,x5,H19;simpl in *;subst;inversion H17;subst;rewrite H9;econstructor;eauto.
             
@@ -1957,7 +1957,7 @@ Section Complex_reorder.
             destruct H15 as (?&?&?&?&?&?).
             apply swstar_l1 in H14 as ?.
             assert(invpc x5). rewrite H17;auto.
-            apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Omega.omega.
+            apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Lia.lia.
             assert(glob_step x1 sw FP.emp x5).
             destruct x1,x5,H19;simpl in *;subst;inversion H17;subst;rewrite H9;econstructor;eauto.
             eapply glob_npnsw_step_atomblockstarN_inv_ex in H5 as ?;eauto.
@@ -1983,7 +1983,7 @@ Section Complex_reorder.
               apply atomblockstarN_atomO in H21 as ?;auto. destruct H23.
               apply atomblockstarN_cur_valid_tid in H21;auto.
               destruct x,H21;simpl in *;subst;rewrite H23;econstructor;eauto.
-              Omega.omega.
+              Lia.lia.
     
               assert(sw_star glob_step pc ({-|x,cur_tid x5})).
               revert H4 H23. clear.
@@ -2003,7 +2003,7 @@ Section Complex_reorder.
               apply atomblockstarN_atomO in H21 as ?;auto. destruct H24.
               apply atomblockstarN_cur_valid_tid in H21;auto.
               destruct x,H21;simpl in *;subst;rewrite H24;econstructor;eauto.
-              Omega.omega.
+              Lia.lia.
               
               assert(sw_star glob_step pc ({-|x,cur_tid x5})).
               revert H4 H24. clear.
@@ -2033,7 +2033,7 @@ Section Complex_reorder.
               apply atomblockstarN_atomO in H21 as ?;auto. destruct H23.
               apply atomblockstarN_cur_valid_tid in H21;auto.
               destruct x,H21;simpl in *;subst;rewrite H23;econstructor;eauto.
-              Omega.omega.
+              Lia.lia.
               
               assert(sw_star glob_step pc ({-|x,cur_tid x5})).
               revert H4 H23. clear.
@@ -2064,7 +2064,7 @@ Section Complex_reorder.
             {
               assert(invpc x5).
               apply swstar_l1 in H14 as ?. rewrite H18;auto.
-              apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Omega.omega.
+              apply atomblockstarN_cur_valid_tid in H15 as ?;auto;try Lia.lia.
               apply swstar_l2 in H14;auto.
               
               eapply glob_npnsw_step_atomblockstarN_inv_ex in H5 as ?;eauto.
@@ -2099,12 +2099,12 @@ Section Complex_reorder.
                 econstructor;eauto. constructor.
                 eexists;split;eauto.
                 right;right;left. do 5 eexists;eauto.
-                Omega.omega.
+                Lia.lia.
                 auto.
               }
               {
                 destruct H20 as (?&?&?&?&?).
-                apply atomblockstarN_cur_valid_tid in H20 as ?;auto;try Omega.omega.
+                apply atomblockstarN_cur_valid_tid in H20 as ?;auto;try Lia.lia.
                 assert(type_glob_step glob_sw x sw FP.emp ({-|x,cur_tid x5})).
                 destruct H23. destruct x;simpl in *;subst. rewrite H9. econstructor;eauto.
                 rewrite H11 in H24.
@@ -2213,7 +2213,7 @@ Section Complex_reorder.
               }
               {
                 destruct H20 as (?&?&?).
-                apply atomblockstarN_cur_valid_tid in H20 as ?;auto;try Omega.omega.
+                apply atomblockstarN_cur_valid_tid in H20 as ?;auto;try Lia.lia.
                 assert(type_glob_step glob_sw x sw FP.emp ({-|x,cur_tid x5})).
                 destruct H22. destruct x;simpl in *;subst. rewrite H9. econstructor;eauto.
                 rewrite H11 in H22.
@@ -2293,7 +2293,7 @@ Section Complex_reorder.
               }
             }
           }
-          Omega.omega.
+          Lia.lia.
         }
       }
       {
@@ -2322,7 +2322,7 @@ Section Complex_reorder.
           apply atomblockstep_bitO in H5 as ?. destruct H11 as [_].
           assert(atomblockstarN 1 (cons (cur_tid ({-|pc,cur_tid x})) nil) ({-|pc,cur_tid x}) (FP.union (FP.union FP.emp x0) FP.emp) x1).
           econstructor 2;eauto. constructor. constructor. constructor. auto.
-          eapply H in H7;eauto;try Omega.omega.
+          eapply H in H7;eauto;try Lia.lia.
           destruct H7 as (?&?&?).
           destruct H13 as [|[|[]]].
           {
@@ -2398,7 +2398,7 @@ Section Complex_reorder.
       
 
       assert(atom_bit x1 = O). inversion H4;auto.
-      eapply noevt_stepN_Si_to_atomblockstarN in H;eauto;[|Omega.omega].
+      eapply noevt_stepN_Si_to_atomblockstarN in H;eauto;[|Lia.lia].
       Hsimpl. Esimpl;eauto.
       
       destruct H9 as [|[|[]]];Hsimpl.
@@ -2664,11 +2664,11 @@ Section Complex_reorder.
         eapply sw_star_cons in H1;eauto.
         eapply npnsw_step_cons_npnsw_or_sw_stepN in H4;eauto.
         eapply sw_star_cons_npnsw_or_sw_stepN in H4;eauto.
-        assert(S (S i-1) = S (S i) -1). Omega.omega. rewrite <- H11;eauto.
+        assert(S (S i-1) = S (S i) -1). Lia.lia. rewrite <- H11;eauto.
         Esimpl;eauto.
         rewrite H6;auto.
         rewrite H7;auto. rewrite <- H3. rewrite H10;auto.
-        Omega.omega.
+        Lia.lia.
       }
     Qed.
 
@@ -2695,12 +2695,12 @@ Section Complex_reorder.
       induction i;intros. apply npnsw_or_sw_stepN_0 in H.
       Hsimpl. apply swstar_l1 in H2. rewrite H2 in H0;auto.
       apply npnsw_or_sw_stepN_inv1 in H;Hsimpl.
-      assert(S i - 1 = i). Omega.omega.
+      assert(S i - 1 = i). Lia.lia.
       rewrite H5 in H2 ;clear H5.
       eapply IHi in H2;eauto.
       apply swstar_l1 in H. rewrite H in *;simpl in *.
       eapply npnswstep_pc_valid_tid_backwards_preservation in H1;eauto.
-      Omega.omega.
+      Lia.lia.
     Qed.
 
     Lemma npnsw_or_sw_stepN_thdpinv:
@@ -2712,12 +2712,12 @@ Section Complex_reorder.
       induction i;intros. apply npnsw_or_sw_stepN_0 in H. Hsimpl;subst.
       apply swstar_l1 in H2. rewrite H2;auto.
       apply npnsw_or_sw_stepN_inv1 in H. Hsimpl.
-      assert(S i - 1 = i). Omega.omega.
+      assert(S i - 1 = i). Lia.lia.
       rewrite H5 in H2 ;clear H5.
       eapply IHi in H2;eauto.
       apply npnsw_step_thdpinv in H1;auto.
       apply swstar_l1 in H;auto. rewrite H;auto.
-      Omega.omega.
+      Lia.lia.
     Qed.
     Lemma npnsw_or_sw_stepN_evt_ex:
       forall i ltids pc fp pc',
@@ -2749,9 +2749,9 @@ Section Complex_reorder.
       }
       {
         apply npnsw_or_sw_stepN_bitO in H0 as ?.
-        apply npnsw_or_sw_stepN_inv1 in H0;[|Omega.omega].
+        apply npnsw_or_sw_stepN_inv1 in H0;[|Lia.lia].
         Hsimpl;subst.
-        assert(S i - 1 = i). Omega.omega.
+        assert(S i - 1 = i). Lia.lia.
         rewrite H7 in *;clear H7.
         apply sw_star_invpc_preservation in H0 as ?;auto.
         assert(invpc x0).
@@ -2854,7 +2854,7 @@ Section Complex_reorder.
               Esimpl;eauto.
               eapply mem_eq_pc_trans;eauto.
               eapply mem_eq_pc_change;eauto.
-              Omega.omega.
+              Lia.lia.
               rewrite FP.emp_union_fp.
               rewrite <- FP.fp_union_assoc.
               rewrite <- H15.
@@ -2952,7 +2952,7 @@ Section Complex_reorder.
         apply noevt_stepN_sound in H. apply non_evt_star_star in H as [].
         eapply GE_mod_wd_star_tp_inv2;eauto.
         assert(L2:cur_tid pc' = cur_tid pc''). inversion H3;auto.
-        apply noevt_stepN_Si_to_atomblockstarN in H;auto;[|Omega.omega].
+        apply noevt_stepN_Si_to_atomblockstarN in H;auto;[|Lia.lia].
         
         Hsimpl.
         destruct H4 as [|[|[]]].
@@ -3239,7 +3239,7 @@ Section Complex_reorder.
         destruct x;subst;try(inversion H0;subst;simpl in *;subst;try inversion H1;try inversion H2;fail).
         assert(l=tau /\ fp=FP.emp). inversion H0;auto. Hsimpl;subst.
         Esimpl;eauto. econstructor.
-        assert(S i - 0 - 1 = i). Omega.omega.
+        assert(S i - 0 - 1 = i). Lia.lia.
         rewrite H3;eauto.
       }
       {
@@ -3317,7 +3317,7 @@ Section Complex_reorder.
         eapply H in H6 as ?;eauto. Hsimpl.
         eapply non_evt_star_cons_Evt_gstar in H7;eauto.
         rewrite FP.emp_union_fp;eauto.
-        Omega.omega.
+        Lia.lia.
         inversion H5;auto.
       }
     Qed.
@@ -3564,7 +3564,7 @@ Section Complex_reorder.
       Hsimpl.
     
       apply atomblockstarN_invpc_preservation in H1 as ?;auto.
-      eapply IHi in H1;eauto;[|Omega.omega].
+      eapply IHi in H1;eauto;[|Lia.lia].
       Hsimpl.
       
       destruct H6.
@@ -3646,7 +3646,7 @@ Section Complex_reorder.
         apply non_evt_star_star in H4 as [].
         Esimpl;eauto.
       }
-      Omega.omega.
+      Lia.lia.
       erewrite swstar_l1;eauto.
     Qed.
     
@@ -3711,7 +3711,7 @@ Section Complex_reorder.
       }
       {
         rename H8 into Q1,H9 into H8,H10 into H9,H11 into H10.
-        eapply atomblockstarN_np in H5;[|Omega.omega|erewrite swstar_l1;eauto].
+        eapply atomblockstarN_np in H5;[|Lia.lia|erewrite swstar_l1;eauto].
         Hsimpl.
         apply non_evt_star_star in H5 as [].
         assert(L1:invpc x3).
@@ -3873,7 +3873,7 @@ Section Complex_reorder.
           Hsimpl. simpl in H1. left. eauto.
         }
         {
-          apply noevt_stepN_np in H4;auto;[|Omega.omega].
+          apply noevt_stepN_np in H4;auto;[|Lia.lia].
           Hsimpl.
           
           destruct H5 as [|[|]];Hsimpl.
@@ -3905,7 +3905,7 @@ Section Complex_reorder.
               eapply race_changetid in H6;simpl in H6;erewrite pc_cur_tid in H6;eauto.
             }
             {
-              apply atomblockstarN_np in H5;[|Omega.omega|erewrite swstar_l1;eauto].
+              apply atomblockstarN_np in H5;[|Lia.lia|erewrite swstar_l1;eauto].
               Hsimpl.
               destruct H7.
               {
@@ -4088,7 +4088,7 @@ Section Complex_reorder.
           }
           {
             erewrite swstar_l1 with(pc':=x) in H8;eauto.
-            apply atomblockstarN_np in H8;auto;[|Omega.omega].
+            apply atomblockstarN_np in H8;auto;[|Lia.lia].
             Hsimpl.
             destruct H10.
             {

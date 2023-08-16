@@ -2981,7 +2981,7 @@ Section Invs.
       exfalso. rewrite <- app_comm_cons in H1.
       revert H1. generalize (head ++ bi :: tail) tail''. clear.
       intros. assert (length ((bi_head :: l) ++ tail'') = length l) by congruence.
-      rewrite app_length in H. simpl in H. omega.
+      rewrite app_length in H. simpl in H. Lia.lia.
     Qed.
     exploit tau_step_buffer_forward_head_tail; eauto.
     intros [A [_tail0'' B]]; subst head'.

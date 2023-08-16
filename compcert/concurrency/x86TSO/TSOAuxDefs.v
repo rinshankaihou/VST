@@ -511,9 +511,9 @@ Proof.
     rewrite Locs.emp_union_locs.
     intros.
     apply FMemOpFP.range_locset_loc in H. Hsimpl. subst.
-    exploit r0. instantiate(1:=ofs) ;omega.
+    exploit r0. instantiate(1:=ofs) ;Lia.lia.
     intro;apply Memperm_validblock in H.
-    exploit r. instantiate(1:=ofs) ;omega.
+    exploit r. instantiate(1:=ofs) ;Lia.lia.
     intro;apply Memperm_validblock in H2.
     tauto.
   }
@@ -524,8 +524,8 @@ Proof.
     intros.
     apply FMemOpFP.range_locset_loc in H;Hsimpl;subst.
     rewrite !PMap.gss.
-    destruct zle;try omega.
-    destruct zlt;try omega.
+    destruct zle;try Lia.lia.
+    destruct zlt;try Lia.lia.
     tauto.
   }
   {
@@ -537,8 +537,8 @@ Proof.
     rewrite PMap.gss in H0.
     ex_match2.
     apply andb_false_iff in Hx1.
-    destruct Hx1. destruct zle;try omega;try discriminate.
-    destruct zlt;try discriminate;try omega.
+    destruct Hx1. destruct zle;try Lia.lia;try discriminate.
+    destruct zlt;try discriminate;try Lia.lia.
   }
 Qed.
 
@@ -661,7 +661,7 @@ Proof.
     rewrite Locs.emp_union_locs in *.
     unfold range_locset in H. ex_match;subst.
     rewrite PMap.gss.
-    assert(lo + (hi - lo) = hi). omega.
+    assert(lo + (hi - lo) = hi). Lia.lia.
     rewrite <- H0,H. tauto.
 
     rewrite PMap.gso;auto. tauto.
@@ -669,7 +669,7 @@ Proof.
   {
     unfold range_locset in H. ex_match;subst.
     rewrite PMap.gss.
-    assert(lo + (hi - lo) = hi). omega.
+    assert(lo + (hi - lo) = hi). Lia.lia.
     rewrite <- H0,H. tauto.
 
     rewrite PMap.gso;auto. tauto.
@@ -678,7 +678,7 @@ Proof.
     inv H;gmem_unfolds.
     rewrite PMap.gsspec in H1.
     unfold range_locset. ex_match2.
-    assert(lo + (hi - lo) = hi). omega.
+    assert(lo + (hi - lo) = hi). Lia.lia.
     rewrite H;auto.
 
     rewrite PMap.gsspec in H1.
@@ -698,7 +698,7 @@ Proof.
   ex_match.
   subst. rewrite PMap.gss.
   rewrite Mem.setN_outside;auto.
-  destruct zle. Focus 2. left. omega.
+  destruct zle. Focus 2. left. Lia.lia.
   destruct zlt. inv H. right. rewrite encode_val_length. rewrite <-size_chunk_conv. auto.
 
   rewrite PMap.gso;auto.
@@ -1000,7 +1000,7 @@ Proof.
               unfold unchecked_free in H0;inv H0.
               simpl in *.
               unfold range_locset in Heqb1. ex_match.
-              assert(z+(z0-z) = z0). omega.
+              assert(z+(z0-z) = z0). Lia.lia.
               rewrite H0 in Heqb1. subst.
               rewrite PMap.gss in H7.
               rewrite Heqb1 in H7.
@@ -1116,7 +1116,7 @@ Proof.
           rewrite! PMap.gss.
           apply andb_false_iff in Heqb1.
           destruct Heqb1;[destruct zle|destruct zlt];try discriminate.
-          erewrite !Mem.setN_outside;eauto;try (left;omega).
+          erewrite !Mem.setN_outside;eauto;try (left;Lia.lia).
           apply H2;auto.
 
           erewrite !Mem.setN_outside;eauto. apply H2;auto.
@@ -1392,7 +1392,7 @@ Proof.
               unfold unchecked_free in H0;inv H0.
               simpl in *.
               unfold range_locset in Heqb1. ex_match.
-              assert(z+(z0-z) = z0). omega.
+              assert(z+(z0-z) = z0). Lia.lia.
               rewrite H0 in Heqb1. subst.
               rewrite PMap.gss in H7.
               rewrite Heqb1 in H7.
@@ -1516,7 +1516,7 @@ Proof.
           rewrite! PMap.gss.
           apply andb_false_iff in Heqb1.
           destruct Heqb1;[destruct zle|destruct zlt];try discriminate.
-          erewrite !Mem.setN_outside;eauto;try (left;omega).
+          erewrite !Mem.setN_outside;eauto;try (left;Lia.lia).
           apply H2;auto.
 
           erewrite !Mem.setN_outside;eauto. apply H2;auto.
@@ -2092,7 +2092,7 @@ Proof.
     unfold FMemOpFP.range_locset in *.
     ex_match2; subst.
     destruct (zle z ofs); destruct (zlt ofs (z + size_chunk chunk));
-      try discriminate;try contradiction; try omega; simpls.
+      try discriminate;try contradiction; try Lia.lia; simpls.
     auto.
   }
 Qed.
@@ -2189,7 +2189,7 @@ Proof.
     unfold FMemOpFP.range_locset.
     ex_match2; subst; rewrite Zplus_minus.
     destruct (zle z ofs); destruct (zlt ofs z0); simpls;
-      try discriminate; try contradiction; try omega; eauto.
+      try discriminate; try contradiction; try Lia.lia; eauto.
   }
 Qed.
 Lemma buf_item_unbuf_locality_1 :
@@ -2868,7 +2868,7 @@ Section AUX_TSOSTEP.
     unfold valid_pointer_fp,GMem.eq_perm,GMem.perm in R.
     simpl in *.
     do 2 destruct perm_dec;try discriminate;auto;contradict n;
-    eapply R;eauto;apply range_locset_belongsto;split;auto;split;omega.
+    eapply R;eauto;apply range_locset_belongsto;split;auto;split;Lia.lia.
   Qed.
    Lemma tso_weak_valid_pointer_fp_locality:
     forall x y bf fm fm' ,
@@ -2917,7 +2917,7 @@ Section AUX_TSOSTEP.
     simpl. instantiate(1:=y-1). instantiate(1:=x).
     Locs.unfolds. unfold range_locset. intros;ex_match.
     apply andb_true_iff in H3 as []. apply andb_true_iff;split;auto.
-    do 2 destruct zlt;auto. omega.
+    do 2 destruct zlt;auto. Lia.lia.
     intro. rewrite H3. auto.
   Qed.
   
@@ -3094,13 +3094,13 @@ Section AUX_TSOSTEP.
     eapply valid_wd0 in H;eauto.
     eapply H1 in H;eauto.
     eapply valid_wd in H;eauto.
-    omega.
+    Lia.lia.
 
     pose proof get_block_exists freelist nextblockid0 as [].
     eapply valid_wd in H;eauto.
     eapply H1 in H;eauto.
     eapply valid_wd0 in H;eauto.
-    omega.
+    Lia.lia.
   Qed.
 
   Definition buffer_fl_embed bf fl m:=

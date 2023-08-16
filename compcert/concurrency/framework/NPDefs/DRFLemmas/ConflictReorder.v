@@ -631,7 +631,7 @@ Section CReorder.
     Coqlib.inv H0.
     apply FP.emp_never_conflict in H2 as [];contradiction.
 
-    assert(S x = x + 1). Omega.omega.
+    assert(S x = x + 1). Lia.lia.
     rewrite H3 in H0. apply tau_N_split in H0.
     destruct H0 as (pc'&fp&fp'&N1&N2&?).
 
@@ -1827,10 +1827,10 @@ Section CReorder.
       + rewrite <- pc_cur_tid with(pc:=pc) in H0.
         eapply npnswstep_conflict in H8;eauto.
         destruct H8.
-        - left. exists 0;Esimpl;eauto. constructor. Omega.omega. apply FP.subset_emp.
+        - left. exists 0;Esimpl;eauto. constructor. Lia.lia. apply FP.subset_emp.
         - Hsimpl. right. exists 1;Esimpl;eauto.
           rewrite <- FP.fp_union_emp with(fp:=x).
-          econstructor 2;eauto. constructor. Omega.omega.
+          econstructor 2;eauto. constructor. Lia.lia.
       + apply FP.smile_conflict_compat in H5.
         rewrite <- pc_cur_tid with(pc:=pc) in H0.
         eapply npnswstep_reorder in H8 as ?;eauto.
@@ -1845,7 +1845,7 @@ Section CReorder.
         - apply npnsw_step_tid_preservation in H7 as ?.
           simpl in H17. rewrite H17,pc_cur_tid in H13.
           eapply tau_N_S in H13 as ?;eauto.
-          left. Esimpl;try apply H18;eauto. Omega.omega.
+          left. Esimpl;try apply H18;eauto. Lia.lia.
           do 2 rewrite FP.union_comm_eq with(fp1:=fp0).
           apply FP.union2_subset;auto.
         - apply npnsw_step_tid_preservation in H7 as ?.
@@ -1854,7 +1854,7 @@ Section CReorder.
           right. Esimpl;try apply H17;eauto.
           rewrite FP.union_comm_eq.
           apply conflict_union_ano;auto.
-          Omega.omega.
+          Lia.lia.
 
         simpl. apply npnsw_step_thdpinv in H7;auto.
         apply npnswstep_l2 in H7;auto. simpl in *. congruence.
@@ -1886,7 +1886,7 @@ Section CReorder.
     eapply fpconflict_dif_trans in H0;eauto.
     apply FP.conflict_sym in H0. eapply IHi in H3 as ?;eauto.
     Hsimpl. exists (S x). Esimpl.
-    econstructor 2;eauto. Omega.omega.
+    econstructor 2;eauto. Lia.lia.
     eauto.
     apply fpsmile_sym.
     eapply fpsmile_union;apply fpsmile_sym;auto. auto.
@@ -1895,7 +1895,7 @@ Section CReorder.
     apply FP.subset_refl.
 
     apply smile_conflict in H1.
-    exists 0;Esimpl;eauto. constructor. Omega.omega.
+    exists 0;Esimpl;eauto. constructor. Lia.lia.
     apply fpsmile_sym;apply empsmile.
     apply FP.conflict_sym;auto.
     rewrite FP.union_comm_eq.
@@ -1964,8 +1964,8 @@ Section CReorder.
       rewrite <- pc_cur_tid with(pc:=pc) in H0.
       eapply npnswstep_conflict in H5 as ?;eauto.
       destruct H7.
-      left. exists 0;Esimpl;eauto. constructor. Omega.omega. apply FP.subset_emp.
-      Hsimpl. right. exists 1;Esimpl;eauto. rewrite <- FP.fp_union_emp with(fp:=x); econstructor 2;[eauto|constructor]. Omega.omega.
+      left. exists 0;Esimpl;eauto. constructor. Lia.lia. apply FP.subset_emp.
+      Hsimpl. right. exists 1;Esimpl;eauto. rewrite <- FP.fp_union_emp with(fp:=x); econstructor 2;[eauto|constructor]. Lia.lia.
     }
     {
       rewrite <- pc_cur_tid with(pc:=pc) in H0.
@@ -1980,14 +1980,14 @@ Section CReorder.
       simpl in H10;destruct H10;Hsimpl;rewrite R1, <- R2,pc_cur_tid in H10.
       {
         eapply tau_N_S in H10;eauto.
-        left. Esimpl;eauto. Omega.omega.
+        left. Esimpl;eauto. Lia.lia.
         apply FP.subset_parallel_union;[apply FP.subset_refl|];auto.
       }
       {
         eapply tau_N_S in H10;eauto.
         right. Esimpl;eauto.
         rewrite FP.union_comm_eq; apply conflict_union_ano;auto.
-        Omega.omega.
+        Lia.lia.
       }
       apply npnsw_step_thdpinv in H8;auto.
       simpl. congruence.
@@ -2023,11 +2023,11 @@ Section CReorder.
         Hsimpl.
         eapply npnsw_step_cons_star_abort in H;eauto.
         destruct H. left. Hsimpl. Esimpl;eauto. 
-        Omega.omega. 
+        Lia.lia. 
 
         Hsimpl. right. Esimpl;eauto.
         apply conflict_union. auto.
-        Omega.omega.
+        Lia.lia.
       }
       {
         Hsimpl.
@@ -2040,10 +2040,10 @@ Section CReorder.
         apply smile_conflict in H10.
         eapply npnswstep_tauN_conflict in H7 as ?;eauto.
         destruct H11;Hsimpl.
-        left. Esimpl;eauto. Omega.omega.
+        left. Esimpl;eauto. Lia.lia.
 
         right. Esimpl;eauto. apply conflict_union;auto.
-        Omega.omega.
+        Lia.lia.
       }
       eapply npnsw_step_thdpinv;eauto.
       apply npnswstep_l2 in H7;auto. congruence.
@@ -2447,12 +2447,12 @@ Section CReorder.
         destruct H5. exists 0;Esimpl;eauto. constructor.
         apply fpsmile_sym;apply empsmile.
 
-        left. split;[Omega.omega|auto].
+        left. split;[Lia.lia|auto].
         Hsimpl.
         Esimpl;auto. constructor.
         apply fpsmile_sym;apply empsmile.
         right. Esimpl;eauto.
-        left. Esimpl;eauto. Omega.omega.
+        left. Esimpl;eauto. Lia.lia.
       }
       {
         apply FP.smile_conflict_compat in H3.
@@ -2471,10 +2471,10 @@ Section CReorder.
         Esimpl;eauto.
         destruct H14;Hsimpl;try( eapply fpsmile_sym;eapply fpsmile_union;eapply fpsmile_sym;eauto).
         destruct H14;Hsimpl;[left|right];try split;auto.
-        Omega.omega.
+        Lia.lia.
         destruct H16;Hsimpl.
-        Esimpl;eauto. left;split;eauto. Omega.omega.
-        Esimpl;eauto. right;split;eauto. Omega.omega.
+        Esimpl;eauto. left;split;eauto. Lia.lia.
+        Esimpl;eauto. right;split;eauto. Lia.lia.
       }
     }
   Qed.
@@ -2522,7 +2522,7 @@ Section CReorder.
         {
           simpl in *.
           Esimpl;try apply H8;eauto.
-          Omega.omega.
+          Lia.lia.
         }
         {
           simpl in *.
@@ -2530,7 +2530,7 @@ Section CReorder.
           eapply tau_N_conflict_split in H8 as ?;eauto.
           Hsimpl.
           Esimpl;try apply H12;eauto.
-          Omega.omega.
+          Lia.lia.
 
           right. Esimpl;eauto. apply conflict_union. auto.
         }

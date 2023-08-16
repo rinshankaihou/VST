@@ -26,10 +26,10 @@ Proof.
     apply Nat.lt_gt_cases in n. destruct n.
     exploit (valid_wd nextblockid); eauto.
     exploit (valid_wd0 nextblockid); eauto.
-    intros. apply H0 in H. apply H1 in H. omega.
+    intros. apply H0 in H. apply H1 in H. Lia.lia.
     exploit (valid_wd nextblockid0); eauto.
     exploit (valid_wd0 nextblockid0); eauto.
-    intros. apply H1 in H. apply H0 in H. omega. }
+    intros. apply H1 in H. apply H0 in H. Lia.lia. }
   subst nextblockid. f_equal; auto using proof_irr.
 Qed.
 
@@ -208,17 +208,17 @@ Proof.
     pose proof (Mem.perm_alloc_inv _ _ _ _ _ Halloc
                                    stk (Ptrofs.unsigned ofs_ra + size_chunk Mptr - 1)
                                    Memperm.Cur Memperm.Writable).
-    exploit H. clear. unfold size_chunk, Mptr. destruct Archi.ptr64; omega.
+    exploit H. clear. unfold size_chunk, Mptr. destruct Archi.ptr64; Lia.lia.
     clear H. intro H. unfold Mem.perm in *. rewrite Haccess2 in *. apply H1 in H. clear H1.
-    destruct eq_block; try contradiction. omega. }
+    destruct eq_block; try contradiction. Lia.lia. }
   { clear Hstore2 Haccess2. apply Mem.store_valid_access_3 in Hstore1.
     rewrite Ptrofs.add_zero_l in Hstore1. destruct Hstore1. split; auto.
     specialize (H (Ptrofs.unsigned ofs_link + size_chunk Mptr - 1)).
     pose proof (Mem.perm_alloc_inv _ _ _ _ _ Halloc
                                    stk (Ptrofs.unsigned ofs_link + size_chunk Mptr - 1)
                                    Memperm.Cur Memperm.Writable).
-    exploit H. clear. unfold size_chunk, Mptr. destruct Archi.ptr64; omega.
-    clear H. intro H. apply H1 in H. clear H1. destruct eq_block; try contradiction. omega. }
+    exploit H. clear. unfold size_chunk, Mptr. destruct Archi.ptr64; Lia.lia.
+    clear H. intro H. apply H1 in H. clear H1. destruct eq_block; try contradiction. Lia.lia. }
 Qed.
 
 Lemma eq_on_loc_trans:
@@ -287,11 +287,11 @@ Proof.
   specialize (H3 N1 (MemAux.get_block fl N1) eq_refl).
   specialize (H2 N1 (MemAux.get_block fl N1) eq_refl).
   specialize (H1 (MemAux.get_block fl N1) N1 eq_refl).
-  apply H3, H1, H2 in H. omega.
+  apply H3, H1, H2 in H. Lia.lia.
   specialize (H3 N2 (MemAux.get_block fl N2) eq_refl).
   specialize (H2 N2 (MemAux.get_block fl N2) eq_refl).
   specialize (H1 (MemAux.get_block fl N2) N2 eq_refl).
-  apply H2, H1, H3 in H. omega.
+  apply H2, H1, H3 in H. Lia.lia.
 Qed.
 
 Lemma rel_vb_nextblock_eq:
@@ -315,7 +315,7 @@ Proof.
   generalize (Mem.nextblockid m) (Mem.nextblockid tm). clear.
   intros n1 n2 Heq. destruct (Nat.eq_dec n1 n2); auto.
   apply (Nat.lt_gt_cases n1 n2) in n.
-  destruct n as [n|n]; [specialize (Heq n1)|specialize (Heq n2)]; omega.
+  destruct n as [n|n]; [specialize (Heq n1)|specialize (Heq n2)]; Lia.lia.
 Qed.
           
 (** Refinement on Mem Ops *)
@@ -419,7 +419,7 @@ Proof.
     exploit H;eauto.
     intros.
     rewrite<- H3,H2,H4 in H1.
-    omega.
+    Lia.lia.
   }
   {
     destruct H1;auto.
@@ -430,7 +430,7 @@ Proof.
     exploit H;eauto.
     intros.
     rewrite <- H4,<- H2, H3 in H0.
-    omega.
+    Lia.lia.
   }
 Qed.
 
@@ -577,10 +577,10 @@ Proof.
     + apply FP.conflict_ff;simpl;Locs.unfolds.
       exists (Mem.nextblock sfm),ofs;ex_match2;auto.
       simpl. unfold range_locset;ex_match2.
-      rewrite <- add_minus_eq. destruct zle,zlt;auto;omega.
+      rewrite <- add_minus_eq. destruct zle,zlt;auto;Lia.lia.
     + apply FP.conflict_wf;simpl;Locs.unfolds;simpl.
       exists (Mem.nextblock sfm),ofs. unfold range_locset.
-      ex_match2. destruct zle,zlt;auto;omega.
+      ex_match2. destruct zle,zlt;auto;Lia.lia.
   }
   assert(UBS1:unbuffer_safe
     {|
@@ -924,13 +924,13 @@ Proof.
     inv H7;simpl;unfold uncheck_alloc_fp,free_fp,store_fp.
     apply FP.conflict_wf. Locs.unfolds;simpl.
     exists b,ofs. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt;auto;omega.
+    destruct zle,zlt;auto;Lia.lia.
     apply FP.conflict_wf. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto. rewrite <- add_minus_eq.
-    destruct zle,zlt,zle,zlt;auto;try omega. simpl.
+    destruct zle,zlt,zle,zlt;auto;try Lia.lia. simpl.
     apply FP.conflict_ww. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt,zle,zlt;auto;omega.
+    destruct zle,zlt,zle,zlt;auto;Lia.lia.
   }
   enough(Gc t sgm {| tso_buffers := bufs; memory := tgm |} (strip x1)
     {|
@@ -1130,7 +1130,7 @@ Proof.
         {
           unfold range_locset in Heqb1. ex_match2.
           assert( forall r : Z, ofs <= r < ofs + Z.of_nat (length (encode_val chunk v)) -> r <> ofs0).  rewrite encode_val_length,<- size_chunk_conv. 
-          intros. intro;subst. destruct zle,zlt;auto;omega.
+          intros. intro;subst. destruct zle,zlt;auto;Lia.lia.
           erewrite !Mem.setN_other;eauto.
           congruence.
         }
@@ -1165,7 +1165,7 @@ Proof.
           ex_match2;subst.
           erewrite !Mem.setN_other;eauto.
           rewrite encode_val_length,<-size_chunk_conv.
-          intros. intro;subst. destruct zle,zlt;auto;omega.
+          intros. intro;subst. destruct zle,zlt;auto;Lia.lia.
         }
       }
     }
@@ -1231,13 +1231,13 @@ Proof.
     inv H7;simpl;unfold uncheck_alloc_fp,free_fp,store_fp.
     apply FP.conflict_ff. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt;auto;omega.
+    destruct zle,zlt;auto;Lia.lia.
     apply FP.conflict_ff. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto. rewrite <- add_minus_eq.
-    destruct zle,zlt,zle,zlt;auto;try omega. simpl.
+    destruct zle,zlt,zle,zlt;auto;try Lia.lia. simpl.
     apply FP.conflict_wf. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt,zle,zlt;auto;omega.
+    destruct zle,zlt,zle,zlt;auto;Lia.lia.
   }
   enough(Gc t sgm {| tso_buffers := bufs; memory := tgm |} (strip x1)
     {|
@@ -1528,13 +1528,13 @@ Proof.
     inv H6;simpl;unfold uncheck_alloc_fp,free_fp,store_fp.
     apply FP.conflict_rf. Locs.unfolds;simpl.
     exists b,ofs. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt;auto;omega.
+    destruct zle,zlt;auto;Lia.lia.
     apply FP.conflict_rf. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto. rewrite <- add_minus_eq.
-    destruct zle,zlt,zle,zlt;auto;try omega. simpl.
+    destruct zle,zlt,zle,zlt;auto;try Lia.lia. simpl.
     apply FP.conflict_rw. Locs.unfolds;simpl.
     exists b,ofs0. unfold range_locset;ex_match2;auto.
-    destruct zle,zlt,zle,zlt;auto;omega.
+    destruct zle,zlt,zle,zlt;auto;Lia.lia.
   }
   assert(x0 = tres).
   {
@@ -1662,7 +1662,7 @@ Proof.
 
           rewrite PMap.gsspec. ex_match2;auto.
           contradict H10. econstructor;eauto. left;eauto. subst;econstructor;eauto.
-          destruct zle,zlt;auto;inv Hx1;omega.
+          destruct zle,zlt;auto;inv Hx1;Lia.lia.
         }
         intros[];contradict H10. econstructor;eauto. right;auto.
       }
@@ -2237,7 +2237,7 @@ Proof.
                         /\ ofs + size_chunk chunk <= 4 * z
                         /\ (align_chunk chunk | ofs))).
   { clear Heqtbfm. clear tfm.
-    replace (4 * z) with (0 + (4 * z)) by omega.
+    replace (4 * z) with (0 + (4 * z)) by Lia.lia.
     revert H0. unfold loadframe.store_args_fmem.
     cut (4 | 0). remember 0 as z'. cut (z' >= 0). rewrite Heqz' in Hz0. clear Heqz'.
     generalize z'. revert args z tbfm m m' H. subst z0.
@@ -2257,14 +2257,14 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore. destruct Hstore as [_ Halign].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_refl. intro Halign0.
-        assert (z'0 + 4 >= 0) as Hge0 by omega.
+        assert (z'0 + 4 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl. rewrite app_assoc. eauto.
         intros. destruct H. subst bi. do 3 eexists. split. eauto.
         rewrite Ptrofs.add_zero_l in *. split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0)); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tint) with 1 by auto. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tint) with 1 by auto. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tint) with 1 by auto. rewrite <- Zred_factor2.
@@ -2274,15 +2274,15 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore. destruct Hstore as [_ Halign].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_factor_l. intro Halign0.
-        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by omega.
-        assert (z'0 + 8 >= 0) as Hge0 by omega.
+        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by Lia.lia.
+        assert (z'0 + 8 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl. rewrite app_assoc. eauto.
         intros. destruct H. subst bi. do 3 eexists. split. eauto.
         rewrite Ptrofs.add_zero_l in *. split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0)); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tfloat) with 2 by auto. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tfloat) with 2 by auto. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tfloat) with 2 by auto. rewrite <- Zred_factor4.
@@ -2295,8 +2295,8 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore2. destruct Hstore2 as [_ Halign2].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_factor_l. intro Halign0.
-        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by omega.
-        assert (z'0 + 8 >= 0) as Hge0 by omega.
+        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by Lia.lia.
+        assert (z'0 + 8 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl.
         repeat rewrite <- app_assoc. eauto.
@@ -2306,17 +2306,17 @@ Proof.
         split. destruct (Ptrofs.unsigned_range (Ptrofs.repr (z'0 + 4))); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
         subst OFS. replace (Locations.typesize Tlong) with 2 by auto.
-        rewrite <- Zred_factor4, Z.add_assoc. replace (4 * 2) with (4 + 4) by omega.
+        rewrite <- Zred_factor4, Z.add_assoc. replace (4 * 2) with (4 + 4) by Lia.lia.
         rewrite <- Z.add_assoc. rewrite <-(Z.add_assoc 4 4 (4*z0)). rewrite Z.add_assoc.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        apply loadframe.args_len_rec_non_neg in A. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        apply loadframe.args_len_rec_non_neg in A. Lia.lia.
 
         subst bi. do 3 eexists. split. eauto. rewrite Ptrofs.add_zero_l in *.
         split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0 )); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
         subst OFS. replace (Locations.typesize Tlong) with 2 by auto.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        rewrite <- Zred_factor4. apply loadframe.args_len_rec_non_neg in A. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        rewrite <- Zred_factor4. apply loadframe.args_len_rec_non_neg in A. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tlong) with 2 by auto. rewrite <- Zred_factor4.
@@ -2327,14 +2327,14 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore. destruct Hstore as [_ Halign].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_refl. intro Halign0.
-        assert (z'0 + 4 >= 0) as Hge0 by omega.
+        assert (z'0 + 4 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl. rewrite app_assoc. eauto.
         intros. destruct H. subst bi. do 3 eexists. split. eauto.
         rewrite Ptrofs.add_zero_l in *. split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0)); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tsingle) with 1 by auto. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tsingle) with 1 by auto. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tsingle) with 1 by auto. rewrite <- Zred_factor2.
@@ -2344,14 +2344,14 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore. destruct Hstore as [_ Halign].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_refl. intro Halign0.
-        assert (z'0 + 4 >= 0) as Hge0 by omega.
+        assert (z'0 + 4 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl. rewrite app_assoc. eauto.
         intros. destruct H. subst bi. do 3 eexists. split. eauto.
         rewrite Ptrofs.add_zero_l in *. split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0)); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tany32) with 1 by auto. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tany32) with 1 by auto. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tany32) with 1 by auto. rewrite <- Zred_factor2.
@@ -2361,21 +2361,21 @@ Proof.
         apply Mem.store_valid_access_3 in Hstore. destruct Hstore as [_ Halign].
         match goal with | |- context[store_args_rec_fmem ?tm _ _ _ _] => specialize (IHtys tm) end.
         exploit (Z.divide_add_r). exact H1. eapply Z.divide_factor_l. intro Halign0.
-        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by omega.
-        assert (z'0 + 8 >= 0) as Hge0 by omega.
+        instantiate (1:=2) in Halign0. replace (4 * 2) with 8 in Halign0 by Lia.lia.
+        assert (z'0 + 8 >= 0) as Hge0 by Lia.lia.
         specialize (IHtys _ _ A _ Hge0 Halign0 H2). destruct IHtys as (buf_tail & Hstoreargs & Hbuf_tail).
         simpl in Hstoreargs. simpl. rewrite Hstoreargs. eexists. split. simpl. rewrite app_assoc. eauto.
         intros. destruct H. subst bi. do 3 eexists. split. eauto.
         rewrite Ptrofs.add_zero_l in *. split. destruct (Ptrofs.unsigned_range (Ptrofs.repr z'0)); auto.
         split; auto. simpl. rewrite Ptrofs.unsigned_repr_eq.
-        apply Z.add_le_mono. eapply Z.mod_le. omega. pose proof Ptrofs.modulus_pos; omega.
-        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tany64) with 2 by auto. omega.
+        apply Z.add_le_mono. eapply Z.mod_le. Lia.lia. pose proof Ptrofs.modulus_pos; Lia.lia.
+        subst OFS. apply loadframe.args_len_rec_non_neg in A. replace (Locations.typesize Tany64) with 2 by auto. Lia.lia.
         
         simpl in H. eapply Hbuf_tail in H.
         subst OFS. replace (Locations.typesize Tany64) with 2 by auto. rewrite <- Zred_factor4.
         rewrite Z.add_assoc. auto. }
     }
-    subst. omega.
+    subst. Lia.lia.
     apply Z.divide_0_r.
   }
   destruct H1 as (buf & Hstore & Hbuf). rewrite Hstore. eexists. split. eauto.
@@ -2386,8 +2386,8 @@ Proof.
   end.
   assert (range_perm M b 0 (4 * z) Memperm.Max Memperm.Writable).
   { subst M. clear. intros ofs Hofs. simpl. rewrite PMap.gss.
-    destruct zle; try omega. simpl in *.
-    destruct zlt; try omega. simpl. constructor. }
+    destruct zle; try Lia.lia. simpl in *.
+    destruct zlt; try Lia.lia. simpl. constructor. }
   subst z0. revert H1 Hbuf. clear. revert M. generalize (4 * z). clear. intros Bound.
   induction buf; intros.
   { simpl. eauto. }
@@ -2397,7 +2397,7 @@ Proof.
     intros ofs' Hofs'. simpl. eauto.
     intros. eapply Hbuf. right. auto.
     exfalso. apply n. clear n. split; auto.
-    intros ofs' Hofs'. eapply H1. omega. }
+    intros ofs' Hofs'. eapply H1. Lia.lia. }
 Qed.
 
 Lemma meminv_load_refine':
@@ -3712,14 +3712,14 @@ Section MatchStateSim.
             exfalso; apply n. rewrite Ptrofs.add_zero_l.
             split;[|tauto].
             pose proof (Ptrofs.unsigned_range ofs_ra).
-            intros. rewrite PMap.gss. destruct zle, zlt; simpl; try omega; try constructor. }
+            intros. rewrite PMap.gss. destruct zle, zlt; simpl; try Lia.lia; try constructor. }
           { unfold store in Hstore1.
             destruct valid_access_dec; [discriminate|].
             unfold valid_access, range_perm in *; simpl in *.
             exfalso; apply n. rewrite Ptrofs.add_zero_l.
             split;[|tauto].
             pose proof (Ptrofs.unsigned_range ofs_link).
-            intros. rewrite PMap.gss. destruct zle, zlt; simpl; try omega; try constructor. }
+            intros. rewrite PMap.gss. destruct zle, zlt; simpl; try Lia.lia; try constructor. }
         }
         (* not alloc *)
         { (* Lemma meminv_exec_instr_eq': *)

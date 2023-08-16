@@ -827,8 +827,8 @@ Module GlobSim.
       eapply thrddom_eq'_final_state_preservation in H7;eauto.
       eapply step_no_final in H11;eauto;contradiction.
       clear s' H11 H12 s'0 H17 H18.
-      assert(S x = x + 1). Omega.omega.
-      assert(S x0=x0+1). Omega.omega.
+      assert(S x = x + 1). Lia.lia.
+      assert(S x0=x0+1). Lia.lia.
       rewrite H10 in H1.
       rewrite H11 in H2.
       apply tau_N_split in H1 as (spc'&fp1&fp2&?&?&?).
@@ -1478,7 +1478,7 @@ Module GlobSim.
           destruct H2 as [spc'[fpS'[tpc1[fpT1[S1[S2[S3[S4[l[t[spc2[tpc2[vt]]]]]]]]]]]]].
           assert(i>0).
           {
-            destruct i;try Omega.omega.
+            destruct i;try Lia.lia.
             inversion S3;subst. specialize (H2 t vt) as [nt[j[Q1[Q2[Q3 Q4]]]]].
             eapply np_step_det in Q3 as [];try apply H0;eauto.
             rewrite H2 in nt; contradiction.

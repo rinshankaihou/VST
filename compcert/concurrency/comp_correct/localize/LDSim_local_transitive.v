@@ -581,7 +581,7 @@ Proof.
     left. intro. apply H. subst. eapply Bset.inj_injective; eauto. eapply mu_inject_12; eauto. }
   (** representable *)
   { intros. destruct (inj mu12 b) eqn:INJ12; inv H.
-    split;[xomega|]. pose proof (Ptrofs.unsigned_range ofs). unfold Ptrofs.max_unsigned. omega. }
+    split;[xomega|]. pose proof (Ptrofs.unsigned_range ofs). unfold Ptrofs.max_unsigned. Lia.lia. }
   (** perm inv *)
   { unfold Mem.perm, Mem.perm_order'; simpl. intros.
     destruct (inj mu12 b1) eqn:INJ12; inv H. rewrite Z.add_0_r in H0.
@@ -641,7 +641,7 @@ Proof.
     left. intro. apply H. subst. eapply Bset.inj_injective; eauto. eapply mu_inject_23; eauto. }
   (** representable *)
   { intros. destruct (inj mu23 b) eqn:INJ23; inv H.
-    split;[xomega|]. pose proof (Ptrofs.unsigned_range ofs). unfold Ptrofs.max_unsigned. omega. }
+    split;[xomega|]. pose proof (Ptrofs.unsigned_range ofs). unfold Ptrofs.max_unsigned. Lia.lia. }
   (** perm inv *)
   { unfold Mem.perm, Mem.perm_order'; simpl. intros.
     destruct (inj mu23 b1) eqn:INJ23; inv H. rewrite Z.add_0_r in H0.

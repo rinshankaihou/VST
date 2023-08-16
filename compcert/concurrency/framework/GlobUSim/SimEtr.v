@@ -229,7 +229,7 @@ Section simetr.
   Proof.
     intros.
     induction H1;subst.
-    Omega.omega.
+    Lia.lia.
     
     erewrite active_thread_num_dec;eauto.
     apply Le.le_n_S.
@@ -277,7 +277,7 @@ Section simetr.
     intros. intro.
     destruct (atom_bit pc) eqn:?.
     apply SWdiverge_swlist_i with (i:= S(active_thread_num pc)) in H0.
-    apply sw_time_limit in H0;auto. contradict H0. Omega.omega.
+    apply sw_time_limit in H0;auto. contradict H0. Lia.lia.
     inversion H0;subst.
     eapply GlobSim.GlobSim.thp_inv_preservation in H as ?;eauto;try apply wdge.
     apply SWdiverge_swlist_i with(i:=S(active_thread_num pc)) in H2.
@@ -286,7 +286,7 @@ Section simetr.
     apply sw_time_limit in H2;auto.
     eapply active_thread_num_eq in Heqb as ?;eauto.
     rewrite H5 in H2. contradict H2.
-    Omega.omega.
+    Lia.lia.
   Qed.
   
   

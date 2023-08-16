@@ -93,7 +93,7 @@ Lemma config_thdp_init_property1:
   Lemma threadpool_spawn_domadd:
     forall ge t mid c sg ,
       let t' :=  @ThreadPool.spawn ge t mid c sg in
-      ThreadPool.next_tid t' = BinPos.Psucc (ThreadPool.next_tid t).
+      ThreadPool.next_tid t' = BinPos.Pos.succ (ThreadPool.next_tid t).
   Proof.
     intros.
     unfold ThreadPool.spawn in t'.

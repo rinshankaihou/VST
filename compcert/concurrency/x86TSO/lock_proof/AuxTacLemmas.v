@@ -73,7 +73,7 @@ Ltac solve_ptr_ofs_range :=
     unfold Ptrofs.wordsize;
     unfold Wordsize_Ptrofs.wordsize;
     destruct Archi.ptr64 eqn:?; tryfalse;
-    simpl; omega
+    simpl; Lia.lia
   end.
 
 Ltac clear_trivial_eq :=

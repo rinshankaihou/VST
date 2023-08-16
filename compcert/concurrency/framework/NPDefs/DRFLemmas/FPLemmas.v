@@ -234,7 +234,7 @@ Section Loc_FP_Lemmas.
     split. eauto.
     rewrite FP.emp_union_fp. split;auto.
     split;auto.
-    Omega.omega.
+    Lia.lia.
     apply FP.smile_conflict_compat in H1.
     eapply fpconflict_dif_trans in H1 as L1;eauto.
 
@@ -242,7 +242,7 @@ Section Loc_FP_Lemmas.
     destruct L1 as (?&?&?&?&?&?&?&?&?&?&?&?&?).    
     repeat eexists;[econstructor 2| | | | |];eauto.
     rewrite <- H7;repeat rewrite FP.fp_union_assoc;auto.
-    Omega.omega.
+    Lia.lia.
   Qed.
   Lemma fpconflict_taustar_rule1{GE}:
     forall pc1 pc fp1 fp2,

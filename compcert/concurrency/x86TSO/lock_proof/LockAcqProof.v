@@ -1888,7 +1888,7 @@ Proof.
   rewrite PMap.gss; eauto.
   ex_match2.
   destruct (zle 0 ofs') eqn:?; destruct (zlt ofs' 0) eqn:?; tryfalse; simpls.
-  omega.
+  Lia.lia.
 Qed.
 
 (** [match_tau] holds in function lock *)

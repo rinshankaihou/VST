@@ -183,7 +183,7 @@ Proof.
   split_and H6. 
   clear - H1 H6 H12.
   simpls.
-  omega.
+  Lia.lia.
 
   clear - Htso_init_mem H_t_addr_L H10 Ht. 
   unfolds init_mem.
@@ -201,7 +201,7 @@ Proof.
   simpls.
   eapply H1 in H2.
   destruct H2; clear - H2 Ht.
-  omega.
+  Lia.lia.
 Qed.
   
 Lemma id_eq_lock_unit :

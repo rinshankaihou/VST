@@ -199,7 +199,7 @@ Proof.
   exploit Mem.access_max. rewrite A. unfold Mem.perm_order''.
   destruct ((Mem.mem_access m) !! b ofs' Memperm.Max); [|contradiction].
   intro. split; intro; discriminate.
-  exfalso. apply H. omega.
+  exfalso. apply H. Lia.lia.
 Qed.
 
 Lemma valid_access_client_mem:
@@ -260,7 +260,7 @@ Proof.
   intros. unfold FMemOpFP.range_locset in *.
   destruct eq_block; try discriminate.
   destruct zlt, zle; try discriminate.
-  assert (ofs' = ofs) by omega. subst. clear H0 l0 l.
+  assert (ofs' = ofs) by Lia.lia. subst. clear H0 l0 l.
   auto using valid_pointer_client_mem.
 Qed.
 
@@ -318,11 +318,11 @@ Proof.
   right.
   unfold unused_mem, strip; simpl.
   destruct ((Mem.mem_access m') !! b ofs Memperm.Max) eqn:C; auto.
-  exploit Mem.perm_alloc_3. eauto. unfold Mem.perm. rewrite C. apply Memperm.perm_any_N. omega.
+  exploit Mem.perm_alloc_3. eauto. unfold Mem.perm. rewrite C. apply Memperm.perm_any_N. Lia.lia.
   right.
   unfold unused_mem, strip; simpl.
   destruct ((Mem.mem_access m') !! b ofs Memperm.Max) eqn:C; auto.
-  exploit Mem.perm_alloc_3. eauto. unfold Mem.perm. rewrite C. apply Memperm.perm_any_N. omega.
+  exploit Mem.perm_alloc_3. eauto. unfold Mem.perm. rewrite C. apply Memperm.perm_any_N. Lia.lia.
 Qed.
 
 Lemma alloc_obj_mem_unchg:

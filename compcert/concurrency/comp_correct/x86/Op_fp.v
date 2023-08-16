@@ -453,9 +453,9 @@ Proof.
   Locs.unfolds. intros. destruct eq_block;[|discriminate].
   destruct zle;[|discriminate].
   destruct zlt;[|discriminate].
-  subst. exists b, ofs, delta. split;[auto|left;split;[omega|]].
+  subst. exists b, ofs, delta. split;[auto|left;split;[Lia.lia|]].
   destruct eq_block; [|contradiction].
-  destruct zle, zlt; try omega; auto.
+  destruct zle, zlt; try Lia.lia; auto.
 Qed.
 
 Lemma weak_valid_pointer_fp_inject:
@@ -476,9 +476,9 @@ Proof.
     unfold FP.ge_cmps, FP.ge_reads, FP.ge_writes. simpl. repeat rewrite Locs.locs_union_emp.
     intros. destruct eq_block;[|discriminate].
     destruct zle, zlt; try discriminate.
-    subst. exists b, ofs, delta. split; auto. left; split. omega.
+    subst. exists b, ofs, delta. split; auto. left; split. Lia.lia.
     destruct eq_block; try contradiction.
-    destruct zle, zlt; try omega; auto.
+    destruct zle, zlt; try Lia.lia; auto.
   - constructor; try apply loc_inject_emp.
     generalize H. clear. constructor; unfold range_locset; Locs.unfolds; simpl.
     unfold FP.ge_cmps, FP.ge_reads, FP.ge_writes. simpl. repeat rewrite Locs.locs_union_emp.
@@ -486,12 +486,12 @@ Proof.
     destruct zle, zlt; try discriminate.
     subst. exists b, ofs, delta. split; auto.
     assert (ofs0 = Ptrofs.unsigned (Ptrofs.add ofs (Ptrofs.repr delta)) \/
-            ofs0 = Ptrofs.unsigned (Ptrofs.add ofs (Ptrofs.repr delta)) - 1) as HOFS by omega.
-    destruct HOFS as [HOFS|HOFS];[left|right];(split; [omega|]).
+            ofs0 = Ptrofs.unsigned (Ptrofs.add ofs (Ptrofs.repr delta)) - 1) as HOFS by Lia.lia.
+    destruct HOFS as [HOFS|HOFS];[left|right];(split; [Lia.lia|]).
     destruct eq_block; try contradiction.
-    destruct zle, zlt; try omega; auto.
+    destruct zle, zlt; try Lia.lia; auto.
     destruct eq_block; try contradiction.
-    destruct zle, zlt; try omega; auto.
+    destruct zle, zlt; try Lia.lia; auto.
 Qed.
 
 Ltac TrivialExists :=

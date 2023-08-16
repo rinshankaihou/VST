@@ -227,7 +227,7 @@ Proof.
           econstructor; eauto.
           eapply H14 in H0.
           contradiction H0.
-          eapply H7; simpl; omega.
+          eapply H7; simpl; Lia.lia.
           intro.
           destruct H as (lo & hi & H).
           specialize (Hnot_inbuffer t0).
@@ -357,7 +357,7 @@ Proof.
           econstructor; eauto.
           eapply H14 in H18.
           assert ((0 <= 0 < size_chunk Mint32)%Z); simpl.
-          omega.
+          Lia.lia.
           eapply H7 in H19; tryfalse.
           destruct (peq t0 t'); subst.
           assert (t' <> t); eauto.
@@ -488,7 +488,7 @@ Proof.
             econstructor; eauto.
             eapply H14 in H3.
             assert ((0 <= 0 < size_chunk Mint32)%Z).
-            simpl; omega.
+            simpl; Lia.lia.
             eapply H7 in H4; tryfalse.
             specialize (Hnot_inbuffer t0 0%Z).
             contradiction Hnot_inbuffer.
@@ -973,7 +973,7 @@ Proof.
   assert (Pos.to_nat t = Pos.to_nat (Pos.succ t)).
   rewrite <- H; eauto.
   rewrite Pos2Nat.inj_succ in H0.
-  omega.
+  Lia.lia.
   left.
   unfold Gclt.
   lets Hobj_inv' : Hobj_inv.
@@ -1176,7 +1176,7 @@ Proof.
           econstructor; eauto.
           eapply H15 in H9.
           contradiction H9.
-          eapply H8; eauto; omega.
+          eapply H8; eauto; Lia.lia.
           contradiction (H6 t).
           exists 0%Z.
           econstructor; eauto.
@@ -1231,7 +1231,7 @@ Proof.
           econstructor; eauto.
           eapply H15 in H6.
           contradiction H6.
-          eapply H8; omega.
+          eapply H8; Lia.lia.
           destruct (peq t0 t); subst.
           {
             rewrite Hbf in H5.
@@ -1276,7 +1276,7 @@ Proof.
             econstructor; eauto.
             econstructor; eauto.
             eapply H15 in H9.
-            contradiction H9; eapply H8; omega.
+            contradiction H9; eapply H8; Lia.lia.
             contradiction (H6 t 0%Z).
             econstructor; eauto.
             econstructor; eauto.

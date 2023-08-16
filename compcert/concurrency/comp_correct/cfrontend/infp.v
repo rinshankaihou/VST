@@ -142,8 +142,8 @@ Proof.
   destruct eq_block;try contradiction.
   apply andb_true_iff in H as [].
   apply andb_true_iff;auto.
-  split. destruct zle,zle;try Omega.omega;auto.
-  destruct zlt,zlt;try Omega.omega;auto.
+  split. destruct zle,zle;try Lia.lia;auto.
+  destruct zlt,zlt;try Lia.lia;auto.
 Qed.
 Lemma cmpu_fp_infps:
   forall ge f m m' c v1 v2 v1' v2' x v
@@ -175,9 +175,9 @@ Proof.
       all: destruct (Mem.valid_pointer m b (Ptrofs.unsigned ofs1)) eqn:?;simpl;unfold FMemOpFP.range_locset,Locs.belongsto;destruct eq_block eqn:?;try contradiction;auto.
       - apply andb_true_iff in H5 as [];apply andb_true_iff;split;auto.
         destruct zle;try discriminate.
-        assert(Ptrofs.unsigned ofs1 -1 <= ofs). OmegaPlugin.omega.
+        assert(Ptrofs.unsigned ofs1 -1 <= ofs). OmegaPlugin.Lia.lia.
         destruct zle;auto.
-        assert(Ptrofs.unsigned ofs1+1 = Ptrofs.unsigned ofs1 -1 +2). Omega.omega.
+        assert(Ptrofs.unsigned ofs1+1 = Ptrofs.unsigned ofs1 -1 +2). Lia.lia.
         rewrite <-H5;auto.
       - eapply Mem.valid_pointer_inject_val in Heqb1;eauto.
         rewrite Ptrofs.add_zero in Heqb1.
@@ -201,9 +201,9 @@ Proof.
     apply andb_true_iff in H2 as [].
     split.
     destruct zle;try discriminate.
-    assert(Ptrofs.unsigned ofs1 -1 <= ofs). OmegaPlugin.omega.
+    assert(Ptrofs.unsigned ofs1 -1 <= ofs). OmegaPlugin.Lia.lia.
     destruct zle;auto.
-    assert(Ptrofs.unsigned ofs1+1 = Ptrofs.unsigned ofs1 -1 +2). Omega.omega.
+    assert(Ptrofs.unsigned ofs1+1 = Ptrofs.unsigned ofs1 -1 +2). Lia.lia.
     rewrite <-H2;auto.
     
     eapply Mem.valid_pointer_inject_val in Heqb1;eauto.
@@ -330,14 +330,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _

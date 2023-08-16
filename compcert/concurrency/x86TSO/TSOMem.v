@@ -37,11 +37,11 @@ Proof.
   induction lo using (well_founded_induction_type (Zwf_up_well_founded hi)).
   destruct (zlt lo hi).
   destruct (perm_dec m b lo k p).
-  destruct (H (lo + 1)). red. omega.
-  left; red; intros. destruct (zeq lo ofs). congruence. apply r. omega.
-  right; red; intros. elim n. red; intros; apply H0; omega.
-  right; red; intros. elim n. apply H0. omega.
-  left; red; intros. omegaContradiction.
+  destruct (H (lo + 1)). red. Lia.lia.
+  left; red; intros. destruct (zeq lo ofs). congruence. apply r. Lia.lia.
+  right; red; intros. elim n. red; intros; apply H0; Lia.lia.
+  right; red; intros. elim n. apply H0. Lia.lia.
+  left; red; intros. lia.
 Qed.
 Definition valid_access m chunk b ofs p:=
   range_perm m b ofs (ofs + size_chunk chunk) Memperm.Max p /\
@@ -71,7 +71,7 @@ Inductive buffer_item : Type :=
 
 Definition loadbytes (m : gmem) (b : block) (ofs n : Z) :=
   if range_perm_dec m b ofs (ofs + n) Memperm.Max Memperm.Readable then
-    Some (Mem.getN (nat_of_Z n) ofs (GMem.mem_contents m) !! b)
+    Some (Mem.getN (Z.to_nat n) ofs (GMem.mem_contents m) !! b)
   else
     None.
 

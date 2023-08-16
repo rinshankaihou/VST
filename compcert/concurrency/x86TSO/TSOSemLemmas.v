@@ -142,14 +142,14 @@ Section BUFFER.
           intros.
           apply r in H0 as ?;clear r.
           Locs.unfolds.
-          assert(z<=ofs<z+(z0-z)). omega.
+          assert(z<=ofs<z+(z0-z)). Lia.lia.
           eapply range_locset_belongsto2 with(b:=b) in H2.
           unfold belongsto in H2. Locs.unfolds.
           apply H in H2.
           apply range_locset_belongsto in H2 as [].
           subst.
           rewrite PMap.gss;auto.
-          destruct zle,zlt;try omega;simpl;auto.
+          destruct zle,zlt;try Lia.lia;simpl;auto.
           constructor.
         }
       }
@@ -207,14 +207,14 @@ Section BUFFER.
           intros.
           apply H1 in H0 as ?;clear H1.
           Locs.unfolds.
-          assert(z<=ofs<z+size_chunk m). omega.
+          assert(z<=ofs<z+size_chunk m). Lia.lia.
           eapply range_locset_belongsto2 with(b:=b) in H1.
           unfold belongsto in H1. Locs.unfolds.
           apply H in H1.
           apply range_locset_belongsto in H1 as [].
           subst.
           rewrite PMap.gss;auto.
-          destruct zle,zlt;try omega;simpl;auto.
+          destruct zle,zlt;try Lia.lia;simpl;auto.
           constructor.
         }
       }
@@ -275,7 +275,7 @@ Section BUFFER.
     forall a b,
       b = a + ( b - a).
   Proof.
-    intros;omega.
+    intros;Lia.lia.
   Qed.
   Definition bi_eff bi m m':Prop :=
     match bi with
@@ -376,14 +376,14 @@ Section BUFFER.
         split.
         eapply FP.conflict_ff;simpl.
         unfold FMemOpFP.range_locset;Locs.unfolds.
-        exists b ofs. ex_match2. destruct zle,zlt;auto;try omega.
+        exists b ofs. ex_match2. destruct zle,zlt;auto;try Lia.lia.
         
         unfold FMemOpFP.range_locset.
         Locs.unfolds.
         rewrite <-!add_minus_eq.
         intro.
         specialize (H0 b ofs).
-        ex_match2. destruct H4,zle,zlt,zle,zlt;try omega;simpl in *;exploit H0;auto.
+        ex_match2. destruct H4,zle,zlt,zle,zlt;try Lia.lia;simpl in *;exploit H0;auto.
       }
     }
     {
@@ -408,12 +408,12 @@ Section BUFFER.
         rewrite !emp_intersect_locs,!Locs.locs_union_emp.
         Locs.unfolds. unfold FMemOpFP.range_locset.
         exists b ofs. destruct H5;subst. ex_match2.
-        destruct zle,zlt;auto;try omega.
+        destruct zle,zlt;auto;try Lia.lia.
 
         destruct H5;subst.
         intro. unfold FMemOpFP.range_locset in H0;Locs.unfolds.
         specialize (H0 b ofs).
-        ex_match2. destruct zle,zlt,zle,zlt;try omega;exploit H0;eauto.
+        ex_match2. destruct zle,zlt,zle,zlt;try Lia.lia;exploit H0;eauto.
       }
     }
     {
@@ -443,14 +443,14 @@ Section BUFFER.
           eapply FP.conflict_ff;simpl. Locs.unfolds.
           exists b ofs. unfold FMemOpFP.range_locset;ex_match2;auto.
           rewrite <-add_minus_eq.
-          destruct zle,zlt,zle,zlt;try omega;auto.
+          destruct zle,zlt,zle,zlt;try Lia.lia;auto.
 
           unfold FMemOpFP.range_locset. Locs.unfolds.
           intro.
           specialize (H0 b ofs). subst.
           ex_match2.
           rewrite <-!add_minus_eq in H0.
-          destruct zle,zlt,zle,zlt;try omega;exploit H0;eauto.
+          destruct zle,zlt,zle,zlt;try Lia.lia;exploit H0;eauto.
         }
         {
           eapply H3;eauto.
@@ -474,12 +474,12 @@ Section BUFFER.
           rewrite PMap.gsspec. ex_match2;eauto. subst.
           intros. apply H2 in H3 as ?.
           ex_match2.
-          destruct zle,zlt;try omega;inv Hx2.
+          destruct zle,zlt;try Lia.lia;inv Hx2.
 
           contradict H0.
           split;auto.
           unfold FMemOpFP.free_fp;apply FP.conflict_ff;simpl;Locs.unfolds.
-          exists b0 ofs. apply andb_true_iff;split;auto;unfold FMemOpFP.range_locset;ex_match2;rewrite <- add_minus_eq;destruct zle,zlt;try omega;auto.
+          exists b0 ofs. apply andb_true_iff;split;auto;unfold FMemOpFP.range_locset;ex_match2;rewrite <- add_minus_eq;destruct zle,zlt;try Lia.lia;auto.
         }
       }
       {
@@ -497,7 +497,7 @@ Section BUFFER.
         do 2 eexists. apply andb_true_iff;split;eauto.
         unfold FMemOpFP.range_locset;ex_match2.
         rewrite <- add_minus_eq.
-        destruct zle,zlt;try omega;auto.
+        destruct zle,zlt;try Lia.lia;auto.
       }
     }
     {
@@ -527,7 +527,7 @@ Section BUFFER.
         Locs.unfolds. apply H in Heqt.
         do 2 eexists. apply andb_true_iff. split;eauto.
         unfold FMemOpFP.range_locset;ex_match2.
-        destruct zle,zlt;try omega;auto.
+        destruct zle,zlt;try Lia.lia;auto.
       }
     }
     {
@@ -541,13 +541,13 @@ Section BUFFER.
       rewrite PMap.gsspec. ex_match2. constructor.
       subst. contradict H0.
       split. unfold FMemOpFP.uncheck_alloc_fp,FMemOpFP.store_fp;apply FP.conflict_wf;simpl;rewrite !emp_intersect_locs,!Locs.emp_union_locs.
-      Locs.unfolds. exists b0 ofs. apply andb_true_iff;split. unfold FMemOpFP.range_locset. ex_match2. clear Hx0. destruct zle,zlt;try omega;auto. ex_match2.
+      Locs.unfolds. exists b0 ofs. apply andb_true_iff;split. unfold FMemOpFP.range_locset. ex_match2. clear Hx0. destruct zle,zlt;try Lia.lia;auto. ex_match2.
 
       unfold FMemOpFP.range_locset. intro.
       Locs.unfolds. specialize (H0 b0 ofs). ex_match2.
       rewrite <- add_minus_eq in H0.
       assert(zle z0 ofs && zlt ofs z1 = true).
-      apply H0. clear H0 Hx0. destruct zle,zlt;auto;omega.
+      apply H0. clear H0 Hx0. destruct zle,zlt;auto;Lia.lia.
       congruence.
     }
     {
@@ -569,7 +569,7 @@ Section BUFFER.
         unfold FMemOpFP.store_fp,FMemOpFP.free_fp,FMemOpFP.range_locset;simpl;rewrite !emp_intersect_locs,!Locs.emp_union_locs. Locs.unfolds.
         exists b0 ofs.
         ex_match2. rewrite <-add_minus_eq,Hx2.
-        clear Hx2. destruct zle,zlt;auto;try omega.
+        clear Hx2. destruct zle,zlt;auto;try Lia.lia.
       }
       {
         clear Hx Hx0 H1.
@@ -742,7 +742,7 @@ Section BUFFER.
       intros.
       rewrite !PMap.gss in *.
       ex_match2.
-      destruct zle,zlt,zle,zlt;auto with bool; omega.
+      destruct zle,zlt,zle,zlt;auto with bool; Lia.lia.
     }
     {
       clear Hx3 Hx4 Hx5 Hx6.
@@ -770,7 +770,7 @@ Section BUFFER.
       
       unfold unchecked_free in H. simpl in H.
       rewrite PMap.gsspec in H. ex_match2.
-      destruct zle,zlt;auto with bool;try omega.
+      destruct zle,zlt;auto with bool;try Lia.lia.
     }
     {
       destruct v0 as [? _],v1 as [? _].
@@ -822,7 +822,7 @@ Section BUFFER.
       intros;clear r H0 H1.
       unfold unchecked_free in *. simpl in *.
       rewrite PMap.gss in H4. ex_match2.
-      destruct zle,zlt;auto with bool;try omega.
+      destruct zle,zlt;auto with bool;try Lia.lia.
     }
   Qed.
  Lemma unbuffer_safe_apply_buffer':
@@ -1775,7 +1775,7 @@ Proof.
         unfold FMemOpFP.range_locset.
         ex_match2; subst; rewrite Zplus_minus.
         destruct (zle z ofs); destruct (zlt ofs z0); simpls;
-          tryfalse; try omega; eauto.
+          tryfalse; try Lia.lia; eauto.
       }
       {
         clear - H0 H EffectPermEqPre.
@@ -1870,7 +1870,7 @@ Proof.
       unfolds FMemOpFP.range_locset.
       ex_match2; subst.
       destruct (zle z ofs); destruct (zlt ofs (z + size_chunk m1));
-        tryfalse; try omega; simpls.
+        tryfalse; try Lia.lia; simpls.
       assert (true = true); eauto.
       eapply EffectPermEqPre in H2.
       unfolds GMem.perm.
@@ -2426,12 +2426,12 @@ Proof.
   rewrite <- Hx; eauto.
   simpls.
   rewrite app_length in H.
-  omega.
+  Lia.lia.
   assert (length (tso_buffers tm t0) = length (tso_buffers tm t0 ++ bis)).
   rewrite <- H0; eauto.
   rewrite app_length in H.
   destruct bis; simpls; tryfalse.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma subset_intersect_full_intersect :
@@ -2665,7 +2665,7 @@ Proof.
     assert (length (tso_buffers tm t') = length (b :: tso_buffers tm t' ++ bis)).
     rewrite <- Hx; eauto.
     simpls.
-    rewrite app_length in H; omega.
+    rewrite app_length in H; Lia.lia.
     eapply append_ls_still_nil in H0; subst.
     simpls; tryfalse.
   }
@@ -2721,7 +2721,7 @@ Proof.
       rewrite <- H1; eauto.
     }
     rewrite app_length in H; simpls.
-    omega.
+    Lia.lia.
   }
   {
     rewrite H0 in H_unbuf.
@@ -3478,11 +3478,11 @@ Proof.
     split; intro.
     destruct H0; subst; eauto.
     destruct (Nat.eq_dec nextblockid n); subst.
-    omega.
+    Lia.lia.
     lets Ht : n0.
     eapply freelist_wd in Ht; tryfalse.
     eapply valid_wd in H0; eauto.
-    omega.
+    Lia.lia.
     eapply Nat.lt_exists_pred in H0.
     destruct H0 as [k [Ht Hle]].
     subst.
@@ -3580,7 +3580,7 @@ Proof.
     destruct (Nat.eq_dec n nextblockid); eauto.
     eapply freelist_wd in n0; tryfalse.
     eapply valid_wd in H1; eauto.
-    omega.
+    Lia.lia.
   }
   destruct H1; subst.
   {
@@ -3590,7 +3590,7 @@ Proof.
     assert (MemAux.get_block freelist n = MemAux.get_block freelist n \/
             In (MemAux.get_block freelist n) validblocks); eauto.
     eapply H1 in H2.
-    omega.
+    Lia.lia.
   }
   {
     lets Ht : H1.
@@ -3600,7 +3600,7 @@ Proof.
             In (MemAux.get_block freelist nextblockid0) validblocks).
     eauto.
     eapply valid_wd0 in H2; eauto.
-    omega.
+    Lia.lia.
   }
 Qed.
 
@@ -3810,7 +3810,7 @@ Proof.
               eauto.
               eapply H2 in H4.
               clear - H1 H4.
-              omega.
+              Lia.lia.
             }
             destruct H1; eauto.
             { 
@@ -3823,12 +3823,12 @@ Proof.
               destruct H1.
               subst. 
               assert ((nextblockid + 1)%coq_nat <> nextblockid).
-              intro. omega.
+              intro. Lia.lia.
               eapply freelist_wd1 in H1.
               tryfalse.
               eapply valid_wd in Ht.
               eapply Ht in H1.
-              omega.
+              Lia.lia.
             }
           }
 
@@ -3854,7 +3854,7 @@ Proof.
             eapply H2 in Ht.
             eapply H in Ht.
             eapply valid_wd1 in Ht; eauto.
-            omega.
+            Lia.lia.
           }
         }
         eapply origin_embed_alloc_nextblock_embed_still with (m := strip fm'); eauto.
@@ -3970,7 +3970,7 @@ Proof.
       eapply valid_wd in H1; eauto.
       eapply valid_wd0; eauto.
       clear - H5 H1.
-      omega.
+      Lia.lia.
     }
     {
       inv H2; inv H3.
@@ -4005,7 +4005,7 @@ Proof.
       destruct H2.
       {
         eapply valid_wd in H2; eauto.
-        omega.
+        Lia.lia.
       }
       {
         destruct H2 as (lo & hi & H2).
@@ -4938,9 +4938,9 @@ Section normal_reorder.
             eapply H;eauto.
           }
           {
-            inv H1;simpl. eexists;split;eauto. omega.
+            inv H1;simpl. eexists;split;eauto. Lia.lia.
             eapply fid_valid in H;eauto.
-            destruct H as [?[]]. exists x;split;eauto. omega.
+            destruct H as [?[]]. exists x;split;eauto. Lia.lia.
           }
           {
             destruct n1,n2;simpl in *;auto.
@@ -4952,7 +4952,7 @@ Section normal_reorder.
               rewrite <- H4 in H3.
               contradict H3.
               apply FLISTWD.
-              omega.
+              Lia.lia.
             }
             {
               edestruct fid_valid. apply H.
@@ -4961,7 +4961,7 @@ Section normal_reorder.
               rewrite <- H5 in H3. simpl in H3.
               contradict H3.
               apply FLISTWD.
-              omega.
+              Lia.lia.
             }
             {
               f_equal. eapply H0;eauto.

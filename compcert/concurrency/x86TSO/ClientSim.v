@@ -377,11 +377,11 @@ Proof.
                                  (FMemory.Mem.setN  (Memdata.encode_val m v) z (GMem.mem_contents gm2) !! b0)).
         { revert H H0. clear. generalize (Memdata.encode_val m v). intros.
           assert (exists n, ofs = z + (Z.of_nat n) /\ (n < length l)%nat) as [n [Hofs Hn]].
-          { exists (Z.to_nat (ofs - z)). split. rewrite Z2Nat.id; omega.
-            apply Nat2Z.inj_lt. rewrite Z2Nat.id; omega. }
+          { exists (Z.to_nat (ofs - z)). split. rewrite Z2Nat.id; Lia.lia.
+            apply Nat2Z.inj_lt. rewrite Z2Nat.id; Lia.lia. }
           subst ofs. destruct H. clear H1.
           assert (exists n', n + S n' = length l)%nat as [n' Hlength].
-          { exists (length l - n - 1)%nat. omega. }
+          { exists (length l - n - 1)%nat. Lia.lia. }
           rewrite <- Hlength in *. repeat rewrite FMemory.Mem.getN_concat in H0.
           apply app_eq_length_eq_inj in H0.
           simpl in H0. inv H0. auto.
@@ -389,7 +389,7 @@ Proof.
         }
         repeat rewrite FMemory.Mem.getN_setN_same; auto.
       }
-      { repeat rewrite FMemory.Mem.setN_outside; auto; omega. }
+      { repeat rewrite FMemory.Mem.setN_outside; auto; Lia.lia. }
     }
     { constructor; unfold GMem.valid_block; simpl; repeat rewrite PMap.gso; simpl; auto; inv H; try tauto. }
   }
@@ -429,7 +429,7 @@ Proof.
     destruct (Classical_Prop.classic (z <= ofs < z0)). exfalso. apply H0. constructor. auto.
     { constructor; simpl.
       { unfold GMem.valid_block. split; auto. }
-      { intros. rewrite PMap.gss. destruct zle, zlt; simpl; auto. omega. }
+      { intros. rewrite PMap.gss. destruct zle, zlt; simpl; auto. Lia.lia. }
       { auto. }
     }
     { constructor; simpl.
@@ -446,11 +446,11 @@ Proof.
     assert (length (Memdata.encode_val m v) = Memdata.size_chunk_nat m).
     { clear. destruct m; simpl; unfold Memdata.encode_val, Memdata.size_chunk_nat;
                destruct v; try rewrite length_list_repeat; auto. }
-    omega.
+    Lia.lia.
     { constructor; simpl.
       { unfold GMem.valid_block. split; auto. }
       { intros. auto. }
-      { rewrite PMap.gss. rewrite FMemory.Mem.setN_outside. auto. omega. }
+      { rewrite PMap.gss. rewrite FMemory.Mem.setN_outside. auto. Lia.lia. }
     }
     { constructor; simpl.
       { unfold GMem.valid_block. split; auto. }
@@ -642,15 +642,15 @@ Lemma nth_error_split':
     nth_error l i = Some a \/ ( nth_error ls (i-(length l)) = Some a /\ (i >= length l)%nat).
 Proof.
   induction l;simpl;intros.
-  right;eauto. assert((i-0)%nat=i). omega.
+  right;eauto. assert((i-0)%nat=i). Lia.lia.
   split;auto.
   congruence.
-  omega.
+  Lia.lia.
 
   destruct i. simpl in H. inv H.
   left. auto.
   simpl in H. eapply IHl in H as [|[]].
-  left;eauto. right;split;auto. omega.
+  left;eauto. right;split;auto. Lia.lia.
 Qed.
 Lemma nth_error_nil:
   forall A i,
@@ -725,7 +725,7 @@ Proof.
     ex_match2;subst;eauto;esolve_nth_error.
     apply H0 in H2;congruence.
     apply H0 in H1;congruence.
-    split;auto. omega.
+    split;auto. Lia.lia.
     apply H0 in H1;congruence.
     apply H0 in H2;congruence.
   }

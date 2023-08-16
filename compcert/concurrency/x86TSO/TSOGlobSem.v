@@ -147,7 +147,7 @@ Module TSOThrdPool.
     let: f := FLists.get_tfid (TSOGlobEnv.freelists GE) (thdp.(next_tid)) nf in
     let: c := TSOCore.Build_t GE mid c sg f in
     Build_t GE (PMap.set thdp.(next_tid) (Some (c::nil)) thdp.(content))
-            (Psucc thdp.(next_tid))
+            (Pos.succ thdp.(next_tid))
             (fun i => if peq i thdp.(next_tid) then (S (thdp.(next_fmap) i))
                    else thdp.(next_fmap) i).
 

@@ -21,10 +21,10 @@ Proof.
   remember (Pos.to_nat B) as N.
   assert (B = Pos.of_nat N). subst. rewrite Pos2Nat.id; auto. rewrite H. clear B HeqN H.
   assert (forall s, 0 < N -> seq s (S N - 1) = seq s (N - 1) ++ (s + (N - 1)) :: nil)%nat.
-  { clear. induction N. intros. omega.
+  { clear. induction N. intros. Lia.lia.
     destruct N; simpl in *. intro. rewrite Nat.add_0_r. auto.
-    intros. rewrite (IHN (S s));[|omega]. simpl. repeat f_equal; omega. }
-  rewrite H; auto. rewrite map_app. replace (1 + (N - 1))%nat with N by omega. simpl. auto.
+    intros. rewrite (IHN (S s));[|Lia.lia]. simpl. repeat f_equal; Lia.lia. }
+  rewrite H; auto. rewrite map_app. replace (1 + (N - 1))%nat with N by Lia.lia. simpl. auto.
 Qed.
 
 Lemma dom_length: forall B, length (dom B) = (Pos.to_nat B - 1)%nat.
@@ -35,10 +35,10 @@ Proof.
   intros. split; intros.
   unfold dom. rewrite <- (Pos2Nat.id b). apply in_map. auto.
   apply in_seq. pose proof (Pos2Nat.is_pos b); pose proof (Pos2Nat.is_pos B).
-  rewrite Nat.add_sub_assoc, minus_plus; try split; try omega. apply Pos2Nat.inj_lt; auto.
+  rewrite Nat.add_sub_assoc, minus_plus; try split; try Lia.lia. apply Pos2Nat.inj_lt; auto.
   unfold dom in H. apply in_map_iff in H. destruct H as [x [Hb IN]].
-  apply in_seq in IN. pose proof (Pos2Nat.is_pos B). rewrite Nat.add_sub_assoc, minus_plus in IN; try omega.
-  assert (Pos.to_nat b = x). rewrite <- Hb. apply Nat2Pos.id. omega. rewrite <- H0 in IN. destruct IN as [_ IN].
+  apply in_seq in IN. pose proof (Pos2Nat.is_pos B). rewrite Nat.add_sub_assoc, minus_plus in IN; try Lia.lia.
+  assert (Pos.to_nat b = x). rewrite <- Hb. apply Nat2Pos.id. Lia.lia. rewrite <- H0 in IN. destruct IN as [_ IN].
   destruct (plt b B); auto. apply Pos2Nat.inj_lt in IN. congruence.
 Qed.
 
@@ -47,23 +47,23 @@ Proof.
   apply positive_Peano_ind. cbv. constructor.
   intros. rewrite dom_spec_rec. rewrite NoDup_nth_error in H. apply NoDup_nth_error.
   rewrite dom_length in H. rewrite app_length. simpl. intros.
-  destruct (Nat.eq_dec i (length (dom x))), (Nat.eq_dec j (length (dom x))); try omega.
+  destruct (Nat.eq_dec i (length (dom x))), (Nat.eq_dec j (length (dom x))); try Lia.lia.
   (* i = B, j < B *)
-  rewrite nth_error_app2 in H1; try omega. rewrite e, Nat.sub_diag in H1. simpl in H1.
+  rewrite nth_error_app2 in H1; try Lia.lia. rewrite e, Nat.sub_diag in H1. simpl in H1.
   assert (j < length (dom x ++ x :: nil))%nat. apply nth_error_Some. intro. congruence.
-  rewrite app_length in H2. simpl in H2. rewrite nth_error_app1 in H1; try omega.
+  rewrite app_length in H2. simpl in H2. rewrite nth_error_app1 in H1; try Lia.lia.
   symmetry in H1. apply nth_error_in in H1. apply dom_correct, Plt_ne in H1. contradiction.
   (* i < B, j = B *)
-  rewrite nth_error_app2 with (n:=j) in H1; try omega. rewrite e, Nat.sub_diag in H1. simpl in H1.
+  rewrite nth_error_app2 with (n:=j) in H1; try Lia.lia. rewrite e, Nat.sub_diag in H1. simpl in H1.
   assert (i < length (dom x ++ x :: nil))%nat. apply nth_error_Some. intro. congruence.
-  rewrite app_length in H2. simpl in H2. rewrite nth_error_app1 in H1; try omega.
+  rewrite app_length in H2. simpl in H2. rewrite nth_error_app1 in H1; try Lia.lia.
   apply nth_error_in in H1. apply dom_correct, Plt_ne in H1. contradiction.
   (* i < B, j < B *)
-  rewrite nth_error_app1 in H1; try omega.
-  assert (nth_error (dom x ++ x :: nil) j <> None). intro. rewrite H2 in H1. apply nth_error_None in H1. omega.
+  rewrite nth_error_app1 in H1; try Lia.lia.
+  assert (nth_error (dom x ++ x :: nil) j <> None). intro. rewrite H2 in H1. apply nth_error_None in H1. Lia.lia.
   apply nth_error_Some in H2. rewrite app_length in H2. simpl in H2.
-  rewrite nth_error_app1 in H1; try omega.
-  apply H; auto. rewrite dom_length in H0, n. omega.
+  rewrite nth_error_app1 in H1; try Lia.lia.
+  apply H; auto. rewrite dom_length in H0, n. Lia.lia.
 Qed.
 
 Definition range j B : list (option block) :=
@@ -102,8 +102,8 @@ Lemma nodup_remove_one:
     NoDup (remove peq b D).
 Proof.
   induction D; intros. simpl. auto.
-  simpl. destruct peq. inv H. rewrite not_in_remove; auto. split; [omega|auto].
-  inv H. apply IHD with b in H3. simpl. destruct H3. split;[omega|constructor; auto].
+  simpl. destruct peq. inv H. rewrite not_in_remove; auto. split; [Lia.lia|auto].
+  inv H. apply IHD with b in H3. simpl. destruct H3. split;[Lia.lia|constructor; auto].
   intro. apply H2. generalize n H1; clear. intro H. induction D; auto. simpl. destruct peq. auto.
   simpl. intros [?|?]; auto.
 Qed.
@@ -111,10 +111,10 @@ Qed.
 Lemma leftout_length:
   forall R D, NoDup D -> (length (leftout D R) >= length D - length R)%nat.
 Proof.
-  induction R; simpl; intros. omega.
+  induction R; simpl; intros. Lia.lia.
   destruct a as [a|]; auto.
-  apply nodup_remove_one with (b:=a) in H. destruct H. apply IHR in H0. unfold block in *; omega.
-  apply IHR in H. omega.
+  apply nodup_remove_one with (b:=a) in H. destruct H. apply IHR in H0. unfold block in *; Lia.lia.
+  apply IHR in H. Lia.lia.
 Qed.
 
 Lemma leftout_length_none:
@@ -137,7 +137,7 @@ Proof.
   assert (length (leftout (dom B) (range j B)) > 0)%nat.
   rewrite RANGE. rewrite leftout_length_none. pose proof (leftout_length (R1 ++ R2) (dom B) (dom_norep B)).
   assert (length (dom B) = length (range j B)). unfold range. rewrite map_length; auto.
-  rewrite H2, RANGE in H1. repeat rewrite app_length in H1. simpl in H1. omega.
+  rewrite H2, RANGE in H1. repeat rewrite app_length in H1. simpl in H1. Lia.lia.
   assert (exists b', In b' (leftout (dom B) (range j B))). destruct (leftout (dom B) (range j B)); simpl; eauto. inv H1.
   destruct H2. exists x. apply leftout_correct in H2. destruct H2. apply dom_correct in H2. split; auto.
   intros. intro. apply H in H4. contradiction.
@@ -2617,7 +2617,7 @@ Proof.
         }
         (* representable *)
         { unfold Bset.inj_to_meminj. intros.
-          destruct (j22 b) eqn:J22; inv H. split; [omega|].
+          destruct (j22 b) eqn:J22; inv H. split; [Lia.lia|].
           rewrite Z.add_0_r. apply Integers.Ptrofs.unsigned_range_2.
         }
         (* perm_inv *)

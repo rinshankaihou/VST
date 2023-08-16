@@ -660,14 +660,14 @@ Ltac resvalid:=
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.store_val_inject_unmapped_closed_preserved;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.free ?m1 _ _ _ = Some ?m2,
         H2: Mem.free ?m1' _ _ _ = Some ?m2',
             H3: proper_mu _ _ _ _ 
     |- MemClosures_local.unmapped_closed _ ?m2 ?m2'
     => inv H3; eapply MemClosures_local.free_inject_unmapped_closed_preserved; eauto;
       try (rewrite Z.add_0_r);  try eassumption;
-      try (compute; eauto; fail); try omega
+      try (compute; eauto; fail); try Lia.lia
   | H1: Mem.alloc ?m1 _ _ = (?m2, _),
         H2: Mem.alloc ?m1' _ _ = (?m2', _),
             H3: proper_mu _ _ _ _
@@ -834,7 +834,7 @@ Proof.
   Unfocus.
   Focus 10.
   {
-    eapply Mem.alloc_extends with(lo2:=0)(hi2:=sz) in Hx0 as ?;eauto;try omega;Hsimpl; rewrite H.
+    eapply Mem.alloc_extends with(lo2:=0)(hi2:=sz) in Hx0 as ?;eauto;try Lia.lia;Hsimpl; rewrite H.
     eapply Mem.storev_extends in Hx1 as R1;eauto;Hsimpl.
     eapply Mem.storev_extends in Hx2 as R2;eauto;Hsimpl.
 
@@ -1009,7 +1009,7 @@ Proof.
   intros.
   ex_match.
   subst.
-  destruct zle,zlt,zle,zlt;auto;try omega.
+  destruct zle,zlt,zle,zlt;auto;try Lia.lia.
 Qed.
 Ltac invMS :=
   match goal with
@@ -1259,7 +1259,7 @@ Proof.
     {
       invMS. intros.
       inversion MC. subst fb0 args tys0 retty0 Hm Lm Lcore.
-      eapply Mem.alloc_extends with(lo2:=0)(hi2:=(4*z)) in H2 as ?;eauto;try omega.
+      eapply Mem.alloc_extends with(lo2:=0)(hi2:=(4*z)) in H2 as ?;eauto;try Lia.lia.
       Hsimpl.
 
       assert((MemOpFP.alloc_fp m 0 (4*z))=(MemOpFP.alloc_fp m' 0 (4*z))).

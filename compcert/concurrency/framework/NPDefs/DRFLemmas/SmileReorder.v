@@ -3522,7 +3522,7 @@ Section PRaceLemmas.
         inversion H1;subst. simpl in *. subst. inversion Heqb.
         assert(fp0=FP.emp). inversion H1;auto. subst.
         right. Esimpl;eauto. constructor.
-        Omega.omega.
+        Lia.lia.
       }
       {
         apply type_glob_step_exists in H2 as [].
@@ -3536,7 +3536,7 @@ Section PRaceLemmas.
           Hsimpl.
           right;Esimpl;eauto. econstructor;eauto.
           rewrite <- H5. rewrite FP.fp_union_assoc;auto.
-          Omega.omega.
+          Lia.lia.
         }
       }
     }

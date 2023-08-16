@@ -2838,7 +2838,7 @@ Proof.
         unfold FMemOpFP.range_locset.
         ex_match2; subst; rewrite Zplus_minus.
         destruct (zle z ofs); destruct (zlt ofs z0); simpls;
-          tryfalse; try omega; eauto.
+          tryfalse; try Lia.lia; eauto.
       }
       {
         clear - H0 H EffectPermEqPre.
@@ -2933,7 +2933,7 @@ Proof.
       unfolds FMemOpFP.range_locset.
       ex_match2; subst.
       destruct (zle z ofs); destruct (zlt ofs (z + size_chunk m1));
-        tryfalse; try omega; simpls.
+        tryfalse; try Lia.lia; simpls.
       assert (true = true); eauto.
       eapply EffectPermEqPre in H2.
       unfolds GMem.perm.

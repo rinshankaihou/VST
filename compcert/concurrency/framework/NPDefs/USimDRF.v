@@ -723,7 +723,7 @@ Local Notation "{-| PC , T }" :=
       exists 0,k,pc,s',FP.emp,fp'.
       clearfp.
       split;constructor;auto;constructor;auto;constructor;auto;constructor;auto;constructor;auto.
-      Omega.omega.
+      Lia.lia.
     }
   Qed.
   Corollary tau_star_OIsplit:

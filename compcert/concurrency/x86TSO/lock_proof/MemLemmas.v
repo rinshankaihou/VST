@@ -174,7 +174,7 @@ Proof.
   clear Hx;contradict n0;split;auto.
   memunfolds;auto.
   apply range_perm_cur_max;auto.
-  simpl. apply Z.mod_divide;auto;omega.
+  simpl. apply Z.mod_divide;auto;Lia.lia.
 Qed.
 
 Lemma item_in_bf_add_count_one_block_neq :
@@ -218,7 +218,7 @@ Proof.
       rewrite H2 in H1.
       inversion H1; subst; eauto.
       assert (count_occ Pos.eq_dec (get_buffer_b bf) L = 0).
-      omega.
+      Lia.lia.
       eapply count_occ_not_In in H3; eauto.
     }
     {
@@ -480,7 +480,7 @@ Proof.
         subst.
         destruct Hin_buf; tryfalse.
         assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-        omega.
+        Lia.lia.
         clear - H4 H5.
         eapply count_occ_not_In in H5.
         eapply b_not_bf_item_not1 in H4.
@@ -542,7 +542,7 @@ Proof.
         subst.
         destruct Hin_buf; tryfalse.
         assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-        omega.
+        Lia.lia.
         clear - H4 H5.
         eapply count_occ_not_In in H5.
         eapply b_not_bf_item_not1 in H4.
@@ -637,7 +637,7 @@ Proof.
             simpl in Hcount.
             destruct (Pos.eq_dec b b); tryfalse.
             assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-            omega.
+            Lia.lia.
             eapply count_occ_not_In in H6.
             eapply H6 in H5.
             tryfalse.
@@ -653,7 +653,7 @@ Proof.
           simpl in Hcount.
           destruct (Pos.eq_dec b b); tryfalse.
           assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-          omega.
+          Lia.lia.
           eapply count_occ_not_In in H5.
           eapply b_not_bf_item_not1 in H4.
           eapply H5 in H4.
@@ -1246,7 +1246,7 @@ Proof.
             simpl in Hcount.
             destruct (Pos.eq_dec b b); tryfalse.
             assert (count_occ Pos.eq_dec (get_buffer_b b2) b = 0).
-            omega.
+            Lia.lia.
             eapply count_occ_not_In in H0.
             eapply b_not_bf_item_not1 in H.
             eapply H0 in H.
@@ -1274,7 +1274,7 @@ Proof.
             simpl in Hcount.
             destruct (Pos.eq_dec b b); tryfalse.
             assert (count_occ Pos.eq_dec (get_buffer_b b2) b = 0).
-            omega.
+            Lia.lia.
             eapply count_occ_not_In in H0.
             eapply b_not_bf_item_not1 in H.
             eapply H0 in H.
@@ -1397,7 +1397,7 @@ Proof.
           simpl in Hcount.
           destruct (Pos.eq_dec b b); tryfalse.
           assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-          omega.
+          Lia.lia.
           eapply count_occ_not_In in H0.
           eapply b_not_bf_item_not1 in H.
           eapply H0 in H.
@@ -1426,7 +1426,7 @@ Proof.
           simpl in Hcount.
           destruct (Pos.eq_dec b b); tryfalse.
           assert (count_occ Pos.eq_dec (get_buffer_b b0) b = 0).
-          omega.
+          Lia.lia.
           eapply count_occ_not_In in H0.
           eapply b_not_bf_item_not1 in H.
           eapply H0 in H.
@@ -1584,7 +1584,7 @@ Proof.
     clear - H.
     unfold valid_access; simpl; split; eauto.
     eapply Zmod_divide; eauto.
-    omega.
+    Lia.lia.
   }
 Qed.
 
@@ -1704,7 +1704,7 @@ Proof.
                   get_block (Mem.freelist fm) nextblockid); eauto.
           eapply valid_wd in H.
           eapply H in Hin_valid_block.
-          omega.
+          Lia.lia.
         }
         {
           eapply (H1 t0).
@@ -1894,7 +1894,7 @@ Proof.
       unfold valid_access, range_perm in v; simpls.
       lets Ht : v.
       destruct Ht.
-      assert ((0 <= 0 < 4)%Z). omega.
+      assert ((0 <= 0 < 4)%Z). Lia.lia.
       eapply H0 in H3.
       eapply invalid_noaccess in H.
       rewrite H in H3.

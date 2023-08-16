@@ -45,7 +45,7 @@ Section Refinement.
   Lemma threadpool_spawn_domadd:
     forall ge t mid c sg ,
       let t' :=  @ThreadPool.spawn ge t mid c sg in
-      ThreadPool.next_tid t' = BinPos.Psucc (ThreadPool.next_tid t).
+      ThreadPool.next_tid t' = BinPos.Pos.succ (ThreadPool.next_tid t).
   Proof.
     intros.
     unfold ThreadPool.spawn in t'.
@@ -1229,15 +1229,15 @@ Section Refinement.
     destruct x;try(inversion H2;simpl in *;subst;simpl in *;subst;inversion H0;inversion Heqb;fail);auto.
     inversion H2;subst. simpl in *;subst. inversion Heqb.
     assert(fp1=FP.emp). inversion H2;auto. subst.
-    exists 0,FP.emp,pc. split. constructor. split. Omega.omega.
+    exists 0,FP.emp,pc. split. constructor. split. Lia.lia.
     exists s2. split;auto.
     exists fp2. split;auto.
-    simpl. assert(i-0=i). Omega.omega.
+    simpl. assert(i-0=i). Lia.lia.
     rewrite H3;auto.
     
     specialize (IHi _ _ _ H5 Heqb H1) as (?&?&?&?&?&?&?&?&?&?).
     exists (S x),(FP.union fp1 x0),x1. split. econstructor;eauto. inversion H2;subst;inversion H0;inversion Heqb. econstructor;eauto.
-    split. Omega.omega.
+    split. Lia.lia.
 
     eexists;split;eauto.
     eexists;split;eauto.
@@ -1299,17 +1299,17 @@ Section Refinement.
     inversion H2;subst;simpl in *;subst. inversion Heqb.
     
     assert(fp0=FP.emp). inversion H2;auto. subst.
-    exists 0,FP.emp,pc. split. constructor. split. Omega.omega.
+    exists 0,FP.emp,pc. split. constructor. split. Lia.lia.
     exists s'. split;auto.
     exists fp'. split;auto.
-    assert(S i - 0 - 1 = i). Omega.omega.
+    assert(S i - 0 - 1 = i). Lia.lia.
     rewrite H3;auto.
 
     specialize (IHi _ _ _ _ H4 Heqb H1) as (?&?&?&?&?&?&?&?&?&?).
     apply type_glob_step_exists in H3 as [].
     destruct x4;try(inversion H3;simpl in *;subst;simpl in *;subst;inversion H0;inversion Heqb;fail);auto.
     exists (S x),(FP.union fp0 x0),x1. split. econstructor;eauto.
-    split. Omega.omega.
+    split. Lia.lia.
     eexists;split;eauto.
     eexists;split;eauto.
     rewrite <- H8. rewrite FP.fp_union_assoc;auto.
@@ -1735,7 +1735,7 @@ Section Refinement.
 
         destruct L as (pc1'&ent1'&pc2'&star1'&pc3'&ext1'&pc4'&step'&eq'&drf').
 
-        assert(n-x-1<S n). Omega.omega.
+        assert(n-x-1<S n). Lia.lia.
         assert(drf_pc_glob ({-|pc3',cur_tid pc})).
         assert(glob_step pc3' sw FP.emp ({-|pc3',cur_tid pc})).
         apply globstep_pc_valid_curtid in step' as [].
@@ -1780,9 +1780,9 @@ Section Refinement.
 
           rewrite <- H21 in H15. rewrite pc_cur_tid in H15.          
           eapply tau_N_S in H15;eauto.
-          assert(S(n-x-1) = n-x). Omega.omega.
+          assert(S(n-x-1) = n-x). Lia.lia.
           rewrite H22 in H15.
-          assert(n=x+(n-x)). Omega.omega. rewrite H23.
+          assert(n=x+(n-x)). Lia.lia. rewrite H23.
           rewrite<- fpunion.
           apply coretauN_globtauN in star1'.
           rewrite FP.emp_union_fp in H15.
@@ -1926,7 +1926,7 @@ Section Refinement.
         destruct x1.
         inversion H2;subst. eapply cur_valid_id_case1 in H3;eauto.
         eapply atomblockstarN_cur_valid_tid in H2;eauto.
-        Omega.omega.
+        Lia.lia.
       }
       apply npnsw_or_sw_star_non_evt_star in H6.
       instantiate(1:=FP.union x8 (FP.union FP.emp FP.emp)).
@@ -1968,7 +1968,7 @@ Section Refinement.
       econstructor;eauto.
     }
     {
-      apply atomblockstarN_np in H0 as ?;auto;[|Omega.omega].
+      apply atomblockstarN_np in H0 as ?;auto;[|Lia.lia].
       Hsimpl.
       apply glob_npnsw_star_to_np_taustar in H4 as ?.
       apply tau_star_non_evt_star in H8.
@@ -2098,7 +2098,7 @@ Section Refinement.
       apply noevt_stepN_sound in H0.
       apply non_evt_star_star in H0 as [].
       eapply final_state_atom ;eauto.
-      apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Omega.omega].
+      apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Lia.lia].
       Hsimpl.
       destruct H4 as [|[|[|]]].
       {
@@ -2174,7 +2174,7 @@ Section Refinement.
       specialize (drf_pc_glob_l2 _ _ H) as ?.
       pose proof H0 as R1.
       apply swstar_l1 in H0. rewrite H0 in *.
-      apply atomblockstarN_np in H1;auto;[|Omega.omega].
+      apply atomblockstarN_np in H1;auto;[|Lia.lia].
 
       Hsimpl.
       destruct H7.
@@ -2635,7 +2635,7 @@ Section Refinement.
             eapply mem_eq_pc_trans;eauto.
             eapply mem_eq_pc_trans with(p1:=pc'') in H34;eauto.
             inversion H34 as (?&?&?&?). congruence.
-            Omega.omega.
+            Lia.lia.
 
             assert(changepc ge x1 (cur_tid s') I = x1).
             unfold changepc. inversion H3;subst;simpl in *;subst.
@@ -2763,7 +2763,7 @@ Section Refinement.
     induction i;intros.
     inversion H;subst.
     rewrite H0 in H1;inversion H1.
-    assert(S i = i + 1). Omega.omega.
+    assert(S i = i + 1). Lia.lia.
     rewrite H2 in H. clear H2.
     apply tau_N_split in H.
     Hsimpl.
@@ -2775,7 +2775,7 @@ Section Refinement.
     destruct x1;try(inversion H2;subst;simpl in *;subst;inversion Heqb;inversion H1;fail).
     assert(fp0=FP.emp). inversion H2;auto. subst.
     Esimpl;eauto.  rewrite FP.emp_union_fp. constructor.
-    Omega.omega.
+    Lia.lia.
 
     eapply IHi in H;eauto.
     Hsimpl.
@@ -2790,7 +2790,7 @@ Section Refinement.
     rewrite <- H6,FP.fp_union_assoc.
     auto.
     rewrite <- H7.
-    Omega.omega.
+    Lia.lia.
   Qed.
  
     
@@ -2812,9 +2812,9 @@ Section Refinement.
     inversion H;subst. inversion H2;subst.
     simpl in *. right;split;auto.
 
-    apply npnsw_or_sw_stepN_inv1 in H;[|Omega.omega].
+    apply npnsw_or_sw_stepN_inv1 in H;[|Lia.lia].
     Hsimpl.
-    assert(S i - 1 = i). Omega.omega.
+    assert(S i - 1 = i). Lia.lia.
     rewrite H4 in H1;clear H4.
     assert(inv3:invpc ge x0). apply npnsw_step_thdpinv in H0;auto. apply swstar_l1 in H;rewrite H;auto.
     apply IHi in H1;auto.
@@ -3007,8 +3007,8 @@ Section Refinement.
        rewrite <- H0. Esimpl;eauto.
      }
      {
-       apply npnsw_or_sw_stepN_inv1 in H0;[|Omega.omega].
-       Hsimpl;subst. assert(S i-1=i). Omega.omega. rewrite H6 in *;clear H6.
+       apply npnsw_or_sw_stepN_inv1 in H0;[|Lia.lia].
+       Hsimpl;subst. assert(S i-1=i). Lia.lia. rewrite H6 in *;clear H6.
        assert(drf_pc_glob x0).
        apply swstar_l1 in H0. rewrite H0 in H4.
        eapply drf_pc_glob_cons_npnsw;eauto.
@@ -3211,9 +3211,9 @@ Section Refinement.
       Esimpl;eauto.
     }
     {
-      apply npnsw_or_sw_stepN_inv1 in H;[|Omega.omega].
+      apply npnsw_or_sw_stepN_inv1 in H;[|Lia.lia].
       Hsimpl.
-      assert(S i - 1 = i). Omega.omega.
+      assert(S i - 1 = i). Lia.lia.
       rewrite H5 in H2;clear H5.
       assert(L:drf_pc_glob x0).
       assert(atom_bit x0 = O). apply glob_npnsw_step_bitO_preserve in H1;auto.
@@ -3326,7 +3326,7 @@ Section Refinement.
      
     destruct (atom_bit pc') eqn:?.
     {
-      eapply noevt_stepN_Si_to_atomblockstarN in H3;eauto;[|Omega.omega].
+      eapply noevt_stepN_Si_to_atomblockstarN in H3;eauto;[|Lia.lia].
       Hsimpl.
       destruct H5;Hsimpl.
       Esimpl;eauto. left;Esimpl;eauto. constructor. inversion H5. inversion H7;auto.
@@ -3394,7 +3394,7 @@ Section Refinement.
     }
     
     {
-      apply noevt_stepN_Si_to_atomblockstarN2 in H3;auto;[|Omega.omega].
+      apply noevt_stepN_Si_to_atomblockstarN2 in H3;auto;[|Lia.lia].
       Hsimpl. 
       destruct H5;Hsimpl.
       Esimpl;eauto;left;Esimpl;eauto.
@@ -3579,7 +3579,7 @@ Section Refinement.
         eapply pc_valid_tid_back_star in H8;eauto.
         destruct H8. contradict H17. inversion H15;subst;simpl;eauto.
       }
-      Omega.omega.
+      Lia.lia.
     }
     
     {
@@ -3633,7 +3633,7 @@ Section Refinement.
       }
       {
         assert(invpc ge x0). erewrite swstar_l1;eauto.
-        eapply atomblockstarN_np in H7;eauto;[|Omega.omega].
+        eapply atomblockstarN_np in H7;eauto;[|Lia.lia].
         Hsimpl. destruct H17.
         {
           Hsimpl.
@@ -3740,11 +3740,11 @@ Section Refinement.
     apply swstar_noevt_stepN in H.
     eapply cons_tau in H0;eauto.
     eapply IHi in H0;try apply H;eauto.
-    assert(0+ S(i+j) = S i + j). Omega.omega.
+    assert(0+ S(i+j) = S i + j). Lia.lia.
     rewrite H4 in H0;clear H4.
     rewrite <- H3, <- FP.fp_union_assoc.
     rewrite FP.emp_union_fp in H0;auto.
-    Omega.omega.
+    Lia.lia.
   Qed.
     
   Lemma psilent_diverge_inv:
@@ -3908,7 +3908,7 @@ Section Refinement.
     Esimpl;eauto.
     intro. contradict H1.
     Hsimpl. eapply noevt_stepN_cons in H1;eauto.
-    assert(S x + S x2 = S(x+x2+1)). Omega.omega.
+    assert(S x + S x2 = S(x+x2+1)). Lia.lia.
     rewrite H5 in H1.
     eauto.
 
@@ -4023,7 +4023,7 @@ Section Refinement.
       eapply noevt_stepN_cons in H13;eauto.
       apply swstar_noevt_stepN in H3.
       eapply noevt_stepN_cons in H13;eauto.
-      assert(0+(x0+S x8) = S(x0+x8)). Omega.omega.
+      assert(0+(x0+S x8) = S(x0+x8)). Lia.lia.
       rewrite H12 in H13;clear H12.
       Esimpl;eauto.
 
@@ -4087,7 +4087,7 @@ Section Refinement.
         apply swstar_l1 in H0 as ?.
         rewrite H11 in H7;simpl in H7. rewrite H1 in H7.
         apply GE_mod_wd_tp_inv in H6 as ?;auto;[|rewrite H11;auto].
-        eapply H in H8;eauto;[|Omega.omega].
+        eapply H in H8;eauto;[|Lia.lia].
 
         assert(invpc GE x0). rewrite H11;auto.
         apply O_globtaustep in H6.
@@ -4115,7 +4115,7 @@ Section Refinement.
         inversion H15;subst;auto.
         apply atomblockstep_invpc_preserve in H6 as ?;auto;[|rewrite H11;auto].
         
-        eapply H in H8;eauto;[|Omega.omega].
+        eapply H in H8;eauto;[|Lia.lia].
         econstructor 2;try apply H8;eauto. econstructor 2;eauto.
         constructor. constructor. constructor. auto.
       }
@@ -4299,7 +4299,7 @@ Section Refinement.
         apply GE_mod_wd_tp_inv in H7;auto.
         destruct H12 as [R | R].
         {
-          eapply IHx3 in H9;eauto;[|Omega.omega|].
+          eapply IHx3 in H9;eauto;[|Lia.lia|].
           Hsimpl.
           eapply npnsw_step_cons_npnsw_or_sw_star in H9;eauto.
           eapply swstar_cons_npnsw_or_sw_star in H1 as ?;eauto.
@@ -4439,7 +4439,7 @@ Section diverge_proof.
       apply non_evt_star_star in H0 as [].
       eapply GE_mod_wd_star_tp_inv2 in H0;eauto.
       assert(atom_bit x1 = O). inversion H2;auto.
-      apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Omega.omega].
+      apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Lia.lia].
       Hsimpl.
       destruct H7 as [|[|[]]].
       {
@@ -4512,7 +4512,7 @@ Section diverge_proof.
     apply drf_pc_glob_l1 in H as ?. destruct H2 as [v1 wdge].
     specialize (drf_pc_glob_l2 _ _ H) as modwdge.
     inversion H as [O1 _].
-    apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Omega.omega].
+    apply noevt_stepN_Si_to_atomblockstarN in H0;auto;[|Lia.lia].
     Hsimpl.
     destruct H2 as [|[|[]]].
     {
@@ -4630,9 +4630,9 @@ Section diverge_proof.
     apply swstar_l1 in H2. rewrite <- H2.
     Esimpl;eauto. econstructor. constructor. rewrite pc_cur_tid;apply mem_eq_pc_refl.
 
-    apply npnsw_or_sw_stepN_inv1 in H;[|Omega.omega].
+    apply npnsw_or_sw_stepN_inv1 in H;[|Lia.lia].
     Hsimpl.
-    assert(S i -1 = i). Omega.omega.
+    assert(S i -1 = i). Lia.lia.
     rewrite H5 in H2;clear H5.
     eapply IHi in H2;eauto.
     Hsimpl.
@@ -4898,7 +4898,7 @@ Section diverge_proof.
     
     apply atomblockstarN_invpc_preservation in H6 as R;try assumption.
 
-    apply atomblockstarN_cur_valid_tid in H6 as ?;try eassumption;[|Omega.omega].
+    apply atomblockstarN_cur_valid_tid in H6 as ?;try eassumption;[|Lia.lia].
     apply blockdiverge_changetid with(i:=cur_tid x4) in H5;try assumption.
     specialize (drf_pc_glob_l2 _ _ H) as ?.
     eapply mem_eq_blockdiverge_tid in H8;try apply H5;try assumption.
@@ -4962,7 +4962,7 @@ Section diverge_proof.
     rewrite (swstar_l1 _ _ _ H0);auto.
     inversion H2;subst;split;auto.
 
-    apply npnsw_or_sw_stepN_inv1 in H0;[|Omega.omega].
+    apply npnsw_or_sw_stepN_inv1 in H0;[|Lia.lia].
     Hsimpl.
     eapply IHi in H2;eauto.
     apply npnsw_step_thdpinv in H1;auto.
@@ -5016,10 +5016,10 @@ Section diverge_proof.
     apply non_evt_star_star in L as [? L].
     eapply pc_valid_tid_back_star in L;eauto.
     clear x.
-    apply npnsw_or_sw_stepN_inv1 in H0;[|Omega.omega].
+    apply npnsw_or_sw_stepN_inv1 in H0;[|Lia.lia].
     Hsimpl.
     enough(drf_pc_glob x0).
-    assert(S k -1 = k). Omega.omega.
+    assert(S k -1 = k). Lia.lia.
     rewrite H6 in H2. clear H6.
     eapply IHk in H2 as ?;eauto.
     Hsimpl.
@@ -5222,9 +5222,9 @@ Section diverge_proof.
     induction i;intros.
     apply npnsw_or_sw_stepN_0 in H2;Hsimpl;subst.
     rewrite (swstar_l1 _ _ _ H5);simpl. apply thread_sim_refl.
-    apply npnsw_or_sw_stepN_inv1 in H2;[|Omega.omega].
+    apply npnsw_or_sw_stepN_inv1 in H2;[|Lia.lia].
     Hsimpl.
-    assert(S i - 1 = i). Omega.omega.
+    assert(S i - 1 = i). Lia.lia.
     rewrite H8 in *;clear H8.
 
     assert(~ list_matched x2 t).
@@ -5269,7 +5269,7 @@ Section diverge_proof.
     eapply IHi in H0;eauto.
     Hsimpl.
     eapply npnsw_or_sw_stepN_cons in H0;eauto.
-    assert(1 + i = S i). Omega.omega.
+    assert(1 + i = S i). Lia.lia.
     rewrite H6 in H0;clear H6.
     Esimpl;eauto. rewrite <- H2,<- H4.
     rewrite List.app_assoc;auto.
@@ -5571,7 +5571,7 @@ Section diverge_proof.
     inversion H12 as [? _].
     apply swstar_npnsw_or_sw_stepN in H7;auto.
     eapply npnsw_or_sw_stepN_cons in H7;eauto.
-    assert(i + 0 = i). Omega.omega.
+    assert(i + 0 = i). Lia.lia.
     rewrite H17 in H7.
     rewrite List.app_nil_r in H7.
     eapply IHi in H7;eauto.
@@ -5890,10 +5890,10 @@ Section diverge_proof.
 
         inversion H29;subst.
         destruct H25. apply H_all_thread_halted in H21. contradiction.
-        Omega.omega.
+        Lia.lia.
 
         rewrite (swstar_l1 _ _ _ H0). apply drf_pc_glob_l1 in H as [];auto.
-        Omega.omega.
+        Lia.lia.
         rewrite (swstar_l1 _ _ _ H0). apply drf_pc_glob_l1 in H as [];auto.
       }
     }
@@ -5998,7 +5998,7 @@ Section diverge_proof.
 
         inversion H38;subst. destruct H21.
         apply H_all_thread_halted in H21;contradiction.
-        Omega.omega.
+        Lia.lia.
 
         rewrite (swstar_l1 _ _ _ H0).
         apply drf_pc_glob_l1 in H as [];auto.
@@ -6511,8 +6511,8 @@ Definition no_rep (l:list tid):Prop:=
       no_rep l.
   Proof.
     unfold no_rep;intros.
-    assert(S i < length(t::l)). simpl. Omega.omega.
-    assert(S j < length(t::l)). simpl;Omega.omega.
+    assert(S i < length(t::l)). simpl. Lia.lia.
+    assert(S j < length(t::l)). simpl;Lia.lia.
     eapply H in H3;try apply H4;eauto.
   Qed.    
   Lemma norep_cons:
@@ -6529,7 +6529,7 @@ Definition no_rep (l:list tid):Prop:=
     intro. contradict H. eapply List.nth_error_In. eauto.
     intro. contradict H. eapply List.nth_error_In;eauto.
 
-    eapply H0;eauto;Omega.omega.
+    eapply H0;eauto;Lia.lia.
   Qed.    
     
  
@@ -6706,7 +6706,7 @@ Definition no_rep (l:list tid):Prop:=
     assert(thread_nums pc' = thread_nums pc).
     apply npnswstep_l1 in H1;Hsimpl. apply type_glob_step_elim in H1.
     eapply thread_nums_preserve.  econstructor 2;[|constructor];eauto.
-    Omega.omega.
+    Lia.lia.
 
     intros.
     assert(willdone ge pc lt (cur_tid pc) \/ ~ willdone ge pc lt (cur_tid pc)).
@@ -6720,7 +6720,7 @@ Definition no_rep (l:list tid):Prop:=
     assert(length (cons (cur_tid pc) lt) = S (length lt)).
     simpl. auto.
     assert(i = thread_nums pc - length (cur_tid pc :: lt)).
-    rewrite H20. Omega.omega.
+    rewrite H20. Lia.lia.
 
     clear H20.
     apply npnsw_taustar_tid_preservation in H9 as ?;auto.
@@ -6897,7 +6897,7 @@ Qed.
       econstructor 2;[|constructor].
       destruct x7,H2;simpl in *;subst;econstructor;eauto.
       eapply atomblockstarN_cons_swstar in H4;eauto.
-      apply atomblockstarN_np in H4;auto;[|Omega.omega].
+      apply atomblockstarN_np in H4;auto;[|Lia.lia].
       Hsimpl.
       destruct H6;Hsimpl.
       assert(sw_star glob_step ({-|x7,x11})({-|x7,x0})).

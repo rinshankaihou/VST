@@ -363,7 +363,7 @@ Proof.
     unfold Mem.range_perm in *.
     intros. apply r in H0.
     inv H. eapply mi_perm in H2;eauto.
-    assert(ofs + 0 = ofs). omega.
+    assert(ofs + 0 = ofs). Lia.lia.
     rewrite H in H2. auto.
   }
   unfold storemax.
@@ -397,7 +397,7 @@ Proof.
   rewrite encode_val_length. rewrite <- size_chunk_conv. intros.
   exploit H1;eauto with mem.
   intro. destruct H6;try contradiction.
-  omega.
+  Lia.lia.
 
   eapply mi_memval;eauto.
 
@@ -419,7 +419,7 @@ Proof.
   rewrite encode_val_length. rewrite <- size_chunk_conv. intros.
   exploit H1;eauto with mem.
   intro. destruct H6;try contradiction.
-  omega.
+  Lia.lia.
 
   eapply VALINJ;eauto.
 Qed.
@@ -462,27 +462,27 @@ Proof.
 
   destruct (zle 4 z).
   rewrite H in H7;auto.
-  right. simpl in H2. rewrite H2. omega.
+  right. simpl in H2. rewrite H2. Lia.lia.
 
   destruct (zle 3 z).
-  assert(z=3). omega. subst.
+  assert(z=3). Lia.lia. subst.
   unfold inj_bytes,encode_int,rev_if_be,bytes_of_int in H7;ex_match2;simpl in H7.
   rewrite ZMap.gss in H7;auto;try discriminate. 
 
   destruct (zle 2 z).
-  assert(z=2). omega. subst.
+  assert(z=2). Lia.lia. subst.
   unfold inj_bytes,encode_int,rev_if_be,bytes_of_int in H7;ex_match2;simpl in H7.
   rewrite ZMap.gso in H7;[|intro R;inv R].
   rewrite ZMap.gss in H7;auto;try discriminate.
 
   destruct (zle 1 z).
-  assert(z=1). omega. subst.
+  assert(z=1). Lia.lia. subst.
   unfold inj_bytes,encode_int,rev_if_be,bytes_of_int in H7;ex_match2;simpl in H7.
   rewrite ZMap.gso in H7;[|intro R;inv R].
   rewrite ZMap.gso in H7;[|intro R;inv R].
   rewrite ZMap.gss in H7;auto;try discriminate.
 
-  assert(z=0). omega. subst.
+  assert(z=0). Lia.lia. subst.
   unfold inj_bytes,encode_int,rev_if_be,bytes_of_int in H7;ex_match2;simpl in H7.
   rewrite ZMap.gso in H7;[|intro R;inv R].
   rewrite ZMap.gso in H7;[|intro R;inv R].
@@ -534,29 +534,29 @@ Proof.
 
     destruct (zle 4 z).
     rewrite H2;auto.
-    right. simpl in H4. rewrite H4. omega.
+    right. simpl in H4. rewrite H4. Lia.lia.
 
     destruct (zle 3 z).
-    assert(z=3). omega. subst.
+    assert(z=3). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gss;auto. intro R;inv R.
 
     destruct (zle 2 z).
-    assert(z=2). omega. subst.
+    assert(z=2). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gss;auto.
     intro R;inv R.
 
     destruct (zle 1 z).
-    assert(z=1). omega. subst.
+    assert(z=1). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gss;auto.
     intro R;inv R.
 
-    assert(z=0). omega. subst.
+    assert(z=0). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gso;[|intro R;inv R].
@@ -590,29 +590,29 @@ Proof.
 
     destruct (zle 4 z).
     rewrite H2;auto.
-    right. simpl in H4. rewrite H4. omega.
+    right. simpl in H4. rewrite H4. Lia.lia.
 
     destruct (zle 3 z).
-    assert(z=3). omega. subst.
+    assert(z=3). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gss;auto. intro R;inv R.
 
     destruct (zle 2 z).
-    assert(z=2). omega. subst.
+    assert(z=2). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gss;auto.
     intro R;inv R.
 
     destruct (zle 1 z).
-    assert(z=1). omega. subst.
+    assert(z=1). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gss;auto.
     intro R;inv R.
 
-    assert(z=0). omega. subst.
+    assert(z=0). Lia.lia. subst.
     unfold inj_bytes,encode_int,rev_if_be,bytes_of_int;ex_match2;simpl.
     rewrite ZMap.gso;[|intro R;inv R].
     rewrite ZMap.gso;[|intro R;inv R].
@@ -676,9 +676,9 @@ Proof.
   constructor. inv H.
   eapply gvalinj0;eauto.
   unfold Mem.range_perm in H1.
-  apply H1. omega.
-  replace (ofs + delta + 1) with ((ofs + 1) + delta) by omega.
-  apply IHn. red; intros; apply H1; omega.
+  apply H1. Lia.lia.
+  replace (ofs + delta + 1) with ((ofs + 1) + delta) by Lia.lia.
+  apply IHn. red; intros; apply H1; Lia.lia.
 Qed.
 
 Local Notation "a # b" := (PMap.get b a) (at level 1).
@@ -692,7 +692,7 @@ Proof.
   intros.
   exists (decode_val Mint32 (Mem.getN (size_chunk_nat Mint32) 0 (m2.(Mem.mem_contents)#b0))).
   split. unfold loadmax. apply pred_dec_true.
-  assert(0+0=0). omega.
+  assert(0+0=0). Lia.lia.
   assert(size_chunk Mint32 = 4 + 0). simpl. auto.
   rewrite <- H2,H3.
   inv H. inv ginj0.
@@ -705,7 +705,7 @@ Proof.
     inv mi_inj.
     unfold GMem.perm,strip in mi_perm. simpl in *.
     eapply mi_perm in H;eauto.
-    assert(ofs+0=ofs). omega.
+    assert(ofs+0=ofs). Lia.lia.
     rewrite H4 in H. auto.
   }
   unfold loadmax in H0;ex_match2.
@@ -715,7 +715,7 @@ Proof.
   exploit getN_inj; eauto.
   instantiate(2:=0).
   simpl in r. instantiate(1:=4%nat). auto.
-  intro. assert(0+0=0). omega.
+  intro. assert(0+0=0). Lia.lia.
   auto.
 Qed.
 Section MATCHSTATE.
@@ -753,7 +753,7 @@ Section MATCHSTATE.
     unfold GMem.range_perm;intros.
     inv H. inv ginj0. inv mi_inj.
     eapply mi_perm in H0;eauto.
-    assert(ofs + 0 = ofs). omega.
+    assert(ofs + 0 = ofs). Lia.lia.
     congruence.
   Qed.
   Lemma grange_perm_eq2:
@@ -767,7 +767,7 @@ Section MATCHSTATE.
     inv H. inv ginj0. inv mi_inj.
     eapply mi_perm in H0;eauto.
     unfold strip,GMem.perm in H0;simpl in H0.
-    assert(ofs + 0 = ofs). omega.
+    assert(ofs + 0 = ofs). Lia.lia.
     rewrite H in H0. eauto.
     unfold strip,GMem.perm;simpl;eauto.
     specialize (H1 _ H2).
@@ -871,7 +871,7 @@ Section MATCHSTATE.
     unfold loadmax in *.
     ex_match.
     unfold size_chunk_nat,size_chunk in *.
-    assert(nat_of_Z 4=4%nat). auto.
+    assert(Z.to_nat 4=4%nat). auto.
     rewrite H3 in *. clear H3.
     unfold strip,GMem.perm in gvalinj0;simpl in gvalinj0.
     assert(decode_val Mint32 (Mem.getN 4 0 (Mem.mem_contents m2) # b') = v2).
@@ -892,7 +892,7 @@ Section MATCHSTATE.
       unfold Bset.inj_to_meminj. rewrite mub. eauto.
       instantiate(1:=ofs). apply r;auto.
       intro.
-      assert(ofs + 0 = ofs). omega.
+      assert(ofs + 0 = ofs). Lia.lia.
       congruence.
     }
     clear gvalinj0.
@@ -918,7 +918,7 @@ Section MATCHSTATE.
       match goal with
         H:forall ofs : Z,
           0 <= ofs < 4 -> ZMap.get ofs (Mem.mem_contents ?m) # ?b <> Undef |- _=>
-        exploit H;eauto;try omega
+        exploit H;eauto;try Lia.lia
       end.
     unfold decode_val in *.
     ex_match.
@@ -927,25 +927,25 @@ Section MATCHSTATE.
       simpl in Hx1.
       extract_byte;[valundef| |].
       Focus 2.
-      exploit valinj. instantiate(1:=0). omega.
+      exploit valinj. instantiate(1:=0). Lia.lia.
       intro. rewrite Heqm in H1. inv H1; simpl.
       rewrite <- H7. auto.
 
       extract_byte;[valundef| |].
       Focus 2.
-      exploit valinj. instantiate(1:=1). omega.
+      exploit valinj. instantiate(1:=1). Lia.lia.
       intro. rewrite Heqm0 in H1. inv H1; simpl.
       rewrite <-H7. ex_match2;auto.
 
       extract_byte;[valundef| |].
       Focus 2.
-      exploit valinj. instantiate(1:=2). omega.
+      exploit valinj. instantiate(1:=2). Lia.lia.
       intro. rewrite Heqm1 in H1. inv H1; simpl.
       rewrite <-H7. ex_match2;auto.
 
       extract_byte;[valundef| |].
       Focus 2.
-      exploit valinj. instantiate(1:=3). omega.
+      exploit valinj. instantiate(1:=3). Lia.lia.
       intro. rewrite Heqm2 in H1. inv H1; simpl.
       rewrite <-H7. ex_match2;auto.
       congruence.
@@ -958,10 +958,10 @@ Section MATCHSTATE.
     unfold Mem.getN in *.
     unfold proj_value in *.
     extract_byte;[valundef| |].
-    exploit valinj. instantiate(1:=0). omega.
+    exploit valinj. instantiate(1:=0). Lia.lia.
     intro. rewrite Heqm in H3. inv H3. auto.
 
-    exploit valinj. instantiate(1:=0). omega.
+    exploit valinj. instantiate(1:=0). Lia.lia.
     intro. rewrite Heqm in H3. inv H3.
      
     destruct check_value eqn:?.
@@ -974,12 +974,12 @@ Section MATCHSTATE.
       inv H5;inv H;auto.
       inv H0.
       exploit no_vundef;eauto.
-      unfold strip,GMem.perm;simpl. apply r;omega.
+      unfold strip,GMem.perm;simpl. apply r;Lia.lia.
       intro;contradiction.
       assert(novundef0:v <> Vundef).
       inv H0. intro;subst.
       exploit no_vundef;eauto.
-      unfold strip,GMem.perm;simpl;apply r;auto. omega.
+      unfold strip,GMem.perm;simpl;apply r;auto. Lia.lia.
       clear H H1.
       simpl in *.
       Ltac andb_split:=
@@ -997,7 +997,7 @@ Section MATCHSTATE.
       ex_match.
       andb_split.
       destruct (Val.eq v v1) eqn:?;try discriminate;subst.
-      exploit valinj. instantiate(1:=1). omega.
+      exploit valinj. instantiate(1:=1). Lia.lia.
       intro. rewrite Hx3 in H10. inv H10.
       andb_split.
       {
@@ -1008,7 +1008,7 @@ Section MATCHSTATE.
       }
       ex_match;andb_split.
       destruct (Val.eq v1 v) eqn:?;try discriminate;subst.
-      exploit valinj. instantiate(1:=2). omega.
+      exploit valinj. instantiate(1:=2). Lia.lia.
       intro. rewrite Hx4 in H14. inv H14.
       andb_split.
       {
@@ -1019,7 +1019,7 @@ Section MATCHSTATE.
       }
       ex_match;andb_split.
       destruct (Val.eq v v1) eqn:?;try discriminate;subst.
-      exploit valinj. instantiate(1:=3). omega.
+      exploit valinj. instantiate(1:=3). Lia.lia.
       intro. rewrite Hx5 in H19. inv H19.
       andb_split.
 
@@ -1046,7 +1046,7 @@ Section MATCHSTATE.
       assert(novundef0:v <> Vundef).
       inv H0. intro;subst.
       exploit no_vundef;eauto.
-      unfold strip,GMem.perm;simpl;apply r;auto. omega.
+      unfold strip,GMem.perm;simpl;apply r;auto. Lia.lia.
       Ltac andb_false_split:=
         repeat match goal with
                |H: _ && _ = false |- _ => apply andb_false_iff in H as [|]
@@ -1058,7 +1058,7 @@ Section MATCHSTATE.
       apply andb_false_iff;left;apply andb_false_iff;right;auto.
       apply andb_false_iff;right.
 
-      exploit valinj. instantiate(1:=1). omega.
+      exploit valinj. instantiate(1:=1). Lia.lia.
       intro.
       ex_match.
       valundef.
@@ -1070,7 +1070,7 @@ Section MATCHSTATE.
       destruct (Val.eq v v1);try discriminate.
       assert(v1 <> Vundef).
       intro;subst.
-      exploit valfrag_noundef;eauto. omega.
+      exploit valfrag_noundef;eauto. Lia.lia.
       destruct (Val.eq v0 v4);try discriminate;auto.
       subst. inv H5;inv H4;try congruence.
       unfold Bset.inj_to_meminj in *. ex_match. inv H3;inv H10.
@@ -1081,7 +1081,7 @@ Section MATCHSTATE.
       apply andb_false_iff;left;apply andb_false_iff;left;apply andb_false_iff;right;auto.
       apply andb_false_iff;left;apply andb_false_iff;right;auto.
       apply andb_false_iff;right.
-      exploit valinj. instantiate(1:=2). omega.
+      exploit valinj. instantiate(1:=2). Lia.lia.
       intro.
       ex_match.
       valundef.
@@ -1093,7 +1093,7 @@ Section MATCHSTATE.
       destruct (Val.eq v v3);try discriminate.
       assert(v3 <> Vundef).
       intro;subst.
-      exploit valfrag_noundef;eauto. omega.
+      exploit valfrag_noundef;eauto. Lia.lia.
       destruct (Val.eq v0 v6);try discriminate;auto.
       subst. inv H5;inv H6;try congruence.
       unfold Bset.inj_to_meminj in *. ex_match. inv H3;inv H12.
@@ -1104,7 +1104,7 @@ Section MATCHSTATE.
       apply andb_false_iff;left;apply andb_false_iff;left;apply andb_false_iff;right;auto.
       apply andb_false_iff;left;apply andb_false_iff;right;auto.
       apply andb_false_iff;right.
-      exploit valinj. instantiate(1:=3). omega.
+      exploit valinj. instantiate(1:=3). Lia.lia.
       intro.
       ex_match.
       valundef.
@@ -1116,7 +1116,7 @@ Section MATCHSTATE.
       destruct (Val.eq v v5);try discriminate.
       assert(v5 <> Vundef).
       intro;subst.
-      exploit valfrag_noundef;eauto. omega.
+      exploit valfrag_noundef;eauto. Lia.lia.
       destruct (Val.eq v0 v8);try discriminate;auto.
       subst. inv H5;inv H7;try congruence.
       unfold Bset.inj_to_meminj in *. ex_match. inv H3;inv H14.
@@ -1859,7 +1859,7 @@ Proof.
   
   apply tfl_free in H0.
   unfold Bset.belongsto in H0.
-  split;intro;try contradiction;try omega.
+  split;intro;try contradiction;try Lia.lia.
 Qed.
 Lemma gmeminv_HLRELY:
   forall mu sfl tfl Hm Lm Hm' Lm',
@@ -2196,7 +2196,7 @@ Proof.
   unfold Mem.range_perm;intros.
   inv H. inv inj0. inv mi_inj.
   eapply mi_perm in H0;eauto.
-  assert(ofs + 0 = ofs). omega.
+  assert(ofs + 0 = ofs). Lia.lia.
   congruence.
 Qed.
 Lemma fstep_fleq:
@@ -2544,7 +2544,7 @@ Proof.
   assert(Mem.perm m2 b0 ofs Max Readable).
   inv mi_inj. 
   eapply mi_perm in H;eauto.
-  assert(ofs+0=ofs). omega.
+  assert(ofs+0=ofs). Lia.lia.
   rewrite H8 in H;auto.
   assert(b0<>Mem.nextblock m2).
   intro. symmetry in H9. apply H2 in H9.

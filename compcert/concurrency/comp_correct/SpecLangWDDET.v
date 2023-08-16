@@ -142,9 +142,9 @@ Proof.
   assert (nextblockid = nextblockid0).
   { generalize valid_wd valid_wd0. clear. intros.
     destruct (Nat.lt_total nextblockid nextblockid0).
-    eapply valid_wd0 in H; eauto. eapply valid_wd in H; eauto. omega.
+    eapply valid_wd0 in H; eauto. eapply valid_wd in H; eauto. Lia.lia.
     destruct H. auto.
-    eapply valid_wd in H; eauto. eapply valid_wd0 in H; eauto. omega.
+    eapply valid_wd in H; eauto. eapply valid_wd0 in H; eauto. Lia.lia.
   }
   subst. f_equal; apply Axioms.proof_irr.
 Qed.
@@ -204,16 +204,16 @@ Proof.
       destruct ReadMemEq as[[A B]];
       unfold load_fp in *;simpl in *;
         erewrite H;eauto;
-          try (unfold belongsto,Locs.belongsto,range_locset;ex_match2;try destruct zle,zlt;try omega;auto);
-          try (unfold Mem.range_perm,Mem.perm in r0;unfold GMem.perm,strip;simpl;apply r0;omega).
+          try (unfold belongsto,Locs.belongsto,range_locset;ex_match2;try destruct zle,zlt;try Lia.lia;auto);
+          try (unfold Mem.range_perm,Mem.perm in r0;unfold GMem.perm,strip;simpl;apply r0;Lia.lia).
 
     contradict n.
     unfold Mem.range_perm,Mem.perm in *;simpl.
     destruct MEMPRE as [[[_ ?] _] _ _].
     intros. eapply H;eauto.
     unfold load_fp in *;simpl in *.
-    unfold belongsto,Locs.belongsto,range_locset;ex_match2;try destruct zle,zlt;try omega;auto.
-    unfold Mem.range_perm,Mem.perm in r0;unfold GMem.perm,strip;simpl;apply r0;omega.
+    unfold belongsto,Locs.belongsto,range_locset;ex_match2;try destruct zle,zlt;try Lia.lia;auto.
+    unfold Mem.range_perm,Mem.perm in r0;unfold GMem.perm,strip;simpl;apply r0;Lia.lia.
 
 
     constructor;auto.

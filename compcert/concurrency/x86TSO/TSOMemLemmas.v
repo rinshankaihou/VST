@@ -214,7 +214,7 @@ Proof.
   {
     simpl in H1.
     eapply IHvl in H1; eauto.
-    omega.
+    Lia.lia.
     clear - H H0.
     unfold ZMap.set.
     unfold PMap.set.
@@ -223,7 +223,7 @@ Proof.
     subst.
     ex_match2.
     eapply PTree_set_not_leaf in Hx; tryfalse.
-    destruct p; simpls; try omega.
+    destruct p; simpls; try Lia.lia.
     inversion Hx; eauto.
     inversion Hx; eauto.
   }
@@ -244,7 +244,7 @@ Proof.
   {
     simpl in H1.
     eapply IHvl in H1; eauto.
-    omega.
+    Lia.lia.
     clear - H H0. 
     destruct m; simpls.
     destruct t; simpls; tryfalse.
@@ -261,8 +261,8 @@ Proof.
     rewrite PTree.gso; eauto.
     intro; subst.
     clear - H Heqp0.
-    destruct p1; simpls; try omega; tryfalse.
-    inversion Heqp0; subst; try omega.
+    destruct p1; simpls; try Lia.lia; tryfalse.
+    inversion Heqp0; subst; try Lia.lia.
     inversion Heqt; subst.
     eauto.
   }
@@ -283,7 +283,7 @@ Proof.
   {
     simpl in H1.
     eapply IHvl in H1; eauto.
-    omega.
+    Lia.lia.
     clear - H H0. 
     destruct m; simpls.
     destruct t; simpls; tryfalse.
@@ -296,9 +296,9 @@ Proof.
     rewrite PTree.gso; eauto.
     intro; subst.
     clear - H Heqp0.
-    destruct p1; simpls; try omega; tryfalse.
+    destruct p1; simpls; try Lia.lia; tryfalse.
     inversion Heqp0; subst.
-    omega.
+    Lia.lia.
     inversion Heqt; subst; eauto.
     inversion Heqt; subst; eauto.
   }
@@ -422,8 +422,8 @@ Proof.
   rewrite PMap_set_twice_not_same_reorder_eq; eauto.
   intro.
   eapply ZIndexed.index_inj in H0.
-  subst; omega.
-  omega.
+  subst; Lia.lia.
+  Lia.lia.
 Qed.
 
 Lemma Mem_setN_ZMap_set_g_reorder_eq :
@@ -452,7 +452,7 @@ Proof.
     unfold ZMap.set.
     eapply PMap_set_same_Mem_eq; eauto.
     rewrite le_setN_get_same; eauto.
-    omega.
+    Lia.lia.
   }
   rewrite H.
   eauto.
@@ -469,15 +469,15 @@ Proof.
   {
     unfold ZMap.set.
     rewrite Mem_setN_PMap_set_g_reorder_eq; eauto.
-    omega.
+    Lia.lia.
   }
   rewrite H0.
   rewrite ZMap.set2.
   rewrite Mem_setN_ZMap_set_g_reorder_eq.
   rewrite IHvl; eauto.
   rewrite Mem_setN_ZMap_set_g_reorder_eq; eauto.
-  omega.
-  omega.
+  Lia.lia.
+  Lia.lia.
 Qed. 
 
 Definition get_bi_block (bi : buffer_item) :=
@@ -506,7 +506,7 @@ Lemma nat_add_nochange_zero :
     n.+1 = 1 -> n = 0.
 Proof.
   intros.
-  omega.
+  Lia.lia.
 Qed.
 
 (** ** GMemory and TSOMemory Lemmas *)
@@ -520,7 +520,7 @@ Proof.
   assert (get_block freelist nextblockid = get_block freelist nextblockid); eauto.
   eapply valid_wd in H0; eauto.
   eapply H0 in H.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma mem_strip_gm_vb_eq :
@@ -704,7 +704,7 @@ Proof.
   destruct Ht as [Ht Halign].
   specialize (Ht ofs).
   assert ((ofs <= ofs < ofs + size_chunk c)%Z).
-  split; try destruct c; simpls; try omega.
+  split; try destruct c; simpls; try Lia.lia.
   eapply Ht in H.
   clear - invalid_noaccess H.
   unfolds Mem.perm_order'.
@@ -750,7 +750,7 @@ Proof.
   lets Ht : (Classical_Prop.classic (In (Str_nth nextblockid freelist) validblocks)).
   destruct Ht.
   eapply H in H0.
-  omega.
+  Lia.lia.
   lets Ht : (Classical_Prop.classic (In b validblocks)).
   destruct Ht.
   intro; subst; tryfalse.
@@ -913,7 +913,7 @@ Proof.
   introv Hcontr.
   symmetry in Hcontr.
   eapply valid_wd in Hcontr.
-  eapply Hcontr in H0; omega.
+  eapply Hcontr in H0; Lia.lia.
 Qed.
 
 Lemma range_perm_cur_max:
@@ -1033,7 +1033,7 @@ Proof.
   unfold GMem.mem_contents.
   rewrite PMap.gss.
   unfold size_chunk_nat.
-  simpl nat_of_Z.
+  simpl Z.to_nat.
   assert (Pos.to_nat 4 =
           Datatypes.length (inj_bytes (encode_int 4 (Int.unsigned n)))).
   {
@@ -1078,7 +1078,7 @@ Proof.
   clear Hx0.
   contradict n. split;auto.
   simpl. 
-  apply Zmod_divide;auto;  omega.
+  apply Zmod_divide;auto;  Lia.lia.
 Qed.
 
 Lemma store_v_load_eq_spec_m :
@@ -1280,8 +1280,8 @@ Proof.
   specialize (Ht ofs).
   assert ((ofs <= ofs < ofs + size_chunk c)%Z).
   split.
-  omega.
-  destruct c; simpls; omega.
+  Lia.lia.
+  destruct c; simpls; Lia.lia.
   eapply Ht in H.
   clear - H.
   unfolds Mem.perm_order'.
@@ -1409,7 +1409,7 @@ Proof.
   econstructor; eauto.
   simpl.
   eapply Zmod_divide.
-  omega.
+  Lia.lia.
   eauto.
 Qed.
 
@@ -3141,7 +3141,7 @@ Proof.
   destruct Ht; tryfalse.
   eapply valid_wd in H0.
   eapply H0 in H1.
-  omega.
+  Lia.lia.
   eapply invalid_noaccess in H1.
   rewrite H1 in H.
   tryfalse.
@@ -3166,7 +3166,7 @@ Proof.
   destruct Ht; tryfalse.
   eapply valid_wd in H0.
   eapply H0 in H1.
-  omega.
+  Lia.lia.
   eapply invalid_noaccess in H1.
   rewrite H1 in H.
   tryfalse.
@@ -3195,7 +3195,7 @@ Proof.
   destruct Ht; eauto.
   eapply valid_wd in H1.
   eapply H1 in H2.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma obj_mem_alloc_stable :
@@ -3375,7 +3375,7 @@ Lemma inrange_or_not :
     ((ofs < i)%Z \/ (ofs >= i + Z.of_nat (Datatypes.length v))%Z).
 Proof.
   intros.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma inrange_or_not1 :
@@ -3383,7 +3383,7 @@ Lemma inrange_or_not1 :
     (i <= ofs < i + sz)%Z \/ ((ofs < i)%Z \/ (ofs >= i + sz)%Z).
 Proof.
   intros.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma unbuffer_safe_apply_buffer' :
@@ -3469,8 +3469,8 @@ Proof.
     destruct (inrange_or_not memval ofs z (encode_val m v)).
     {
       eapply setN_geteq2; eauto.
-      omega.
-      omega.
+      Lia.lia.
+      Lia.lia.
     }
     {
       do 2 (rewrite Mem.setN_outside; eauto).
@@ -4187,7 +4187,7 @@ Proof.
   unfolds range_perm.
   assert ((ofs <= ofs < ofs + size_chunk c)%Z).
   {
-    destruct c; simpls; omega.
+    destruct c; simpls; Lia.lia.
   }
   destruct (Classical_Prop.classic (In b (GMem.validblocks m))); eauto.
   eapply H in H1.
@@ -4303,7 +4303,7 @@ Proof.
     eapply H0 in H.
     simpls.
     econstructor; eauto.
-    omega.
+    Lia.lia.
     eapply IHbf in H; eauto.
     destruct H as [ofs H].
     exists ofs.
@@ -4318,7 +4318,7 @@ Proof.
     exists z.
     econstructor; simpl; eauto.
     econstructor; eauto.
-    destruct m; simpls; omega.
+    destruct m; simpls; Lia.lia.
     eapply IHbf in H; eauto.
     destruct H as [ofs H].
     exists ofs.
@@ -4409,7 +4409,7 @@ Proof.
   unfolds Locs.belongsto, inrange.
   ex_match2.
   destruct (zle ofs ofs0); destruct (zlt ofs0 (ofs + sz));
-    simpls; tryfalse; try omega.
+    simpls; tryfalse; try Lia.lia.
 Qed.
 
 Lemma inrange_loc_belongsto_rev :
@@ -4421,7 +4421,7 @@ Proof.
   unfolds Locs.belongsto, inrange.
   ex_match2.
   destruct (zle ofs ofs0); destruct (zlt ofs0 (ofs + sz));
-    simpls; tryfalse; try omega.
+    simpls; tryfalse; try Lia.lia.
 Qed.
 
 Lemma not_in_buffer_apply_buf_item_loc_eq :
@@ -4629,7 +4629,7 @@ Proof.
     rewrite PMap.gss; eauto.
     rewrite Mem.setN_outside; eauto.
     destruct (zle ofs ofs0); destruct (zlt ofs0 (ofs + size_chunk c));
-      simpls; tryfalse; try omega.
+      simpls; tryfalse; try Lia.lia.
     rewrite encode_val_length; rewrite <- size_chunk_conv.
     eauto.
     rewrite PMap.gso; eauto.

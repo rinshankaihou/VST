@@ -307,8 +307,8 @@ Proof.
   intros until 1. revert base. induction size. simpl. constructor.
   simpl. constructor. rewrite memval_related_memval_inject_strict.
   exploit mem_related_mem_val_inject; eauto.
-  apply Memory.Mem.perm_cur_max. apply H0. rewrite Zpos_P_of_succ_nat. omega.
-  apply IHsize; auto. intros z RANGE. apply H0. rewrite Zpos_P_of_succ_nat. omega.
+  apply Memory.Mem.perm_cur_max. apply H0. rewrite Zpos_P_of_succ_nat. Lia.lia.
+  apply IHsize; auto. intros z RANGE. apply H0. rewrite Zpos_P_of_succ_nat. Lia.lia.
 Qed.
 
 Lemma setN_memval_related:
@@ -393,7 +393,7 @@ Proof.
   Transparent Memory.Mem.loadbytes FMemory.Mem.loadbytes.
   unfold Memory.Mem.loadbytes, FMemory.Mem.loadbytes in *.
   do 2 match goal with H:context[if ?x then _ else _] |- _ => destruct x; inv H end.
-  apply mem_rel_getN; auto. rewrite nat_of_Z_eq; auto. 
+  apply mem_rel_getN; auto. rewrite Z2Nat.id; auto. 
 Qed.
   
 Lemma store_related:
@@ -467,17 +467,17 @@ Proof.
   { assert (exists b, Ple bound b /\ Plt b stk /\ (Pos.to_nat b - Pos.to_nat bound = FMemory.Mem.nextblockid m1'))%nat.
     { remember (FMemory.Mem.nextblockid m1') as N. remember (Pos.to_nat stk) as STK. remember (Pos.to_nat bound) as B.
       exists (Pos.of_nat (STK - (STK - B - N))).
-      assert (N + B > 0)%nat. assert (0 < B)%nat. subst. apply Pos2Nat.is_pos. omega.
-      assert (STK - (STK - B - N) = N + B)%nat. generalize H1; clear. intros. omega.
-      rewrite H3. rewrite Nat2Pos.id; [|revert H2; clear; intro; omega].
-      split;[|split;[|clear; omega]].
+      assert (N + B > 0)%nat. assert (0 < B)%nat. subst. apply Pos2Nat.is_pos. Lia.lia.
+      assert (STK - (STK - B - N) = N + B)%nat. generalize H1; clear. intros. Lia.lia.
+      rewrite H3. rewrite Nat2Pos.id; [|revert H2; clear; intro; Lia.lia].
+      split;[|split;[|clear; Lia.lia]].
       rewrite <- (Pos2Nat.id bound), <- HeqB. clear.
       unfold Ple. 
       revert B. induction N; intros. simpl. lia.
       destruct B. simpl. lia.
       remember (S B) as B'.
       rewrite plus_Sn_m, Nat2Pos.inj_succ. specialize (IHN B'). lia. lia.
-      rewrite <- (Pos2Nat.id stk), <- HeqSTK. assert (N + B < STK)%nat by (revert H1; clear; intro; omega).
+      rewrite <- (Pos2Nat.id stk), <- HeqSTK. assert (N + B < STK)%nat by (revert H1; clear; intro; Lia.lia).
       revert H2 H4. clear. generalize (N + B)%nat. clear. unfold Plt.
       intros. apply Pos2Nat.inj_lt. repeat rewrite Nat2Pos.id; auto; lia.
     }      
@@ -488,7 +488,7 @@ Proof.
     exploit mem_related_valid_block; eauto. unfold FMemory.strip, GMem.valid_block. simpl. intro. apply H3.
     subst. auto.
   }
-  eapply FMemory.Mem.valid_wd in H2; subst; eauto. omega.
+  eapply FMemory.Mem.valid_wd in H2; subst; eauto. Lia.lia.
 Qed.
   
 Lemma alloc_related:

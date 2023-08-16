@@ -78,7 +78,7 @@ Proof.
   inv H. exists Lm. constructor. constructor. inv H0. constructor. constructor. auto.
   inv H. inv H0.
   rewrite H6 in H5;inv H5.
-  eapply Mem.alloc_extends with(lo2:=0)(hi2:=sz) in H6 as ?;eauto;try Omega.omega.
+  eapply Mem.alloc_extends with(lo2:=0)(hi2:=sz) in H6 as ?;eauto;try Lia.lia.
   destruct H as [?[]].
   eapply IHa in H0 as [?[?[]]];eauto.
   exists x0. econstructor;eauto. econstructor;eauto.

@@ -342,7 +342,7 @@ Section Compositionality.
         exfalso. apply n.
         generalize (ThreadPool.next_tid thdp) (ThreadPool.next_tid thdp0) NEXTEQ. clear.
         intros. pose proof (Pos2Nat.is_pos t). pose proof (Pos2Nat.is_pos t0).
-        apply Pos2Nat.inj_iff. omega.
+        apply Pos2Nat.inj_iff. Lia.lia.
       }
       split. constructor. auto. constructor. auto.
     }
