@@ -117,12 +117,119 @@ Qed.
 (* Contents of the extern global initialized array "_four" *)
 Definition four_contents := [1; 2; 3; 4].
 
-
 Lemma body_main:  semax_body Vprog Gprog ⊤ f_main main_spec.
 Proof.
-start_function.
-forward_call (*  s = sumarray(four,4); *)
-  (gv _four, Ews,four_contents,4).
+start_function1.
+start_function2.
+
+(* forward.v: start_function3 *)
+simpl app;
+ simplify_func_tycontext;
+ repeat match goal with
+ | |- context [Sloop (Ssequence (Sifthenelse ?e Sskip Sbreak) ?s) Sskip] =>
+       fold (Swhile e s)
+ | |- context [Ssequence ?s1 (Sloop (Ssequence (Sifthenelse ?e Sskip Sbreak) ?s2) ?s3) ] =>
+      match s3 with
+      | Sset ?i _ => match s1 with Sset ?i' _ => unify i i' | Sskip => idtac end
+      end;
+      fold (Sfor s1 e s2 s3)
+ end.
+
+
+ (* forward.v: start_function3: try expand_main_pre. *)
+ match goal with | |- semax _ _ (main_pre_old ?prog _ _ ∗ _) _ _ =>
+ rewrite main_pre_start_old;
+ unfold prog_vars, prog
+                       | |- semax _ _ (main_pre_old ?prog _ _) _ _ =>
+ rewrite main_pre_start_old;
+ unfold prog_vars, prog
+end.
+rewrite prog_defs_Clight_mkprogram;
+simpl globvars2pred.
+simple eapply semax_process_globvars.
+-
+(* global_lemmas.v: expand_main_pre_old: process_globals. *)
+(* global_lemmas.v: repeat process_idstar. *)
+process_one_globvar.
+     lazymatch goal with Delta := @abbreviate tycontext _ 
+                             |- ENTAIL _, globvars_in_process _ _ ?A _ ⊢ _ =>  idtac "AHH" end.
+                             
+
+      match A with id2pred_star _ _ _ (_ ?i) _ =>
+         let p := fresh "p" in set (p:=A);
+         simpl in p;
+         unfold id2pred_star, init_data2pred' in p;
+         simpl PTree.get in p; simpl zeq in p;
+         cbv beta iota zeta in p;
+         simpl init_data_size in p;
+         revert p; rewrite ?offset_offset_val; intro p; simpl Z.add in p;
+         let t := constr:(match (glob_types Delta) !! i with Some x => x | _ => Tvoid end) in
+         let t := eval hnf in t in
+         match t with Tpointer ?t2 _ =>
+           repeat match goal with p := ?D |- _ =>
+                       match D with context [mapsto ?sh ?t' ?q ?v] =>
+                            revert p;
+                           change (mapsto sh t' q v) with (mapsto sh size_t q nullval);
+                           rewrite <- (mapsto_tuint_tptr_nullval sh q t2);
+                           intro p
+                       end end
+         | _ => idtac end;
+         try change (mapsto ?sh _ (?gv i) ?v) with (mapsto sh t (gv i) v) in p;
+         subst p;
+         repeat simple apply move_globfield_into_done
+      | _ => idtac
+       end
+    | |- ENTAIL _, _ ⊢ _ => idtac
+    end.
+
+change (Share.lub extern_retainer _) with Ews;
+change (Share.lub extern_retainer _) with Ers.
+try change (Basics.compose Vint _) with (Basics.compose Vint id);
+fold_types;
+rewrite ?Combinators.compose_id_right;
+apply ENTAIL_refl.
+- simple apply finish_process_globvars.
+rewrite ?offset_val_unsigned_repr;
+simpl readonly2share;
+autorewrite with zero_val.
+
+
+
+
+
+
+ process_stackframe_of.
+ repeat change_mapsto_gvar_to_data_at;  (* should really restrict this to only in main,
+                                  but it needs to come after process_stackframe_of *)
+ repeat rewrite <- data_at__offset_zero.
+ try simple apply start_function_aux1.
+ repeat (apply semax_extract_PROP;
+              match goal with
+              | |- _ ?sh -> _ =>
+                 match type of sh with
+                 | share => intros ?SH
+                 | Share.t => intros ?SH
+                 | _ => intro
+                 end
+               | |- _ => intro
+               end);
+ abbreviate_semax;
+ lazymatch goal with 
+ | |- semax _ ?Delta (PROPx _ (LOCALx ?L _)) _ _ => check_parameter_vals Delta L
+ | _ => idtac
+ end;
+ try match goal with DS := @abbreviate (PTree.t funspec) ?DS1 |- _ =>
+     unify DS1 (PTree.empty funspec); clearbody DS
+ end;
+ start_function_hint.
+
+
+(* forward_call. (*  s = sumarray(four,4); *)
+  (gv _four, Ews,four_contents,4). *)
+fwd_call_dep funspec_sub_refl (gv _four, Ews,four_contents,4).
+
+
+
  repeat constructor; computable.
 forward. (* return s; *)
 Qed.
