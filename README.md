@@ -1,38 +1,65 @@
-![Verified Software Toolchain](chain.jpg)
+# VST-on-Iris
 
-with contributions from
+An Iris instantiation of the CompCert C semantics.
+This artifact is a fork of the Verified Software Toolchain (VST).
+This document describes how to build the examples in the paper; some other information are documented in [file_organization_misc.md](./file_organization_misc.md). 
 
-[Andrew W. Appel](http://www.cs.princeton.edu/~appel/),
-[Lennart Beringer](http://www.cs.princeton.edu/~eberinge/),
-[Robert Dockins](http://rwd.rdockins.name/),
-[Josiah Dodds](http://www.cs.princeton.edu/~jdodds/),
-[Aquinas Hobor](http://www.comp.nus.edu.sg/~hobor/),
-[Jean-Marie Madiot](https://madiot.fr/),
-[Gordon Stewart](http://www.cs.princeton.edu/~jsseven/),
-[Qinxiang Cao](http://jhc.sjtu.edu.cn/people/members/faculty/qinxiang-cao.html),
-Qinshi Wang,
-and others.
+Other .md files, such as the original VST readme [README_VST.md](./README_VST.md) are included for reference, but they may be outdated. 
 
-The [LICENSE](LICENSE) file has information about copyright, licensing, and permissions.
+## Building
 
-## How to install:
+### Prerequisites
 
-[See here for instructions](./ivst.md).
+We assume opam is already installed. The building instructions are tested on Linux version 5.10.16.3-microsoft-standard-WSL2, and should be compatible with most Unix machines.
 
-## Documentation:
+The proof for the example [verif_reverse2.v](./progs64/verif_reverse2.v) assumes 64-bit pointers, so compiling that requires your machine to be 64-bit and that opam installs 64-bit compcert for you.
 
-[Our webpage](https://vst.cs.princeton.edu) describes the goals of the project
-and has links to many related publications.
+### Installing Dependencies
 
-For an introduction to how to use Verifiable C,
-[read the manual](doc/VC.pdf),
-or consult [Software Foundations Volume 5: Verifiable C](https://softwarefoundations.cis.upenn.edu/vc-current/index.html)
-for a tutorial with exercises.
+We recommend using opam for managing dependencies with a new opam switch:
 
-[Program Logics for Certified Compilers](https://www.cs.princeton.edu/~appel/papers/plcc.pdf), by Andrew W. Appel et al.,
-Cambridge University Press, 2014.
-Available in [hardcover](https://www.barnesandnoble.com/w/program-logics-for-certified-compilers-andrew-w-appel/1126363773).
+```(bash)
+opam switch create vst_on_iris ocaml-variants.4.14.1+options ocaml-option-flambda
+```
+
+Install dependencies:
+
+```(bash)
+opam repo add coq-released https://coq.inria.fr/opam/released
+opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
+opam pin add https://github.com/mansky1/ora.git
+opam pin add builddep/
+```
+
+### Compilation
+
+At this point, we use [`Makefile`](./Makefile) to compile proof scripts.
+
+To compile a file, simply do
+
+```(bash)
+make filename
+```
+
+To compile the share algebra:
+
+```(bash)
+make shared/* -j
+```
 
 
+We have two examples working: [verif_reverse2.v](./progs64/verif_reverse2.v) and [verif_sumarray.v](./progs64/verif_sumarray.v). To compile them:
+
+```(bash)
+make progs64/verif_reverse2.vo -j
+make progs64/verif_sumarray.vo -j
+```
+
+The [`Makefile`](./Makefile) uses bundled 64-bit compcert.
 
 
+If your Coq IDE requires a `_CoqProject` file, do:
+
+```(bash)
+make _CoqProject
+```
