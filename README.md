@@ -48,11 +48,10 @@ make shared/* -j
 ```
 
 
-We have two examples working: [verif_reverse2.v](./progs64/verif_reverse2.v) and [verif_sumarray.v](./progs64/verif_sumarray.v). To compile them:
+We have 10 examples in [progs64/](./progs64/). (The proof scripts are `progs64/verif_*.v`, for example, [verif_append2.v](./progs64/verif_append2.v) is the functional correctness proof of [append.c](./progs64/verif_append2.v)). To compile them:
 
 ```(bash)
-make progs64/verif_reverse2.vo -j
-make progs64/verif_sumarray.vo -j
+make progs64 -j
 ```
 
 The [`Makefile`](./Makefile) uses bundled 64-bit compcert.

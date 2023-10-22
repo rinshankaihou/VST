@@ -1,2 +1,0 @@
-imp.vo: imp.v
-hoare.vo: hoare.v imp.vo

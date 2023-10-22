@@ -513,12 +513,11 @@ C64_ORDINARY = reverse.c revarray.c sumarray.c append.c bin_search.c \
     logical_compare.c \
     strlib.c switch.c union.c message.c incr.c
 
-V64_ORDINARY = verif_reverse2.v verif_revarray.v verif_sumarray.v \
-    verif_append2.v verif_bin_search.v \
-    verif_bst.v verif_field_loadstore.v verif_float.v verif_object.v \
-    verif_global.v verif_min.v verif_min64.v verif_nest2.v verif_nest3.v \
-    verif_logical_compare.v \
-    verif_strlib.v verif_switch.v verif_union.v verif_message.v verif_incr.v
+V64_ORDINARY = verif_reverse2.v verif_sumarray.v \
+    verif_append2.v \
+    verif_field_loadstore.v verif_float.v verif_object.v \
+    verif_global.v verif_nest2.v verif_nest3.v \
+    verif_ptr_cmp.v
 
 SHA_FILES= \
   general_lemmas.v SHA256.v common_lemmas.v pure_lemmas.v sha_lemmas.v functional_prog.v \
