@@ -62,3 +62,53 @@ If your Coq IDE requires a `_CoqProject` file, do:
 ```(bash)
 make _CoqProject
 ```
+
+### Mechanisation Map
+
+#### Section 3
+- Section 3.2:
+ In [`veric/juicy_mem.v`](./veric/juicy_mem.v). In particular:
+  | Coq Definition / Theorem | Content in paper                                                            |
+  | ------------------------ | --------------------------------------------------------------------------- |
+  | `perm_of_sh`             | relationship between rmap shares and memory permissions                     |
+  | `coherent`               | Definition 3.2 *coherent*                                                   |
+  | `mem_auth`               | (partial) State interpretation *S(m)* (see full definition in Section 4.1)  |
+  | `mapsto_storebyte`       | Theorem 3.3 (Relationship between points-to and compcert memory operations) |
+- Section 3.3:
+  In [`veric/res_predicates.v`](./veric/res_predicates.v).
+
+  | Coq Definition / Theorem | Content in paper |
+  | ------------------------ | ---------------- |
+  | `resource`               | LK and FUN       |
+
+#### Section 4
+  In [`veric/juicy_extspec.v`](./veric/juicy_extspec.v), unless otherwise mentioned.
+
+  | Coq Definition / Theorem                   | Content in paper                |
+  | ------------------------------------------ | ------------------------------- |
+  | `state_interp`                             | State interpretation *S((m,z))* |
+  | [`floyd/Iris_WP.v: wp`](./floyd/Iris_WP.v) | Weakest Precondition *WP*       |
+  | `jsafe` (the meat is really `jsafe_Pre`)   | Definition 4.1  *safety*        |
+  | `convergent_controls_jsafe`                | Theorem 4.2 *adequacy*          |
+  
+#### Section 5
+  | Coq Definition / Theorem                                                 | Content in paper                                  |
+  | ------------------------------------------------------------------------ | ------------------------------------------------- |
+  | Section 5.1                                                              |                                                   |
+  | [`veric/expr_lemmas4.v: eval_both_relate`](./veric/expr_lemmas4.v)       | Theorem 5.3 *new*                                 |
+  | [`veric/semax_straight.v: semax_store`](./veric/semax_straight.v)        | the store rule and the proof, Theorem 5.4 *store* |
+  | Section 5.1.1                                                            |                                                   |
+  | [`veric/semax.v: believe`](./veric/semax.v)                              | *believe*                                         |
+  | ?                                                                        | *funs_valid*                                      |
+  | ?                                                                        | {P} c {Q} with *fs*                               |
+  | [`veric/semax_call.v: semax_call`](./veric/semax_call.v)                 | the call rule                                     |
+  | Section 5.2                                                              |                                                   |
+  | [`veric/initial_world.v: res_of_loc`](./veric/initial_world.v)           | res_of_loc                                        |
+  | [`veric/initial_world.v: rmap_of_mem_coherent`](./veric/initial_world.v) | Theorem 5.5                                       |
+  | [`veric/initial_world.v: rmap_inflate_equiv`](./veric/initial_world.v)   | Theorem 5.6                                       |
+  | [`veric/SequentialClight.v: adequacy`](./veric/SequentialClight.v)       | Theorem 5.7 *whole-program adequacy*              |
+
+#### Section 6
+ | Coq Definition / Theorem                               | Content in paper                               |
+ | ------------------------------------------------------ | ---------------------------------------------- |
+ | [`progs64/verif_reverse2.v`](progs64/verif_reverse2.v) | Verification of a linked-list reverse function |
