@@ -2,9 +2,9 @@
 
 An Iris instantiation of the CompCert C semantics.
 This artifact is a fork of the Verified Software Toolchain (VST).
-This document describes how to build the examples in the paper; some other information are documented in [file_organization_misc.md](./file_organization_misc.md). 
+This document describes how to build the Coq code, and where to find the corresponding Coq mechanization of some theorems mentioned in the paper. 
 
-Other .md files, such as the original VST readme [README_VST.md](./README_VST.md) are included for reference, but they may be outdated. 
+Some other information are documented in [file_organization_misc.md](./file_organization_misc.md). Other .md files, such as the original VST readme [README_VST.md](./README_VST.md) are included for reference, but they may be outdated. 
 
 ## Building
 
@@ -16,13 +16,16 @@ The proof for the example [verif_reverse2.v](./progs64/verif_reverse2.v) assumes
 
 ### Installing Dependencies
 
-We recommend using opam for managing dependencies with a new opam switch:
+We recommend using opam for managing dependencies. To install opam, see https://opam.ocaml.org/doc/Install.html.
+
+Create a new opam switch:
 
 ```(bash)
 opam switch create vst_on_iris ocaml-variants.4.14.1+options ocaml-option-flambda
+eval $(opam env --switch=vst_on_iris)
 ```
 
-Install dependencies:
+Install dependencies (and say yes to every prompt):
 
 ```(bash)
 opam repo add coq-released https://coq.inria.fr/opam/released
@@ -84,14 +87,15 @@ make _CoqProject
 #### Section 4
   In [`veric/juicy_extspec.v`](./veric/juicy_extspec.v), unless otherwise mentioned.
 
-  | Coq Definition / Theorem                   | Content in paper                |
-  | ------------------------------------------ | ------------------------------- |
-  | `state_interp`                             | State interpretation *S((m,z))* |
-  | [`floyd/Iris_WP.v: wp`](./floyd/Iris_WP.v) | Weakest Precondition *WP*       |
-  | `jsafe` (the meat is really `jsafe_Pre`)   | Definition 4.1  *safety*        |
-  | `convergent_controls_jsafe`                | Theorem 4.2 *adequacy*          |
+  | Coq Definition / Theorem                    | Content in paper                |
+  | ------------------------------------------- | ------------------------------- |
+  | `state_interp`                              | State interpretation *S((m,z))* |
+  | [`floyd/Iris_WP.v: wp`](./floyd/Iris_WP.v)? | Weakest Precondition *WP*       |
+  | `jsafe` (the meat is really `jsafe_Pre`)    | Definition 4.1  *safety*        |
+  | `convergent_controls_jsafe`?                | Theorem 4.2 *adequacy*          |
   
 #### Section 5
+Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), and `semax _ _ P c Q` roughly corresponds to the Hoare triple `{P} c {Q}`.
   | Coq Definition / Theorem                                                 | Content in paper                                  |
   | ------------------------------------------------------------------------ | ------------------------------------------------- |
   | Section 5.1                                                              |                                                   |
@@ -105,10 +109,11 @@ make _CoqProject
   | Section 5.2                                                              |                                                   |
   | [`veric/initial_world.v: res_of_loc`](./veric/initial_world.v)           | res_of_loc                                        |
   | [`veric/initial_world.v: rmap_of_mem_coherent`](./veric/initial_world.v) | Theorem 5.5                                       |
-  | [`veric/initial_world.v: rmap_inflate_equiv`](./veric/initial_world.v)   | Theorem 5.6                                       |
+  | [`veric/initial_world.v: rmap_inflate_equiv`](./veric/initial_world.v)?  | Theorem 5.6                                       |
   | [`veric/SequentialClight.v: adequacy`](./veric/SequentialClight.v)       | Theorem 5.7 *whole-program adequacy*              |
 
 #### Section 6
  | Coq Definition / Theorem                               | Content in paper                               |
  | ------------------------------------------------------ | ---------------------------------------------- |
  | [`progs64/verif_reverse2.v`](progs64/verif_reverse2.v) | Verification of a linked-list reverse function |
+ | [`progs64/verif_*.v`](progs64/)                        | Other verification examples                    |
