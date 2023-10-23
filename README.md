@@ -102,7 +102,7 @@ make _CoqProject
   | [`veric/SequentialClight.v: adequacy`](./veric/SequentialClight.v)                | Theorem 4.2 *adequacy*          |
   
 #### Section 5
-Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), and `semax _ _ P c Q` roughly corresponds to the Hoare triple `{P} c {Q}`.
+Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), and `semax _ _ P c Q` corresponds to the Hoare triple `{P} c {Q}`.
   | Coq Definition / Theorem                                                 | Content in paper                                  |
   | ------------------------------------------------------------------------ | ------------------------------------------------- |
   | Section 5.1                                                              |                                                   |
@@ -116,8 +116,8 @@ Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), 
   | Section 5.2                                                              |                                                   |
   | [`veric/initial_world.v: res_of_loc`](./veric/initial_world.v)           | res_of_loc                                        |
   | [`veric/initial_world.v: rmap_of_mem_coherent`](./veric/initial_world.v) | Theorem 5.5                                       |
-  | [`veric/initial_world.v: rmap_inflate_equiv`](./veric/initial_world.v)?  | Theorem 5.6                                       |
-  | [`veric/SequentialClight.v: adequacy`](./veric/SequentialClight.v)       | Theorem 5.7 *whole-program adequacy*              |
+  | [`veric/initial_world.v: rmap_inflate_equiv`](./veric/initial_world.v)  | Theorem 5.6                                       |
+  | [`veric/SequentialClight.v: whole_program_sequential_safety_ext`](./veric/SequentialClight.v)       | Theorem 5.7 *whole-program adequacy*              |
 
 #### Section 6
  | Coq Definition / Theorem                               | Content in paper                               |
