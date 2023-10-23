@@ -4,7 +4,7 @@ An Iris instantiation of the CompCert C semantics.
 This artifact is a fork of the Verified Software Toolchain (VST).
 This document describes how to build the Coq code, and where to find the corresponding Coq mechanization of some theorems mentioned in the paper. 
 
-Some other information are documented in [file_organization_misc.md](./file_organization_misc.md). Other .md files, such as the original VST readme [README_VST.md](./README_VST.md) are included for reference, but they may be outdated. 
+Some other information is documented in [file_organization_misc.md](./file_organization_misc.md). Other .md files, such as the original VST readme [README_VST.md](./README_VST.md) are included for reference, but they may be outdated. 
 
 ## Building
 
@@ -69,6 +69,13 @@ make _CoqProject
 ### Mechanisation Map
 
 #### Section 3
+- Section 3.1:
+ In [`shared`](./shared). In particular:
+  | Coq Definition / Theorem | Content in paper                                                            |
+  | ------------------------ | --------------------------------------------------------------------------- |
+  | [`shared/shared.v`](./shared/shared.v)             | camera of shared values                           |
+  | [`shared/shared.v: writable_update`](./shared/shared.v)        | Lemma 3.1                             |
+  | `shared/resource_map.v, shared/gen_heap.v`               | resource maps  |
 - Section 3.2:
  In [`veric/juicy_mem.v`](./veric/juicy_mem.v). In particular:
   | Coq Definition / Theorem | Content in paper                                                            |
@@ -90,9 +97,9 @@ make _CoqProject
   | Coq Definition / Theorem                    | Content in paper                |
   | ------------------------------------------- | ------------------------------- |
   | `state_interp`                              | State interpretation *S((m,z))* |
-  | [`floyd/Iris_WP.v: wp`](./floyd/Iris_WP.v)? | Weakest Precondition *WP*       |
-  | `jsafe` (the meat is really `jsafe_Pre`)    | Definition 4.1  *safety*        |
-  | `convergent_controls_jsafe`?                | Theorem 4.2 *adequacy*          |
+  | `jsafe` (the meat is really `jsafe_Pre`)    | Weakest Precondition *WP*       |
+  | [`sepcomp/step_lemmas: safeN_`](./sepcomp/step_lemmas.v)     | Definition 4.1  *safety*        |
+  | [`veric/SequentialClight.v: adequacy`](./veric/SequentialClight.v)                | Theorem 4.2 *adequacy*          |
   
 #### Section 5
 Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), and `semax _ _ P c Q` roughly corresponds to the Hoare triple `{P} c {Q}`.
@@ -103,8 +110,8 @@ Note that `semax` is short for "sémantique axiomatique" (axiomatic semantics), 
   | [`veric/semax_straight.v: semax_store`](./veric/semax_straight.v)        | the store rule and the proof, Theorem 5.4 *store* |
   | Section 5.1.1                                                            |                                                   |
   | [`veric/semax.v: believe`](./veric/semax.v)                              | *believe*                                         |
-  | ?                                                                        | *funs_valid*                                      |
-  | ?                                                                        | {P} c {Q} with *fs*                               |
+  | [`veric/seplog.v: funspecs_assert`](./veric/seplog.v)                    | *funs_valid*                                      |
+  | [`veric/semax.v: semax`](./veric/semax.v)                                | {P} c {Q} with *fs*                               |
   | [`veric/semax_call.v: semax_call`](./veric/semax_call.v)                 | the call rule                                     |
   | Section 5.2                                                              |                                                   |
   | [`veric/initial_world.v: res_of_loc`](./veric/initial_world.v)           | res_of_loc                                        |
