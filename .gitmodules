@@ -10,3 +10,6 @@
 [submodule "fcf"]
 	path = fcf
 	url = https://github.com/adampetcher/fcf.git
+[submodule "diaframe"]
+	path = diaframe
+	url = ./diaframe
