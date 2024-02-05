@@ -85,6 +85,7 @@ Proof.
   rewrite -assoc (bi.and_elim_r (denote_tc_assert _ _)).
   rewrite (add_and (mem_auth m ∗ _) (▷_)); last by iIntros "H"; iNext; iDestruct "H" as "(Hm & H & _)"; iApply (eval_expr_relate(CS := CS) with "[$Hm $H]").
   iDestruct "H" as "(H & >%Hb)".
+   Print Ltac inv.
   inv Heval.
   eapply eval_expr_fun in Hb; last done; subst.
   rewrite typecheck_expr_sound; last done.
@@ -348,7 +349,7 @@ Proof.
     + iApply jsafe_local_step.
       { constructor. }
       iApply ("IHk" with "[%] [%] rguard"); eauto.
-    + inv Hcont. inv H2.
+    + Coqlib.inv Hcont. inv H2.
       iApply jsafe_local_step.
       { intros; apply step_skip_or_continue_loop1; auto. }
       iApply "rguard".

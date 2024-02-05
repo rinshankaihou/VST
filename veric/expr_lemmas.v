@@ -234,7 +234,7 @@ Proof.
        ++ inv H0.
       * destruct H0.
        ++ destruct a. destruct H0.
-         -- subst. inv H0. tauto.
+         -- subst. inv H0.
          -- simpl in *. apply IHp.
            ** inv H; auto.
            ** intro. intros. inv H5.

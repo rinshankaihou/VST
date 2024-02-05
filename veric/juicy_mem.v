@@ -1141,7 +1141,7 @@ Section mpred.
       + intros (n & H1 & H2).
         destruct l2; first done.
         rewrite !lookup_cons in H1 H2.
-        destruct n; first by destruct x; inv H1; inv H2; constructor.
+        destruct n; first by destruct x; inv H1; constructor.
         constructor; rewrite IHl1; eauto.
   Qed.
 

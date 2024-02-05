@@ -153,9 +153,9 @@ bind_parameter_temps l1 l2 t2 = Some te2 ->
 t1 !! i = t2 !! i ->
 te !! i = te2 !! i.
 Proof.
-induction l1; intros; simpl in *; try destruct a; destruct l2; inv H; inv H0.
+induction l1; intros; simpl in *; try destruct a; destruct l2; inv H.
 apply H1.
-eapply IHl1. apply H3. apply H2.
+eapply IHl1. apply H3. apply H0.
 repeat rewrite Maps.PTree.gsspec. destruct (peq i i0); auto.
 Qed.
 
@@ -166,7 +166,7 @@ i <> id ->
 (bind_parameter_temps l l1 t = Some te') -> te' !! i = te !! i.
 Proof.
 induction l; intros.
-- simpl in *. destruct l1; inv H. inv H1. rewrite Maps.PTree.gso; auto.
+- simpl in *. destruct l1; inv H. rewrite Maps.PTree.gso; auto.
 - simpl in *. destruct a. destruct l1; inv H.
   eapply smaller_temps_exists2. apply H1. apply H3.
   intros. repeat rewrite Maps.PTree.gsspec. destruct (peq i i0); auto.
