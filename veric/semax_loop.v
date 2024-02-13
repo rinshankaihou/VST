@@ -85,8 +85,8 @@ Proof.
   rewrite -assoc (bi.and_elim_r (denote_tc_assert _ _)).
   rewrite (add_and (mem_auth m ∗ _) (▷_)); last by iIntros "H"; iNext; iDestruct "H" as "(Hm & H & _)"; iApply (eval_expr_relate(CS := CS) with "[$Hm $H]").
   iDestruct "H" as "(H & >%Hb)".
-   Print Ltac inv.
-  inv Heval.
+  (* FIXME *)
+  Coqlib.inv Heval.
   eapply eval_expr_fun in Hb; last done; subst.
   rewrite typecheck_expr_sound; last done.
   rewrite bi.later_and.

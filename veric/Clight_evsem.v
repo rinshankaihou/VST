@@ -311,7 +311,7 @@ Lemma eval_exprTlist_fun: forall es ts vs1 T1 (E1:eval_exprTlist es ts vs1 T1)
                           vs2 T2 (E2:eval_exprTlist es ts vs2 T2), (vs1,T1)=(vs2,T2).
 Proof.
   intros es ts vs1 T1 E; induction E; simpl; intros; inv E2; trivial.
-  exploit eval_exprT_fun. apply H. apply H5. intros X; inv X. rewrite H8 in H0; inv H0.
+  exploit eval_exprT_fun. apply H. apply H5. intros X; Coqlib.inv X. rewrite H8 in H0; inv H0.
   apply IHE in H9; congruence. 
 Qed.
 

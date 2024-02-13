@@ -854,3 +854,5 @@ phi @ addr <> YES sh sh' (LK z z') P.*)
 End heap.
 
 #[export] Hint Resolve VALspec_range_0: normalize.
+
+Tactic Notation (at level 0) "inv" ident(H) := compcert.lib.Coqlib.inv H.

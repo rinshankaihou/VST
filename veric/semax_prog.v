@@ -26,6 +26,9 @@ Require Import Coq.Logic.JMeq.
 
 Import Ctypes Clight.
 
+(* FIXME *)
+Tactic Notation (at level 0) "inv" ident(H) := Coqlib.inv H.
+
 Section mpred.
 
 Context `{!VSTGS OK_ty Σ}.
