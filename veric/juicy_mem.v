@@ -4,6 +4,7 @@ From VST.veric Require Import base Memory juicy_base shares.
 From VST.shared Require Import shared resource_map gen_heap dshare.
 Require Import VST.zlist.sublist.
 Export Values.
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
 
 Open Scope Z.
 
@@ -1002,8 +1003,7 @@ Section mpred.
   Lemma resR_le : forall x1 x2 (Hv : ✓x2) (Hmono : x1 ≼ x2), res_le (resR_to_resource x1) (resR_to_resource x2).
   Proof.
     intros ??? [-> | (? & ? & -> & -> & ?)]%option_included.
-    { split; simpl; auto.
-      apply @ucmra_unit_least. }
+    { split; simpl; auto. }
     destruct H as [H | H].
     { erewrite resR_to_resource_eq; last by constructor.
       split; auto.
@@ -1444,8 +1444,11 @@ Section mpred.
       { rewrite !fmap_length seq_length //. } }
     rewrite big_sepL2_alt -(big_sepM_list_to_map (λ x y, x ↦{#sh} y)) //.
     iDestruct (resource_map_auth_valid with "Hm") as %(_ & Hvalid).
-    iMod (mapsto_update_big with "Hm H") as "(Hm & $)".
-    { rewrite Hlen !dom_list_to_map_L !fst_zip //; rewrite !fmap_length seq_length //; lia. }
+    iMod (mapsto_update_big with "Hm H") as "(Hm & H)".
+    { instantiate (1:=(list_to_map (zip ((λ i : nat, adr_add k i) <$> seq 0 (length bl))
+                                        (VAL <$> bl)))).
+      rewrite Hlen !dom_list_to_map_L !fst_zip //; rewrite !fmap_length seq_length //; lia. }
+    iFrame "H".
     rewrite !fmap_length seq_length bi.pure_True // bi.True_and bi.sep_emp.
     iDestruct (resource_map_auth_valid with "Hm") as %(_ & Hvalid').
     iExists _; iFrame; iPureIntro; split; last done.
