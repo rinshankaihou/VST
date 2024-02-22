@@ -9,6 +9,7 @@ Require Import VST.veric.juicy_mem.
 Require Import VST.veric.external_state.
 
 Require Import VST.veric.tycontext.
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
 
 Local Open Scope nat_scope.
 

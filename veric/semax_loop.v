@@ -17,6 +17,8 @@ Require Import VST.veric.semax_lemmas.
 Require Import VST.veric.semax_conseq.
 Require Import VST.veric.Clight_lemmas.
 
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
+
 Local Open Scope nat_scope.
 
 Section extensions.

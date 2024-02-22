@@ -9,6 +9,8 @@ From VST.shared Require Export dshare gen_heap.
 Export Values.
 Export -(notations) Maps.
 
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
+
 (* We can't import compcert.lib.Maps' notations because they conflict with stdpp's,
    and actually the ! notation conflicts with rewrite's ! as well. Matching stdpp's lookup notation
    instead, with an extra ! per lookup. *)

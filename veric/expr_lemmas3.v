@@ -303,10 +303,7 @@ lia.
 }
 rename s into b.
 assert (z = Zaux.cond_Zopp b (Z.pos m / Z.pow 2 (- e))). {
-  destruct e; inv H3.
-  lia. pose proof (Zgt_pos_0 p); lia. clear g.
-  rewrite Zpower_pos_nat. rewrite Zpower_nat_Z.
-  rewrite positive_nat_Z; auto.
+  destruct e; inv H3; done.
 }
 clear H3. subst z.
 rewrite IEEE754_extra.ZofB_range_correct.
@@ -545,7 +542,7 @@ all:   try match goal with
    end.
 all: try apply I.
 all: rewrite ?Hp; hnf; auto.
-inv J; congruence.
+all: congruence.
 Qed.
 
 End mpred.

@@ -13,6 +13,7 @@ Require Import VST.shared.dshare.
 Require Import VST.veric.mpred.
 Require Import VST.veric.mapsto_memory_block.
 Import Values.
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
 
 Open Scope maps.
 
@@ -1157,7 +1158,7 @@ Proof.
   { simpl; intros; apply lookup_empty. }
   rewrite seq_S foldl_snoc.
   intros; destruct (funspec_of_loc _ _ _).
-  - rewrite lookup_insert_ne; first apply IHn; last intros [=]; lia.
+  - rewrite lookup_insert_ne; first apply IHn; last (intros [=]); lia.
   - apply IHn; lia.
 Qed.
 
