@@ -1413,7 +1413,7 @@ Proof. destruct HI. split3.
            (close_precondition (map fst (fn_params f)) (argsassert_of ((Pre_of_funspec (phi i)) x)) ∗ stackframe_of f) 
            (fn_body f) (frame_ret_assert (function_body_ret_assert (fn_return f) (assert_of ((Post_of_funspec (phi i)) x))) (stackframe_of f)))) as HH.
   { intros. specialize (H1 i); specialize (H2 i). specialize (HE i). subst. unfold semax_body in H.
-    destruct (phi i); subst. destruct H as [? [? ?]]. split3; auto. }
+    destruct (phi i); subst. destruct H as [? [? ?]]. split3; auto. apply H1. }
   clear H H1 H2. destruct HH as [HH1 [HH2 HH3]].
   apply (HH3 Hi).
 Qed.

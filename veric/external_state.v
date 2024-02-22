@@ -2,6 +2,8 @@ From iris.algebra Require Export excl auth.
 From iris_ora.algebra Require Export excl_auth.
 From iris_ora.logic Require Export own.
 From iris.proofmode Require Import proofmode.
+From compcert Require Import Coqlib.
+Tactic Notation "inv" ident(H):= Coqlib.inv H.
 
 Class externalGS (Z : Type) (Σ : gFunctors) := ExternalGS {
   external_inG : inG Σ (excl_authR (leibnizO Z));
