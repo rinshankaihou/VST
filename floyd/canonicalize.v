@@ -1,5 +1,6 @@
 Require Import VST.floyd.base2.
 Require Import VST.floyd.client_lemmas.
+Require Import VST.veric.iFrame_instance.
 
 Import LiftNotation.
 

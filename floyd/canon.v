@@ -1,6 +1,7 @@
 Require Export Coq.Sorting.Permutation.
 Require Import VST.veric.seplog.
 Require Import VST.floyd.base2.
+Require Import VST.veric.iFrame_instance.
 Import LiftNotation.
 
 Inductive localdef : Type :=

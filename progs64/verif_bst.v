@@ -320,8 +320,6 @@ Proof.
   iDestruct "Hleft" as (p1) "(? & ?)".
   iFrame.
   iSplit; first done.
-  iExists p1, p2.
-  iFrame.
   unfold_data_at (data_at _ _ _ p).
   rewrite (field_at_data_at _ t_struct_tree [StructField _left]).
   iFrame.
@@ -351,8 +349,6 @@ Proof.
   iDestruct "Hright" as (p2) "(? & ?)".
   iFrame.
   iSplit; first done.
-  iExists p1, p2.
-  iFrame.
   unfold_data_at (data_at _ _ _ p).
   rewrite (field_at_data_at _ t_struct_tree [StructField _right]).
   iFrame.

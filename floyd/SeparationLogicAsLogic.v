@@ -9,6 +9,7 @@ Require Export VST.floyd.find_nth_tactic.
 Require Export VST.veric.juicy_extspec.
 Require Import VST.floyd.val_lemmas VST.floyd.assert_lemmas.
 Require Import VST.floyd.SeparationLogicFacts.
+Require Import VST.veric.iFrame_instance.
 Import Ctypes LiftNotation.
 
 Open Scope maps.
@@ -2314,8 +2315,7 @@ apply semax_adapt
       6: apply SB3.
       all: clear SB3; intros; simpl; try iIntros "(_ & ([] & ?) & _)".
       * split => rho; monPred.unseal; iIntros "(%TC & (N1 & (? & N2)) & (%VALS & %TCVals)) !>"; iFrame.
-        unfold close_precondition.
-        iExists vals; iFrame; iPureIntro; repeat (split; trivial).
+        iPureIntro; repeat (split; trivial).
         apply (tc_vals_Vundef TCVals).
       * split => rho; rewrite /bind_ret; monPred.unseal; destruct (fn_return f); try iIntros "(_ & ([] & _) & _)".
         rewrite /= -QPOST; iIntros "(? & (? & ?) & ?)"; iFrame.

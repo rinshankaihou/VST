@@ -4,6 +4,7 @@ Require Export VST.msl.Extensionality.
 Require Export compcert.lib.Coqlib.
 Require Export VST.msl.Coqlib2 VST.veric.coqlib4 VST.floyd.coqlib3.
 Require Import VST.floyd.val_lemmas.
+Require Import VST.veric.iFrame_instance.
 Import LiftNotation.
 
 Ltac _destruct_var_types i Heq_vt Heq_ve t b ::=
@@ -584,6 +585,8 @@ Proof.
    destruct_glob_types i.
    rewrite Heqo0 Heqo1 //.
 Qed.
+
+Local Existing Instance absorbing_quick_absorbing.
 
 Lemma ENTAIL_trans:
   forall Delta P Q R,
