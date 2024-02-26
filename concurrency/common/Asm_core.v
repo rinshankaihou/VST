@@ -199,7 +199,7 @@ Lemma get_extcall_arguments_spec : forall r m sig args,
   extcall_arguments r m sig args.
 Proof.
   unfold extcall_arguments; split; intro.
-  - revert dependent args; induction (Conventions1.loc_arguments sig); simpl; intros.
+  - generalize dependent args; induction (Conventions1.loc_arguments sig); simpl; intros.
     { inv H; constructor. }
     destruct a.
     + destruct (get_extcall_arg _ _ _) eqn: Hget; [|discriminate].

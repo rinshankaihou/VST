@@ -230,6 +230,7 @@ Ltac forward_spawn id arg wit :=
           unfold R; instantiate (1 := fun _ => _); simpl;
           reflexivity]
      |];
+  simpl;
   forward_call (f, arg, existT(P := fun T => (T -> globals) * T * (T -> val -> mpred))%type A (Q, wit, R)); subst Q R;
            [ .. | subst f];
     [try (subst f; rewrite <- ?bi.sep_assoc; apply bi.sep_mono; [apply derives_refl|]).. |]
