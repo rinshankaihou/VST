@@ -1194,7 +1194,7 @@ Ltac simplify_remove_localdef_temp :=
 Ltac afc_error1 :=
   fail 100 "Error: should not hit this case in after_forward_call.  To ignore this error and try anyway, do 'Ltac afc_error1 ::= idtac'".
 
-Ltac after_forward_call :=
+  Ltac after_forward_call :=
     check_POSTCONDITION; 
     try match goal with |- context [remove_localdef_temp] =>
               simplify_remove_localdef_temp
@@ -1212,11 +1212,12 @@ Ltac after_forward_call :=
                   subst hide
                end;
                unfold_app
-        | |- @semax ?W ?X ?Y ?Z ?CS ?E ?Delta (PROPx (?P1 ++ ?P2) (LOCALx ?Q (SEPx (?A ++ ?B)))) ?c ?Post =>
+        | |- @semax _ _ _ _ ?CS _ _ (PROPx _ (LOCALx _ (SEPx (?A ++ _)))) _ _ =>
+               pattern A;
                let hide := fresh "hide" in
-               pose (hide x := @semax W X Y Z CS E Delta (PROPx (P1 ++ P2) 
-                                     (LOCALx Q (SEPx (x ++ B)))) c Post);
-               change (hide A);
+               match goal with
+                   | |- ?f A => set f as hide
+               end;
                try change_compspecs CS;
                subst hide; 
                cbv beta;
