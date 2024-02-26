@@ -473,7 +473,7 @@ VERIC_FILES= \
   semax.v semax_lemmas.v semax_conseq.v semax_call.v semax_straight.v semax_loop.v semax_switch.v \
   initial_world.v Clight_initial_world.v initialize.v semax_prog.v semax_ext.v SeparationLogic.v SeparationLogicSoundness.v  \
   NullExtension.v SequentialClight.v tcb.v jstep.v address_conflict.v valid_pointer.v coqlib4.v \
-  mem_lessdef.v Clight_mem_lessdef.v mpred.v
+  mem_lessdef.v Clight_mem_lessdef.v mpred.v iFrame_instance.v
 
 ZLIST_FILES= \
   sublist.v Zlength_solver.v list_solver.v

@@ -11,6 +11,7 @@ Require Import VST.floyd.local2ptree_eval.
 Require Import VST.floyd.local2ptree_denote.
 Require Import VST.floyd.local2ptree_eval.
 Require Import VST.floyd.local2ptree_typecheck.
+Require Import VST.veric.iFrame_instance.
 Import Cop.
 Import LiftNotation.
 Import -(notations) compcert.lib.Maps.

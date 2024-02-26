@@ -272,7 +272,8 @@ Proof.
   rewrite semax_external_funspec_sub; [iFrame | eauto..].
   iSplit.
   - iPureIntro; repeat split; auto; tauto.
-  - iIntros "!>" (??) "[Q %]".
+  - iSplit; [done|].
+    iIntros "!>" (??) "[Q %]".
     destruct Hsub as [_ Hsub].
     iApply "Htc"; iSplit; last done.
     simpl in *; inv H.
@@ -619,7 +620,7 @@ Proof.
   iApply (bi.impl_mono with "H"); first done.
   iIntros "H" (????) "((% & %) & ?)".
   iApply "H"; iFrame.
-  iPureIntro; split; [done | set_solver].
+  iPureIntro; split;[set_solver|done].
 Qed.
 
 Lemma believe_internal_mask_mono {CS} gx E E' Delta v sig cc A P Q

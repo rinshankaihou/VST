@@ -1,5 +1,6 @@
 Require Import VST.floyd.base2.
 Require Export VST.floyd.canon.
+Require Import VST.veric.iFrame_instance.
 Import LiftNotation.
 
 Ltac refold_right_sepcon R :=

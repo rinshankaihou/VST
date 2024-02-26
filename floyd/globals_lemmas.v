@@ -11,6 +11,7 @@ Require Import VST.floyd.closed_lemmas.
 Require Import VST.floyd.nested_pred_lemmas.
 Import LiftNotation.
 Import -(notations) compcert.lib.Maps.
+Require Import VST.veric.iFrame_instance.
 
 Lemma unsigned_repr_range: forall i, 0 <= i -> 0 <= Ptrofs.unsigned (Ptrofs.repr i) <= i.
 Proof.
