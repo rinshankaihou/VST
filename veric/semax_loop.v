@@ -57,12 +57,12 @@ Proof.
   intros.
   iIntros "#Prog_OK" (????) "[(%Hclosed & %) #rguard]".
   iPoseProof (H0 with "Prog_OK [rguard]") as "H0".
-  { iIntros "!>"; iFrame "rguard"; iPureIntro.
+  { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
-    unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
+    unfold closed_wrt_modvars, closed_wrt_vars in *. intros ?? Hi; apply Hclosed.
     intros i; specialize (Hi i); rewrite modifiedvars_Sifthenelse; tauto. }
   iPoseProof (H1 with "Prog_OK [rguard]") as "H1".
-  { iIntros "!>"; iFrame "rguard"; iPureIntro.
+  { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
     intros i; specialize (Hi i); rewrite modifiedvars_Sifthenelse; tauto. }
@@ -93,7 +93,7 @@ Proof.
   unfold liftx, lift, eval_unop in HTCb; simpl in HTCb.
   destruct (bool_val (typeof b) (eval_expr b rho)) as [b'|] eqn: Hb; [|contradiction].
   iAssert (▷assert_safe OK_spec psi E' f vx tx (Cont (Kseq (if b' then c else d) k)) rho) with "[F P fun]" as "Hsafe".
-  { iNext; destruct b'; [iApply "H0" | iApply "H1"]; (iSplit; first done); iFrame; iPureIntro; split; auto; split; auto;
+  { iNext; destruct b'; [iApply "H0" | iApply "H1"]; (iSplit; first done); iFrame; iPureIntro; split; auto;
       apply bool_val_strict; auto. }
   simpl in *; unfold Cop.sem_notbool in *.
   destruct (Cop.bool_val _ _ _) eqn: Hbool_val; inv H10.
@@ -129,7 +129,7 @@ Proof.
   iIntros "#Prog_OK" (????) "[(%Hclosed & %) #rguard]".
   iPoseProof (H with "Prog_OK") as "H".
   iPoseProof (H0 with "Prog_OK [rguard]") as "H0".
-  { iIntros "!>"; iFrame "rguard"; iPureIntro.
+  { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
     intros i; specialize (Hi i); rewrite modifiedvars_Ssequence; tauto. }

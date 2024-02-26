@@ -10,6 +10,7 @@ Require Import VST.floyd.data_at_rec_lemmas.
 Require Import VST.floyd.jmeq_lemmas.
 Require Import VST.zlist.sublist.
 Require Import VST.floyd.local2ptree_typecheck.
+Require Import VST.veric.iFrame_instance.
 Import LiftNotation.
 
 Local Unset SsrRewrite.

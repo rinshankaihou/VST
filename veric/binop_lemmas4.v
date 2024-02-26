@@ -372,7 +372,7 @@ rewrite Ptrofs.unsigned_repr in H0;
      by (unfold Ptrofs.max_unsigned, Ptrofs.modulus, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; rewrite Hp; compute; auto);
     lia]).
 -
-iIntros "[% $]"; iPureIntro.
+iIntros "[% $]"; iPureIntro. rewrite and_True.
 destruct si, si'; auto.
 *
 unfold Ptrofs.of_ints, Ptrofs.of_intu in *.
@@ -445,7 +445,7 @@ rewrite Ptrofs.unsigned_repr in H;
      by (unfold Ptrofs.max_unsigned, Ptrofs.modulus, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; rewrite Hp; compute; auto);
     lia]).
 -
-iIntros "[% $]"; iPureIntro.
+iIntros "[% $]"; iPureIntro. rewrite and_True.
 destruct si, si'; auto.
 *
 unfold Ptrofs.of_ints, Ptrofs.of_intu in *.

@@ -493,7 +493,7 @@ Lemma func_ptr_mono fs gs v: funspec_sub fs gs ->
 Proof.
   intros; rewrite /func_ptr.
   iIntros "H"; iDestruct "H" as (?? hs ?) "H".
-  iExists b; iFrame "%"; iExists hs; iFrame; iPureIntro.
+  iExists b. iFrame. iFrame "%". iPureIntro.
   split; auto; eapply funspec_sub_trans; eauto.
 Qed.
 
