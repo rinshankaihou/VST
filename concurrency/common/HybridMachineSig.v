@@ -717,7 +717,7 @@ Module HybridMachineSig.
       Lemma csafe_concur_safe: forall U tr tp m n, csafe (U, tr, tp) m n -> concur_safe U tp m n.
       Proof.
         intros.
-        remember (U, tr, tp) as st; revert dependent tp; revert U tr.
+        remember (U, tr, tp) as st; generalize dependent tp; revert U tr.
         induction H; intros; subst; simpl in *.
         - constructor.
         - constructor; auto.

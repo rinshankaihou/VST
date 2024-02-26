@@ -519,8 +519,8 @@ Lemma CoreSafe_star: forall n U tr tp m tid (c : @semC (ClightSem ge)) c' tp' m'
     (U, tr, tp) m n.
 Proof.
   intros.
-  revert dependent tp'.
-  revert dependent tp.
+  generalize dependent tp'.
+  generalize dependent tp.
   revert n tr.
   induction Hcoresteps; intros.
   - subst.

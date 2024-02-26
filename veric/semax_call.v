@@ -246,7 +246,7 @@ Lemma alloc_vars_match_venv_gen: forall ge ve m l0 l ve' m',
   match_venv (make_venv ve') (l0 ++ l).
 Proof.
   intros.
-  revert dependent l0; induction H0; intros.
+  generalize dependent l0; induction H0; intros.
   { rewrite app_nil_r //. }
   specialize (IHalloc_variables (l0 ++ [(id, ty)])).
   rewrite -assoc in IHalloc_variables; apply IHalloc_variables.

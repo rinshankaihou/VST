@@ -1289,7 +1289,7 @@ Module X86Inj.
 
   Lemma val_obs_list_inj : forall f v v1 v2, val_obs_list f v v1 -> val_obs_list f v v2 -> v1 = v2.
   Proof.
-    intros; revert dependent v2; induction H; inversion 1; auto; subst.
+    intros; generalize dependent v2; induction H; inversion 1; auto; subst.
     f_equal; auto.
     eapply val_obs_inj; eauto.
   Qed.
