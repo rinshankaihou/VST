@@ -457,7 +457,7 @@ Qed.
 Lemma big_sepL_seq : forall {A} `{Inhabited A} l (f : nat -> A -> mpred),
   equiv ([∗ list] k↦y ∈ l, f k y) ([∗ list] i ∈ seq 0 (length l), f i (nth i l inhabitant)).
 Proof.
-  intros; remember (rev l) as l'; revert dependent l; induction l'; intros.
+  intros; remember (rev l) as l'; generalize dependent l; induction l'; intros.
   { by destruct l; [|apply app_cons_not_nil in Heql']. }
   apply (f_equal (@rev _)) in Heql'; rewrite rev_involutive in Heql'; subst; simpl.
   rewrite app_length seq_app !big_opL_app IHl'; last by rewrite rev_involutive.
@@ -820,7 +820,7 @@ Lemma mapsto_list_value_cohere: forall a sh1 sh2 b1 b2 (Hlen: length b1 = length
     [∗ list] i↦b ∈ b2, mapsto (adr_add a (Z.of_nat i)) sh2 (VAL b)) ⊢
   ⌜b1 = b2⌝.
 Proof.
-  intros until b1; remember (rev b1) as b1'; revert dependent b1; induction b1'; simpl; intros.
+  intros until b1; remember (rev b1) as b1'; generalize dependent b1; induction b1'; simpl; intros.
   - destruct b1; last by apply app_cons_not_nil in Heqb1'.
     symmetry in Hlen; apply nil_length_inv in Hlen as ->; auto.
   - apply (f_equal (@rev _)) in Heqb1'; rewrite rev_involutive in Heqb1'; subst; simpl in *.

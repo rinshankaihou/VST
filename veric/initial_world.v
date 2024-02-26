@@ -910,7 +910,7 @@ Lemma lookup_singleton_list : forall {A} {B : ora} (l : list A) (f : A -> B) k i
   if adr_range_dec k (Z.of_nat (length l)) i then f <$> (l !! (Z.to_nat (i.2 - k.2))) else None)%stdpp.
 Proof.
   intros.
-  remember (rev l) as l'; revert dependent l; induction l'; simpl; intros.
+  remember (rev l) as l'; generalize dependent l; induction l'; simpl; intros.
   { destruct l; simpl; last by apply app_cons_not_nil in Heql'.
     rewrite lookup_empty; if_tac; auto. }
   apply (f_equal (@rev _)) in Heql'; rewrite rev_involutive in Heql'; subst; simpl.
@@ -955,7 +955,7 @@ Lemma lookup_of_mem : forall m {F} ge G block_bounds loc, (@rmap_of_mem m block_
 Proof.
   intros; rewrite /rmap_of_mem.
   remember (Pos.to_nat (nextblock m) - 1)%nat as n.
-  revert dependent m; induction n; intros.
+  generalize dependent m; induction n; intros.
   { rewrite /= lookup_empty.
     destruct (block_bounds loc.1).
     destruct (_ && _) eqn: Hin; last done.
@@ -1073,7 +1073,7 @@ Lemma big_opM_opL' : forall {A B} (f : _ -> A -> gmapR address B) (g : _ -> _ ->
   [∗ list] a↦b ∈ l, [∗ map] k↦v ∈ f a b, g k v.
 Proof.
   intros.
-  remember (rev l) as l'; revert dependent l; induction l'; simpl; intros.
+  remember (rev l) as l'; generalize dependent l; induction l'; simpl; intros.
   { destruct l; simpl; last by apply app_cons_not_nil in Heql'.
     apply big_sepM_empty. }
   apply (f_equal (@rev _)) in Heql'; rewrite rev_involutive in Heql'; subst; simpl in *.
