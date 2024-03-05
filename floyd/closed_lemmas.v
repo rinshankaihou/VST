@@ -261,8 +261,6 @@ Proof.
   split; intros ? rho ??; [rewrite -H | rewrite H]; auto.
 Qed.
 
-(* FIXME fix the following section.
-         For now we make progs64/verif_reverse2.v work, which does not seem to depend on these. *)
 (*Lemma closed_wrtl_lift1C: forall `{EA : Equiv A} `{EB : Equiv B} S (f: A -> B) P,
         closed_wrt_lvars S P ->
         closed_wrt_lvars S (@liftx (Tarrow A (LiftEnviron B)) f P).
@@ -1340,16 +1338,16 @@ Proof.
  super_unfold_lift. apply H.  auto.
 Qed.
 
-Lemma expr_closed: forall {cs} S e, closed_wrt_vars S (eval_expr e) -> expr_closed_wrt_vars S e.
+Lemma expr_closed: forall {CS:compspecs} S e, closed_wrt_vars S (eval_expr e) -> expr_closed_wrt_vars S e.
 Proof. auto. Qed.
 
-Lemma closed_expr: forall {cs} S e, expr_closed_wrt_vars S e -> closed_wrt_vars S (eval_expr e).
+Lemma closed_expr: forall {CS:compspecs} S e, expr_closed_wrt_vars S e -> closed_wrt_vars S (eval_expr e).
 Proof. auto. Qed.
 
-Lemma lvalue_closed: forall {cs} S e, closed_wrt_vars S (eval_lvalue e) -> lvalue_closed_wrt_vars S e.
+Lemma lvalue_closed: forall {CS:compspecs} S e, closed_wrt_vars S (eval_lvalue e) -> lvalue_closed_wrt_vars S e.
 Proof. auto. Qed.
 
-Lemma closed_lvalue: forall {cs} S e, lvalue_closed_wrt_vars S e -> closed_wrt_vars S (eval_lvalue e).
+Lemma closed_lvalue: forall {CS:compspecs} S e, lvalue_closed_wrt_vars S e -> closed_wrt_vars S (eval_lvalue e).
 Proof. auto. Qed.
 
 End CLOSED_LEMMAS2.

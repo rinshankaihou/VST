@@ -56,8 +56,8 @@ monPred.unseal.
 iApply jsafe_step.
 rewrite /jstep_ex.
 iIntros (m) "[Hm ?]".
-iMod (fupd_mask_subseteq E) as "Hmask".
-iMod (Hc with "[P $Hm]") as (??? Hstep) ">Hc"; first done.
+iMod (fupd_mask_subseteq E) as "Hmask"; first done.
+iMod (Hc with "[P $Hm]") as (??? Hstep) ">Hc"; try done.
 { rewrite bi.sep_and_l; iFrame.
   iSplit; last iDestruct "P" as "[_ $]".
   iDestruct "P" as "[(_ & $) _]". }
@@ -135,9 +135,9 @@ Lemma pointer_cmp_eval:
 Proof.
 intros until rho. intros ?? NE1 NE2 ??.
 iIntros "[Hm H]".
-iDestruct (eval_expr_relate with "[$Hm H]") as %He1.
+iDestruct (eval_expr_relate with "[$Hm H]") as %He1. 1-3: done.
 { iDestruct "H" as "[$ _]". }
-iDestruct (eval_expr_relate with "[$Hm H]") as %He2.
+iDestruct (eval_expr_relate with "[$Hm H]") as %He2. 1-3: done.
 { iDestruct "H" as "(_ & $ & _)". }
 rewrite /tc_expr /= !typecheck_expr_sound; [| done..].
 iDestruct "H" as (???) "H".
@@ -299,7 +299,7 @@ Proof.
       last by iPureIntro; constructor.
     iNext.
     iDestruct "H" as "(Hm & [H _])"; iCombine "Hm H" as "H".
-    iApply (pointer_cmp_eval with "H").
+    by iApply (pointer_cmp_eval with "H").
   + iIntros "!> !>".
     iDestruct "H" as "($ & [_ (F & P)])".
     erewrite (closed_wrt_modvars_set F) by eauto; iFrame.
@@ -350,7 +350,7 @@ Proof.
     intros ? Hid'; rewrite Hid' in Hid; inv Hid.
     by apply tc_val_tc_val'.
   + iAssert (▷ ⌜Clight.eval_expr ge ve te m e (eval_expr e rho)⌝) with "[-]" as ">%"; last by iPureIntro; constructor.
-    iNext; iApply eval_expr_relate.
+    iNext; iApply eval_expr_relate; try done.
     iDestruct "H" as "(($ & _) & _)"; iFrame.
   + iIntros "!> !>".
     iDestruct "H" as "(_ & F & P)"; iFrame.
@@ -387,7 +387,7 @@ iStopProof; monPred.unseal; split => rho.
 setoid_rewrite denote_tc_assert_andp.
 assert (implicit_deref (typeof e) = typeof e) as -> by (by destruct (typeof e)).
 rewrite H0; iIntros "?"; iSplit; auto.
-iApply (neutral_isCastResultType with "[$]").
+by iApply (neutral_isCastResultType with "[$]").
 Qed.
 
 Lemma semax_cast_set:
@@ -422,7 +422,7 @@ Proof.
     intros ? Hid'; rewrite Hid' in TS; inv TS.
     by apply tc_val_tc_val'.
   + iAssert (▷ ⌜Clight.eval_expr ge ve te m (Ecast e t) (eval_expr (Ecast e t) rho)⌝) with "[-]" as ">%"; last by iPureIntro; constructor.
-    iNext; iApply eval_expr_relate.
+    iNext; iApply eval_expr_relate; try done.
     iDestruct "H" as "($ & _)"; iFrame.
   + iIntros "!> !>".
     iDestruct "H" as "(_ & F & P)"; iFrame.
@@ -662,7 +662,7 @@ Proof.
   iIntros "[Hm H]".
   destruct (type_is_volatile t); try done.
   rewrite -> if_true by auto.
-  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; iApply (mapsto_can_store with "[$]").
+  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; by iApply (mapsto_can_store with "[$]").
 Qed.
 
 Lemma mapsto_store': forall t t' m ch ch' v v' sh b o m' (Hsh : writable0_share sh)
@@ -679,7 +679,7 @@ Proof.
   setoid_rewrite if_true; last auto.
   assert (forall v'', decode_encode_val v' ch ch' v'' -> tc_val' t' v'') as Htc'.
   { intros ? Hv''; eapply decode_encode_val_fun in Hv''; last apply decode_encode_val_general; subst; auto. }
-  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; iMod (mapsto_store' _ _ _ _ v' with "[$]") as "[$ (% & %Hv'' & H)]"; iIntros "!>";
+  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; iMod (mapsto_store' _ _ _ _ v' with "[$]") as "[$ (% & %Hv'' & H)]"; try done; iIntros "!>";
     iExists _; (iSplit; first done; destruct (eq_dec v'' Vundef); [iRight | specialize (Htc' _ Hv'' n); iLeft]); eauto.
 Qed.
 
@@ -692,7 +692,7 @@ Proof.
   iIntros "[Hm H]".
   destruct (type_is_volatile t); try done.
   rewrite -> !if_true by auto.
-  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; iMod (mapsto_store _ _ _ v' with "[$]") as "[$ H]";
+  iDestruct "H" as "[(% & ?) | (% & % & ?)]"; iMod (mapsto_store _ _ _ v' with "[$]") as "[$ H]"; try done;
     (destruct (eq_dec v' Vundef); [iRight | specialize (Htc n); iLeft]); eauto.
 Qed.
 
@@ -767,7 +767,7 @@ Proof.
   iCombine "Hm H" as "H".
   rewrite (add_and (_ ∗ _) (▷ ⌜_⌝)).
   2: { iIntros "(? & _ & _ & ? & _) !>".
-       iApply (mapsto_can_store with "[$]"). }
+       by iApply (mapsto_can_store with "[$]"). }
   iDestruct "H" as "((Hm & H) & >%Hstore)".
   destruct Hstore as (m' & Hstore).
   iExists m', te, rho.
@@ -794,7 +794,7 @@ Proof.
     rewrite /tc_expr /= typecheck_expr_sound //.
     rewrite (bi.and_elim_r (▷ tc_lvalue _ _ _)).
     iDestruct "H" as "(>%Htc & F & >Hmapsto & P)".
-    subst; iPoseProof (mapsto_store with "[$Hm $Hmapsto]") as ">[? ?]".
+    subst; iPoseProof (mapsto_store with "[$Hm $Hmapsto]") as ">[? ?]"; try done.
     { by apply tc_val_tc_val'. }
     rewrite He1; by iFrame.
 Qed.
@@ -852,7 +852,7 @@ Proof.
   iCombine "Hm H" as "H".
   rewrite (add_and (_ ∗ _) (▷ ⌜_⌝)).
   2: { iIntros "(? & _ & _ & (? & _) & _) !>".
-       iApply (mapsto_can_store with "[$]"); auto. }
+       iApply (mapsto_can_store with "[$]"); [auto | eassumption]. }
   iDestruct "H" as "((Hm & H) & >%Hstore)".
   destruct Hstore as (m' & Hstore).
   iExists m', te, rho.
@@ -885,15 +885,13 @@ Proof.
       iDestruct "H" as "[(% & H) | (% & % & H)]"; rewrite address_mapsto_align; iDestruct "H" as "[_ %]"; done. }
     iDestruct "H" as "[Hmapsto _]".
     rewrite /= /force_val1 in Htc; super_unfold_lift.
-    subst; iPoseProof (mapsto_store' with "[$Hm $Hmapsto]") as ">[$ ?]"; auto.
+    subst; iPoseProof (mapsto_store' with "[$Hm $Hmapsto]") as ">[$ ?]"; try done; auto.
     { set (v := force_val _) in *.
       rewrite andb_true_iff in NT; destruct NT as [NT NT'].
       destruct ch, ch'; try contradiction OK;
-        destruct (typeof e1) as [ | [ | | | ] [ | ] | [ | ] | [ | ] | | | | | ]; inv NT; inv AM0;
-        destruct t2 as [ | [ | | | ] [ | ] | [ | ] | [ | ] | | | | | ]; inv NT'; inv AM';
-        destruct v; simpl in *; subst; try contradiction;
-        try apply I;
-        try (apply tc_val_Vundef in TCv; contradiction);
+        destruct (typeof e1) as [ | [ | | | ] [ | ] | [ | ] | [ | ] | | | | | ]; try done; inv NT; inv AM0;
+        destruct t2 as [ | [ | | | ] [ | ] | [ | ] | [ | ] | | | | | ]; try done; inv NT'; inv AM';
+        destruct v; try done;
         rewrite /decode_val proj_inj_bytes; intros ?;
         match goal with
         | |- context [Int.sign_ext ?n] => apply (sign_ext_range' n); compute; split; congruence

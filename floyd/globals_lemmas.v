@@ -519,7 +519,7 @@ Lemma unpack_globvar_array  {cs: compspecs}:
 Proof.
   intros. subst t.
   iIntros "(#? & H)".
-  iPoseProof (unpack_globvar_star with "[$H]") as "H"; first auto.
+  iPoseProof (unpack_globvar_star with "[$H]") as "H"; try done; first auto.
   rewrite H5.
   rewrite -(id2pred_star_ZnthV_Tint Delta gz); auto.
   iStopProof; go_lowerx.
@@ -733,7 +733,7 @@ Lemma unpack_globvar_array_float  {cs: compspecs}:
 Proof.
   intros. subst t.
   iIntros "(#? & H)".
-  iPoseProof (unpack_globvar_star with "[$H]") as "H"; first auto.
+  iPoseProof (unpack_globvar_star with "[$H]") as "H"; try done; first auto.
   rewrite H5.
   rewrite -(id2pred_star_ZnthV_tfloat Delta sz gz); auto.
   iStopProof; go_lowerx.

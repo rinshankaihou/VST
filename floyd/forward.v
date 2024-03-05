@@ -2741,7 +2741,7 @@ forward_for Inv continue: PreInc (* where Inv,PreInc are predicates on index val
 forward_for Inv continue: PreInc break:Post (* where Post: assert is an assertion *)".
 
 Lemma semax_convert_for_while:
- forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS} E Delta Pre s1 e2 s3 s4 Post,
+ forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS:compspecs} E Delta Pre s1 e2 s3 s4 Post,
   nocontinue s4 = true ->
   nocontinue s3 = true ->
   semax E Delta Pre (Ssequence s1 (Swhile e2 (Ssequence s4 s3))) Post ->
@@ -4081,7 +4081,7 @@ Ltac forward :=
  end.
 
 Lemma start_function_aux1:
-  forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS}
+  forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS:compspecs}
          E Delta R1 P Q R c Post,
     semax E Delta (PROPx P (LOCALx Q (SEPx (R1::R)))) c Post ->
     semax E Delta ((PROPx P (LOCALx Q (SEPx R))) ∗ (assert_of (`R1))) c Post.
@@ -4094,7 +4094,7 @@ rewrite insert_SEP. apply H.
 Qed.
 
 Lemma semax_stackframe_emp:
-  forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS}
+  forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS:compspecs}
          E Delta P c R,
     semax E Delta P c R ->
     semax E Delta (P ∗ emp) c (frame_ret_assert R emp) .

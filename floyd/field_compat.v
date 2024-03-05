@@ -969,7 +969,7 @@ Proof. reflexivity. Qed.
 Lemma Csizeof_Tarray cenv t n a: @Ctypes.sizeof cenv (Tarray t n a) = (@Ctypes.sizeof cenv t * Z.max 0 n)%Z.
 Proof. reflexivity. Qed.
 
-Lemma sepconN_mapsto_array {cenv t b sh} K : forall z
+Lemma sepconN_mapsto_array {cs:compspecs} {t b sh} K : forall z
     (Az: Z.divide (align_chunk Mptr) (Ptrofs.unsigned z))
     (Hz: 0 <= Ptrofs.unsigned z /\
                Z.of_nat K * size_chunk Mptr + Ptrofs.unsigned z < Ptrofs.modulus),
@@ -1018,7 +1018,7 @@ Proof.
             eapply Z.divide_trans. apply align_size_chunk_divides. simpl size_chunk. exists i; lia.
 Qed.
 
-Lemma mapsto_zeros_data_atTarrayTptr_nullval_N {cenv} N sh t b z:
+Lemma mapsto_zeros_data_atTarrayTptr_nullval_N {cs:compspecs} N sh t b z:
        readable_share sh ->
        (align_chunk Mptr | Ptrofs.unsigned z) ->
        mapsto_zeros (Z.of_nat N * size_chunk Mptr) sh (Vptr b z)

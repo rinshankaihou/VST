@@ -474,6 +474,7 @@ Proof.
     by iApply H19.
   - iDestruct "H" as "(_ & _ & H)".
     rewrite /SEPx H1 embed_absorbingly //.
+  - iIntros "($ & $ & R)". rewrite /SEPx H3 embed_later //. 
 Qed.
 
 Lemma call_setup1_i:
@@ -754,7 +755,7 @@ Proof.
   split => rho; monPred.unseal; rewrite monPred_at_intuitionistically.
   unfold_lift; simpl.
   iIntros "((% & ->) & ?)".
-  iPoseProof (tc_eval_exprlist with "[-]") as "%"; first done.
+  iPoseProof (tc_eval_exprlist with "[-]") as "%"; try done.
   iPureIntro.
   eapply tc_vals_Vundef; eauto.
 Qed.
@@ -1185,8 +1186,8 @@ Proof.
         with true
         by (clear- OKretty'; destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; unfold is_neutral_cast; rewrite ?eqb_type_refl; reflexivity).
       rewrite denote_tc_assert_andp.
-      iSplit; last iApply (neutral_isCastResultType with "H").
-      iApply PQR_denote_tc_initialized; auto.
+      iSplit; last iApply (neutral_isCastResultType with "H"); try done.
+      iApply PQR_denote_tc_initialized; auto. done. 
     - unfold tc_temp_id, typecheck_temp_id.
       unfold typeof_temp in TYret.
       destruct ((temp_types Delta) !! ret); inversion TYret; clear TYret; try subst t.
@@ -1324,7 +1325,7 @@ Proof.
       replace ((is_neutral_cast retty' retty' || same_base_type retty' retty')%bool)
         with true
         by (clear- OKretty'; destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; unfold is_neutral_cast; rewrite ?eqb_type_refl; reflexivity).
-      iApply PQR_denote_tc_initialized; auto.
+      iApply PQR_denote_tc_initialized; auto. done.
     - unfold tc_temp_id, typecheck_temp_id.
       unfold typeof_temp in TYret.
       destruct ((temp_types Delta) !! ret); inversion TYret; clear TYret; try subst t.

@@ -220,7 +220,7 @@ Lemma By_reference_eval_expr: forall Delta e rho,
 Proof.
   intros.
   iIntros "H".
-  iPoseProof (typecheck_lvalue_sound with "[-]") as "%HH"; auto.
+  iPoseProof (typecheck_lvalue_sound with "[-]") as "%HH"; try done.
   iPureIntro.
   destruct e; try contradiction; simpl in *;
   reflexivity.
@@ -1007,11 +1007,10 @@ Proof.
     subst.
     destruct (typeof e) eqn:?H; inv H2.
     iSplit.
-    - iPoseProof (By_reference_eval_expr with "[-]") as "%HH".
-      2: { done. }
-      rewrite H; auto. iPureIntro. done.
+    - iPoseProof (By_reference_eval_expr with "[-]") as "%HH"; try done.
+      rewrite H //.
     - iApply By_reference_tc_expr; auto.
-      rewrite H; auto.
+      rewrite H //.
 Qed.
 
  Lemma eval_lvalue_nested_efield_aux: forall Delta t_root e efs gfs tts p,

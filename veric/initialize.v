@@ -780,7 +780,7 @@ Proof.
   rewrite -Z2Nat.inj_add // IHla //; try lia.
   rewrite /Ptrofs.add !Ptrofs.unsigned_repr; [| rewrite /Ptrofs.max_unsigned; lia..].
   iDestruct "H" as "(H & $)".
-  iApply (init_data_lem with "H").
+  iApply (init_data_lem with "H"); try done.
   - by eapply Hinit.
   - intros (?, ?) (? & ?); apply Haccess; lia.
   - lia.

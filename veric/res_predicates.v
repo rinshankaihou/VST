@@ -169,7 +169,7 @@ Definition address_mapsto (ch: memory_chunk) (v: val) : spec :=
 
 Lemma add_and : forall {PROP : bi} (P Q : PROP), (P ⊢ Q) -> (P ⊢ P ∧ Q).
 Proof.
-  auto.
+  intros. rewrite -H. auto.
 Qed.
 
 Lemma address_mapsto_align: forall ch v sh l,

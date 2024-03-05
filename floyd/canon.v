@@ -1293,8 +1293,9 @@ Proof.
   intros.
   apply semax_extract_later_prop1 in H0.
   eapply semax_pre, H0.
-  iIntros "H"; iSplit; auto.
-  iDestruct "H" as "(_ & $)".
+  iIntros "H"; iSplit.
+  - rewrite -H. iNext. done.
+  - iDestruct "H" as "(_ & $)".
 Qed.
 
 Lemma assert_PROP' {B : bi}:
@@ -1318,8 +1319,9 @@ Proof.
   intros.
   apply semax_extract_later_prop in H1.
   eapply semax_pre_simple, H1.
-  iIntros "H"; iSplit; auto.
-  rewrite bi.and_elim_r //.
+  iIntros "H"; iSplit.
+  - rewrite -H H0. iNext. done.
+  - rewrite bi.and_elim_r //.
 Qed.
 
 Lemma assert_LOCAL:
@@ -1441,7 +1443,7 @@ Lemma semax_pre_later:
 Proof.
   intros.
   eapply semax_pre_simple, H0.
-  auto.
+  iIntros. rewrite -H. iNext; done.
 Qed.
 
 Lemma PROP_LOCAL_SEP_cons: forall P1 P2 P3 F,
