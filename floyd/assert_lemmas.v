@@ -748,7 +748,7 @@ Lemma later_ENTAIL: forall Delta P Q,
   (local (tc_environ Delta) ∧ P ⊢ Q) ->
   local (tc_environ Delta) ∧ ▷ P ⊢ ▷ Q.
 Proof.
-  intros.
+  intros ??? <-.
   by iIntros "? !>".
 Qed.
 

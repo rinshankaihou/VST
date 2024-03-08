@@ -284,7 +284,7 @@ Proof. intros. simpl.
         rewrite Maps.PTree.gss. intuition. congruence.
         rewrite -> Maps.PTree.gso by auto. split; intro Hx.
         rewrite Maps.PTree.gempty in Hx; inv Hx.
-         inv Hx.
+         inv Hx. congruence.
 Qed.
 
 Lemma find_symbol_add_globals_cons:

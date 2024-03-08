@@ -275,7 +275,7 @@ Definition semax_body `{!VSTGS OK_ty Σ}
 match spec with (_, mk_funspec fsig cc E A P Q) => 
   fst fsig = map snd (fst (fn_funsig f)) /\ 
   snd fsig = snd (fn_funsig f) /\
-forall OK_spec x,
+forall (OK_spec: ext_spec OK_ty) x,
   semax E (func_tycontext f V G nil)
       (Clight_seplog.close_precondition (map fst f.(fn_params)) (argsassert_of (P x)) ∗ stackframe_of f)
        f.(fn_body)
@@ -284,7 +284,7 @@ end.
 
 Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: varspecs) (G: @funspecs Σ) {C: compspecs} (ge: Genv.t Clight.fundef type) (fdecs: list (ident * Clight.fundef)) (G1: funspecs), Prop :=
 | semax_func_nil:
-    forall C V G ge, semax_func V G ge nil nil
+    forall C V G ge, semax_func V G (C:=C) ge nil nil
 | semax_func_cons:
      forall {C: compspecs} fs id f fsig cc E A P Q (V: varspecs) (G G': funspecs) ge b,
       andb (id_in_list id (map (@fst _ _) G))
@@ -298,7 +298,7 @@ Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: 
        f.(fn_callconv) = cc ->
        Genv.find_symbol ge id = Some b -> Genv.find_funct_ptr ge b = Some (Internal f) -> 
       semax_body V G f (id, mk_funspec fsig cc E A P Q)->
-      semax_func V G ge fs G' ->
+      semax_func(C:=C) V G ge fs G' ->
       semax_func V G ge ((id, Internal f)::fs)
                  ((id, mk_funspec fsig cc E A P Q)  :: G')
 | semax_func_cons_ext:
@@ -315,7 +315,7 @@ Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: 
         ⊢ ⌜tc_option_val retsig ret⌝)) ->
   Genv.find_symbol ge id = Some b -> Genv.find_funct_ptr ge b = Some (External ef argsig retsig cc) ->
   (⊢ semax_external E ef A P Q) ->
-  semax_func V G ge fs G' ->
+  semax_func(C:=C) V G ge fs G' ->
   semax_func V G ge ((id, External ef argsig retsig cc)::fs)
        ((id, mk_funspec (argsig', retsig) cc E A P Q)  :: G')
 | semax_func_mono: forall  {CS CS'} (CSUB: cspecs_sub CS CS') ge ge'
@@ -325,7 +325,7 @@ Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: 
                                                                       
 | semax_func_app:
   forall cs ge V H funs1 funs2 G1 G2
-         (SF1: semax_func V H ge funs1 G1) (SF2: semax_func V H ge funs2 G2)
+         (SF1: semax_func V H (C:=cs) ge funs1 G1) (SF2: semax_func V H ge funs2 G2)
          (L:length funs1 = length G1),
     semax_func V H ge (funs1 ++ funs2) (G1++G2)
                 
@@ -333,11 +333,11 @@ Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: 
   forall cs ge V V' F F'
          (SUB: tycontext_sub (nofunc_tycontext V F) (nofunc_tycontext V F'))
          (HV: forall id, sub_option ((make_tycontext_g V F) !! id) ((make_tycontext_g V' F') !! id)),
-  forall funs G (SF: semax_func V F ge funs G),  semax_func V' F' ge funs G
+  forall funs G (SF: semax_func V F (C:=cs) ge funs G),  semax_func V' F' ge funs G
                                                                        
 | semax_func_join:
   forall {cs ge V1 H1 V2 H2 V funs1 funs2 G1 G2 H}
-  (SF1: semax_func V1 H1 ge funs1 G1) (SF2: semax_func V2 H2 ge funs2 G2)
+  (SF1: semax_func V1 H1 (C:=cs) ge funs1 G1) (SF2: semax_func V2 H2 ge funs2 G2)
 
   (K1: forall i, sub_option ((make_tycontext_g V1 H1) !! i) ((make_tycontext_g V1 H) !! i))
   (K2: forall i, subsumespec ((make_tycontext_s H1) !! i) ((make_tycontext_s H) !! i))
@@ -349,12 +349,12 @@ Inductive semax_func `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} : forall (V: 
   semax_func V H ge (funs1 ++ funs2) (G1++G2)
   
 | semax_func_firstn:
-  forall {cs ge H V n funs G} (SF: semax_func V H ge funs G),
+  forall {cs ge H V n funs G} (SF: semax_func V H (C:=cs) ge funs G),
     semax_func V H ge (firstn n funs) (firstn n G)
                 
 | semax_func_skipn:
   forall {cs ge H V funs G} (HV:list_norepet (map fst funs))
-         (SF: semax_func V H ge funs G) n,
+         (SF: semax_func V H (C:=cs) ge funs G) n,
     semax_func V H ge (skipn n funs) (skipn n G).
 
 End AuxDefs.
@@ -615,8 +615,8 @@ Proof.
       apply imp_ENTAILL; [reduceLL; apply ENTAIL_refl |].
       apply derives_full_fupd_left, H1.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as "H".
+    iMod (fupd_mask_subseteq E') as "Hmask"; first done.
+    iMod (IHsemax with "H") as "H"; first done.
     iMod "Hmask" as "_"; iIntros "!>".
     iDestruct "H" as "[(% & % & H) | (% & % & % & % & % & H)]"; [iLeft | iRight].
     - iExists _; iSplit; first done.
@@ -695,12 +695,12 @@ Proof.
     iSplit; first rewrite bi.and_elim_l //; rewrite bi.and_elim_r.
     iDestruct "H" as "($ & H)".
     iNext; iDestruct "H" as "($ & H)".
-    iApply oboxopt_ENTAILL; last by iFrame; iSplit.
+    iApply oboxopt_ENTAILL;[done | | by iFrame "#"].
     apply wand_ENTAILL; [reduceLL; apply ENTAIL_refl |].
     apply derives_full_fupd_left, H1.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as (????????) "((% & %) & H)".
+    iMod (fupd_mask_subseteq E') as "Hmask"; first done.
+    iMod (IHsemax with "H") as (????????) "((% & %) & H)"; first done.
     iMod "Hmask" as "_"; iIntros "!>".
     iExists _, _, _, Ef, _, _, _, _; iSplit.
     { iPureIntro; split; [set_solver | done]. }
@@ -809,7 +809,7 @@ Proof.
       * destruct (is_neutral_cast (implicit_deref (typeof e)) t) eqn:Ht; [|normalize; iIntros "(_ & _ & _ & [])"].
         split => rho; rewrite /local /lift1; monPred.unseal; unfold_lift.
         iIntros "(% & _ & H & _)".
-        iPoseProof (typecheck_expr_sound with "H") as "%"; iPureIntro.
+        iPoseProof (typecheck_expr_sound with "H") as "%"; try done. iPureIntro.
         eapply tc_val_tc_val', expr2.neutral_cast_subsumption'; eauto.
       * apply derives_full_fupd_left.
         auto.
@@ -857,8 +857,8 @@ Proof.
       * iIntros "(_ & _ & $)".
       * iIntros "(? & ? & >?)"; iApply H1; iFrame.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as "H".
+    iMod (fupd_mask_subseteq E') as "Hmask"; try done.
+    iMod (IHsemax with "H") as "H"; try done.
     iMod "Hmask" as "_"; iIntros "!>".
     iDestruct "H" as "[[[H | H] | H] | H]"; [iLeft; iLeft; iLeft | iLeft; iLeft; iRight | iLeft; iRight | iRight].
     - rewrite subst_extens // fupd_mask_mono //.
@@ -934,8 +934,8 @@ Proof.
     iIntros "((%Htrue & %Hfalse) & $)"; iPureIntro; split; last done.
     split; [eapply semax_conseq, Htrue | eapply semax_conseq, Hfalse]; eauto; apply derives_full_refl.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as "(% & H)".
+    iMod (fupd_mask_subseteq E') as "Hmask"; first done.
+    iMod (IHsemax with "H") as "(% & H)"; first done.
     iMod "Hmask" as "_"; iIntros "!>"; iSplit; first done.
     iNext; iApply (bi.and_mono with "H"); first done.
     iIntros "H"; iDestruct "H" as (?) "((% & %) & H)".
@@ -989,8 +989,8 @@ Proof.
       * simpl RA_return.
         auto.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as (??) "((% & %) & H)".
+    iMod (fupd_mask_subseteq E') as "Hmask"; first done.
+    iMod (IHsemax with "H") as (??) "((% & %) & H)"; first done.
     iMod "Hmask" as "_"; iIntros "!>".
     iExists Q, Q'; iSplit; last done.
     iPureIntro; split; eapply AuxDefs.semax_mask_mono; eauto.
@@ -1034,8 +1034,8 @@ Proof.
     - destruct R as [nR bR cR rR], R' as [nR' bR' cR' rR'].
       exact H4.
   + iIntros "H".
-    iMod (fupd_mask_subseteq E') as "Hmask".
-    iMod (IHsemax with "H") as "(% & H)".
+    iMod (fupd_mask_subseteq E') as "Hmask"; first done.
+    iMod (IHsemax with "H") as "(% & H)"; first done.
     iMod "Hmask" as "_"; iIntros "!>"; iSplit; first done.
     iApply (bi.and_mono with "H"); first done.
     iIntros "H"; iDestruct "H" as (?) "(%HE' & ?)".
@@ -1414,7 +1414,7 @@ Proof. destruct HI. split3.
            (close_precondition (map fst (fn_params f)) (argsassert_of ((Pre_of_funspec (phi i)) x)) ∗ stackframe_of f) 
            (fn_body f) (frame_ret_assert (function_body_ret_assert (fn_return f) (assert_of ((Post_of_funspec (phi i)) x))) (stackframe_of f)))) as HH.
   { intros. specialize (H1 i); specialize (H2 i). specialize (HE i). subst. unfold semax_body in H.
-    destruct (phi i); subst. destruct H as [? [? Hsemax]]. split3; auto. apply Hsemax. }
+    destruct (phi i); subst. destruct H as [? [? ?]]. split3; auto. apply H1. }
   clear H H1 H2. destruct HH as [HH1 [HH2 HH3]].
   apply (HH3 Hi).
 Qed.
@@ -1542,15 +1542,15 @@ Proof.
     iSplit; [rewrite bi.and_elim_l | rewrite bi.and_elim_r].
     { iSplit; [rewrite bi.and_elim_l | rewrite bi.and_elim_r].
       * iStopProof; split => rho; monPred.unseal; rewrite monPred_at_affinely; iIntros "(% & ?)".
-        iApply Clight_assert_lemmas.tc_expr_sub; last done.
+        iApply Clight_assert_lemmas.tc_expr_sub; try done.
         eapply semax_lemmas.typecheck_environ_sub; eauto.
       * iStopProof; split => rho; monPred.unseal; rewrite monPred_at_affinely; iIntros "(% & ?)".
-        iApply Clight_assert_lemmas.tc_exprlist_sub; last done.
+        iApply Clight_assert_lemmas.tc_exprlist_sub; try done.
         eapply semax_lemmas.typecheck_environ_sub; eauto. }
     iDestruct "H" as "($ & H)".
     iNext; iDestruct "H" as "($ & H)".
     iStopProof; split => rho; monPred.unseal; rewrite monPred_at_affinely; iIntros "(% & ?)".
-    iApply oboxopt_sub; auto.
+    iApply oboxopt_sub; auto; try done.
     * eapply tc_fn_return_temp_guard_opt; eauto.
     * eapply semax_lemmas.typecheck_environ_sub; eauto.
   + eapply semax_pre; [| apply AuxDefs.semax_return].
@@ -1705,7 +1705,7 @@ Proof. intros. destruct CSUB as [CSUB _]. apply (lvalue_cenv_sub CSUB); trivial.
 Lemma denote_tc_bool_CSCS' {CS CS'} v e: denote_tc_assert (CS := CS) (tc_bool v e) = denote_tc_assert (CS := CS') (tc_bool v e).
 Proof. destruct v; simpl; trivial. Qed.
 
-Lemma tc_expr_NoVundef {CS} Delta rho e (TE: typecheck_environ Delta rho):
+Lemma tc_expr_NoVundef {CS:compspecs} Delta rho e (TE: typecheck_environ Delta rho):
   tc_expr Delta e rho ⊢ ⌜tc_val (typeof e) (eval_expr e rho) /\ (eval_expr e rho)<>Vundef⌝.
 Proof.
   rewrite typecheck_expr_sound //; apply bi.pure_mono.
@@ -1946,7 +1946,7 @@ Proof.
   + eapply AuxDefs.semax_mask_mono; eauto.
 Qed.
 
-Lemma semax_body_subsumption: forall {CS} V V' F F' f spec
+Lemma semax_body_subsumption: forall {CS:compspecs} V V' F F' f spec
       (SF: semax_body V F f spec)
       (TS: tycontext_sub (func_tycontext f V F nil) (func_tycontext f V' F' nil)),
     semax_body V' F' f spec.

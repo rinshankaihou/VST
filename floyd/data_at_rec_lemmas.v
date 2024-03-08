@@ -1410,12 +1410,14 @@ Proof.
         [ apply memory_block_share_join; auto
         | apply mapsto_share_join; auto]];
     try solve [normalize].
+  + iSplit;iPureIntro; tauto.
   + (* Tarray *)
     rewrite array_pred_sepcon.
     apply array_pred_ext; auto.
     intros.
     unfold at_offset; simpl.
     apply IH.
+  + iSplit;iPureIntro; tauto.
   + (* Tstruct *)
     rewrite struct_pred_sepcon.
     apply struct_pred_ext; [apply get_co_members_no_replicate |].

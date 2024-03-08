@@ -6,7 +6,7 @@ Import LiftNotation.
 Import -(notations) compcert.lib.Maps.
 
 Lemma semax_while_peel: 
-  forall `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} {CS} Inv E Delta P expr body R,
+  forall `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} {CS:compspecs} Inv E Delta P expr body R,
   semax E Delta P (Ssequence (Sifthenelse expr Sskip Sbreak) body) 
                             (loop1_ret_assert Inv R) ->
   semax E Delta Inv (Swhile expr body) R ->
@@ -163,7 +163,7 @@ Lemma derives_trans: forall {prop:bi} (P Q R:prop),
 Proof. intros. rewrite H H0 //. Qed.
 
 Lemma semax_ifthenelse_PQR' :
-   forall `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} {CS} (v: val) E Delta P Q R (b: expr) c d Post,
+   forall `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} {CS:compspecs} (v: val) E Delta P Q R (b: expr) c d Post,
       bool_type (typeof b) = true ->
      ENTAIL Delta, PROPx P (LOCALx Q (SEPx R)) ⊢
          (tc_expr Delta (Eunop Cop.Onotbool b tint))  ->
@@ -233,7 +233,6 @@ Definition logical_and tid e1 e2 :=
 
 
 (* TODO move to mpred.v *)
-Section MPRED.
 Definition massert' `{heapGS Σ} := environ -> mpred.
 Program Definition assert_of_m `{heapGS Σ} (P : massert') : assert' := P.
 Fail Example bi_of_massert'_test `{heapGS Σ} : forall (P Q : massert'), P ∗ Q ⊢ Q ∗ P.
@@ -241,14 +240,9 @@ Global Coercion assert_of_m : massert' >-> assert'.
 Example bi_of_massert'_test `{heapGS Σ} : forall (P Q : massert'), P ∗ Q ⊢ Q ∗ P.
 Proof. intros. rewrite bi.sep_comm. done. Qed.
 
-(* FIXME can this be avoided? *)
-
-Context `{!heapGS Σ}.
-Lemma bi_assert_id : forall P,  bi_assert(Σ:=Σ) P ⊣⊢ P.
-Proof. intros. unfold bi_assert. constructor. intros simpl. constructor. intros.
-       split; intros; simpl; done.
+Lemma bi_assert_id `{!heapGS Σ}: forall P,  bi_assert(Σ:=Σ) P ⊣⊢ P.
+Proof. intros. constructor. reflexivity.
 Qed.
-End MPRED.
 
 Lemma semax_pre_flipped :
  forall `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} (P' : massert') {cs: compspecs}

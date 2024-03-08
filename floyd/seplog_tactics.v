@@ -598,7 +598,7 @@ Lemma syntactic_cancel_spec3: forall G1 L1 G2 L2,
 Proof.
   intros.
   rewrite <- (bi.sep_emp (fold_right_sepcon L1)).
-  eapply syntactic_cancel_spec1; eauto.
+  eapply syntactic_cancel_spec1; eauto. rewrite -H0 //. auto.
 Qed.
 
 Inductive merge_abnormal_PROP: PROP -> option PROP -> option PROP -> Prop :=
@@ -720,7 +720,7 @@ Proof.
   apply fold_abnormal_PROP_spec in H1.
   rewrite <- H, <- H0.
   etrans; [| exact H1].
-  destruct Qr; auto.
+  destruct Qr; auto. rewrite bi.sep_emp //.
 Qed.
 
 (*
