@@ -5,6 +5,15 @@ Require Import VST.atomics.SC_atomics.
 Require Import VST.atomics.verif_lock.
 Require Import VST.progs64.incr.
 
+From diaframe Require Import defs weakestpre.
+From diaframe Require Export spec_notation.
+From diaframe Require Import proofmode_base.
+From diaframe.lib Require Import iris_hints.
+
+Import LiftNotation.
+
+Unset Universe Polymorphism.
+
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
@@ -119,11 +128,103 @@ Proof.
     apply @excl_auth_update.
 Qed.
 
+Definition wp {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
+  ∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P.
+
+(* Notation wp OK_ty Σ VSTGS0 Espec cs E Delta c Q := (∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P). *)
+Definition wp_spec: forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) P c Q,
+  (P ⊢ @wp OK_ty Σ VSTGS0 Espec cs E Delta c Q) <-> @semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q.
+Proof.
+  intros.
+  split; intros.
+  + eapply semax_pre.
+    - rewrite bi.and_elim_r H //.
+    - unfold wp.
+      apply semax_extract_exists.
+      clear P H.
+      intros P.
+      apply semax_extract_prop.
+      auto.
+  + unfold wp.
+    iIntros; iExists P; iSplit; auto.
+Qed.
+Opaque wp.
+Ltac into_wp := rewrite <- wp_spec.
+Ltac from_wp := rewrite -> wp_spec.
+
+Typeclasses Opaque locald_denote.
+Arguments locald_denote : simpl never.
+
+Global Instance into_and_local {Σ'} p P Q : IntoAnd p (@local Σ' (`(and) P Q)) (local P) (local Q).
+Proof. by rewrite /IntoAnd local_lift2_and. Qed.
+
+(* for diaframe *)
+Global Instance into_sep_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
+Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
+
+Global Instance into_sep_careful_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
+Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
+
+Global Instance comine_sep_as_local  {Σ'} P Q: CombineSepAs (local P) (local Q) (@local Σ' (`(and) P Q)).
+Proof. rewrite /CombineSepAs. rewrite local_lift2_and. iIntros "[#? #?]". iFrame "#". Qed.
+
+(* SEP *)
+Global Instance into_sep_careful_SEP {A Σ'} P Q R: IntoSepCareful (@SEPx A Σ' (P::Q::R)) (SEPx [P]) (SEPx (Q::R)).
+Proof. rewrite /IntoSepCareful. iIntros "[$ $]". Qed.
+
+(* P is singleton, Q::R may or may not be *)
+(* Global Instance combine_sep_as_SEP_1 {A Σ'} P Q R: CombineSepAs (SEPx [P]) (SEPx (Q::R)) (@SEPx A Σ' (P::Q::R)).
+Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp //. Qed. *)
+
+Global Instance combine_sep_as_SEP_2 {A Σ'} P Q R: CombineSepAs (SEPx (Q::R)) (SEPx [P]) (@SEPx A Σ' (P::Q::R)).
+Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp. rewrite [_ ∗ P]bi.sep_comm //. Qed.
+
+From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
+
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
   forward.
-  forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+
+  into_wp.
+  iSteps.
+
+Tactic Notation "iSelect2" open_constr(pat1) open_constr(pat2) tactic1(tac) :=
+lazymatch goal with
+| |- context[ environments.Esnoc ?Es ?x pat1 ] =>
+  lazymatch iTypeOf x with
+  | Some (_,?T) => unify T pat1;
+    lazymatch Es with
+    | context [ environments.Esnoc _ ?y pat2 ] =>
+      lazymatch iTypeOf y with
+      | Some (_,?T) => unify T pat2; tac x y
+      end
+    end
+  end
+end.
+
+Tactic Notation "_iCombine" constr(H1) constr(H2):=
+iCombine [H1;H2] as "?".
+
+Tactic Notation "combine" open_constr(pat1) open_constr(pat2):=
+  iSelect2 pat1 pat2 
+  ltac:(fun x y => iRename x into "AHHHHHH"; iRename y into "AAAAAAAAAAAAHHH"; iCombine "AHHHHHH" "AAAAAAAAAAAAHHH" as "?").
+  
+  Typeclasses Opaque SEPx.
+  Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
+  repeat combine (local _) (local _).
+  repeat combine (SEPx _) (SEPx _).
+
+
+
+
+  rewrite FromSepCareful.
+
+  
+  iStep.
+  unfold SEPx.
+
+  (* should be able to do this automatically with a hint about command  *)
   unfold cptr_lock_inv at 2.
   Intros z x y.
   forward.
@@ -141,7 +242,21 @@ Proof.
   forward.
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
   { lock_props.
+
+  Opaque field_at.
+  destruct left.
+  - iSteps. (* abduct frame? *)
+
     unfold cptr_lock_inv; Exists (z + 1)%nat.
+    
+
+      
+
+
+
+  forward_call.
+  
+  (sh, h, cptr_lock_inv g1 g2 (gv _c)).
     unfold Frame; instantiate (1 := [ghost_frag (if left then g1 else g2) (n+1)%nat;
       field_at sh1 t_counter (DOT _lock) (ptr_of h) (gv _c)]); simpl.
     destruct left.
