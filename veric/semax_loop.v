@@ -56,12 +56,12 @@ Proof.
   rewrite !semax_unfold in H0, H1 |- *.
   intros.
   iIntros "#Prog_OK" (????) "[(%Hclosed & %) #rguard]".
-  iPoseProof (H0 with "Prog_OK [rguard]") as "H0".
+  iPoseProof (H0 with "Prog_OK [rguard]") as "H0"; try done.
   { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *. intros ?? Hi; apply Hclosed.
     intros i; specialize (Hi i); rewrite modifiedvars_Sifthenelse; tauto. }
-  iPoseProof (H1 with "Prog_OK [rguard]") as "H1".
+  iPoseProof (H1 with "Prog_OK [rguard]") as "H1"; try done.
   { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
@@ -127,8 +127,8 @@ Proof.
   rewrite !semax_unfold in H,H0|-*.
   intros.
   iIntros "#Prog_OK" (????) "[(%Hclosed & %) #rguard]".
-  iPoseProof (H with "Prog_OK") as "H".
-  iPoseProof (H0 with "Prog_OK [rguard]") as "H0".
+  iPoseProof (H with "Prog_OK") as "H"; try done.
+  iPoseProof (H0 with "Prog_OK [rguard]") as "H0"; try done.
   { iIntros "!>"; iFrame "rguard"; iPureIntro. rewrite and_True.
     split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
@@ -172,14 +172,14 @@ Proof.
   iFrame; iNext.
   iApply assert_safe_jsafe.
   rewrite semax_unfold in H.
-  iApply (H with "Prog_OK"); last done.
+  iApply (H with "Prog_OK"); try done.
   iIntros "!>"; iSplit.
   { iPureIntro; split; last done.
     unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.
     intros i; specialize (Hi i); rewrite modifiedvars_Sloop; tauto. }
   iIntros (??).
   rewrite semax_unfold in H0.
-  iPoseProof (H0 with "Prog_OK") as "H0".
+  iPoseProof (H0 with "Prog_OK") as "H0"; try done.
   iSpecialize ("IH" with "Prog_OK").
   assert (closed_wrt_modvars incr F).
   { unfold closed_wrt_modvars, closed_wrt_vars in *; intros ?? Hi; apply Hclosed.

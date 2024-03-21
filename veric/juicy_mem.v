@@ -1336,7 +1336,7 @@ Section mpred.
   Proof.
     intros Hstore; iIntros "(% & % & Hm) H".
     iDestruct (resource_map_auth_valid with "Hm") as %(_ & Hvalid).
-    iMod (mapsto_update with "Hm H") as (?? (? & ? & Hk)) "(Hm & $)".
+    iMod (mapsto_update with "Hm H") as (?? (? & ? & Hk)) "(Hm & $)"; first done.
     iExists _; iFrame; iPureIntro; split; last done.
     unfold coherent, resource_at in *; intros l.
     destruct (H l) as (Hnext & Hcontents & Haccess); clear H.
@@ -1444,7 +1444,7 @@ Section mpred.
       { rewrite !fmap_length seq_length //. } }
     rewrite big_sepL2_alt -(big_sepM_list_to_map (λ x y, x ↦{#sh} y)) //.
     iDestruct (resource_map_auth_valid with "Hm") as %(_ & Hvalid).
-    iMod (mapsto_update_big with "Hm H") as "(Hm & H)".
+    iMod (mapsto_update_big with "Hm H") as "(Hm & H)"; first done.
     { instantiate (1:=(list_to_map (zip ((λ i : nat, adr_add k i) <$> seq 0 (length bl))
                                         (VAL <$> bl)))).
       rewrite Hlen !dom_list_to_map_L !fst_zip //; rewrite !fmap_length seq_length //; lia. }
@@ -1510,7 +1510,7 @@ Section mpred.
   Proof.
     iIntros "(% & % & Hm)".
     apply coherent_empty in H as ->.
-    iMod (gen_heap_set with "Hm") as "(? & $)".
+    iMod (gen_heap_set with "Hm") as "(? & $)"; first done.
     iExists _; iFrame; iPureIntro; split; last done; split; auto.
   Qed.
 

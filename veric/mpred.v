@@ -327,7 +327,9 @@ Global Instance funspecOF_contractive {PF} `{forall (A : ofe) (HA : Cofe A) (B :
 Proof.
   rewrite /oFunctorContractive; intros.
   intros ??? []; repeat split; auto.
-  exists eq_refl; split; rewrite /eq_rect /pre_eq /post_eq /eq_ind_r /eq_ind /eq_sym; f_equiv; by apply oFunctor_map_contractive.
+  exists eq_refl; split; rewrite /eq_rect /pre_eq /post_eq /eq_ind_r /eq_ind /eq_sym; f_equiv;
+  eapply oFunctor_map_contractive; assumption. Unshelve. 
+  all: apply oFunctor_oFunctor_compose_contractive_2; assumption.
 Qed.
 
 End ofunctor.

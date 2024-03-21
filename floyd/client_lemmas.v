@@ -810,7 +810,7 @@ Proof.
 intros. rewrite and_assoc'; auto.
 Qed.
 
-Lemma semax_later_trivial: forall {OK_spec} {cs: compspecs} E Delta P c Q,
+Lemma semax_later_trivial: forall {OK_spec : ext_spec OK_ty} {cs: compspecs} E Delta P c Q,
   semax E Delta (▷ P) c Q ->
   semax E Delta P c Q.
 Proof.
@@ -1020,7 +1020,7 @@ Lemma saturate_aux21x:
    (P ⊢ S) ->
    (S ∧ P ⊢ Q) -> P ⊢ Q.
 Proof.
-intros ???? <-; auto.
+intros ??? <- <-. auto.
 Qed.
 
 Lemma prop_right_emp:

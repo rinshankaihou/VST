@@ -53,7 +53,7 @@ Proof.
   rewrite Ptrofs.unsigned_repr; auto.
 Qed.
 
-Lemma sem_cmp_relate : forall {CS} b e1 e2 ty m rho
+Lemma sem_cmp_relate : forall {CS:compspecs} b e1 e2 ty m rho
   (TC1 : tc_val (typeof e1) (eval_expr e1 rho))
   (TC2 : tc_val (typeof e2) (eval_expr e2 rho))
   (Hcmp : is_comparison b = true),
@@ -62,7 +62,7 @@ Lemma sem_cmp_relate : forall {CS} b e1 e2 ty m rho
    Some (eval_binop b  (typeof e1) (typeof e2) (eval_expr e1 rho) (eval_expr e2 rho))⌝.
 Proof.
   intros.
-  iIntros "[Hm H]"; iDestruct (typecheck_binop_sound b rho e1 e2 with "H") as %TC.
+  iIntros "[Hm H]"; iDestruct (typecheck_binop_sound b rho e1 e2 with "H") as %TC; try done.
   rewrite /eval_binop /force_val2 in TC |- *.
   destruct (sem_binary_operation' _ _ _ _ _) eqn: Heval; last by apply tc_val_Vundef in TC.
   rewrite /sem_binary_operation' in Heval.
@@ -106,7 +106,7 @@ Proof.
       apply sem_binarith_relate; rewrite ?bool2val_eq; auto; simpl in *; try discriminate; try (destruct i; discriminate); try (destruct i0; discriminate).
 Qed.
 
-Lemma sem_div_relate : forall {CS} e1 e2 ty m rho
+Lemma sem_div_relate : forall {CS:compspecs} e1 e2 ty m rho
   (TC1 : tc_val (typeof e1) (eval_expr e1 rho))
   (TC2 : tc_val (typeof e2) (eval_expr e2 rho)),
   denote_tc_assert (isBinOpResultType Odiv e1 e2 ty) rho ⊢
@@ -114,7 +114,7 @@ Lemma sem_div_relate : forall {CS} e1 e2 ty m rho
    Some (eval_binop Odiv (typeof e1) (typeof e2) (eval_expr e1 rho) (eval_expr e2 rho))⌝.
 Proof.
   intros.
-  iIntros "H"; iDestruct (typecheck_binop_sound with "H") as %TC.
+  iIntros "H"; iDestruct (typecheck_binop_sound with "H") as %TC; try done.
   rewrite /eval_binop /force_val2 in TC |- *.
   destruct (sem_binary_operation' _ _ _ _ _) eqn: Heval; last by apply tc_val_Vundef in TC.
   rewrite /sem_binary_operation' in Heval.
@@ -158,7 +158,7 @@ Proof.
     rewrite -> ?Int64_eq_repr_int_nonzero' by auto; auto).
 Qed.
 
-Lemma sem_mod_relate : forall {CS} e1 e2 ty m rho
+Lemma sem_mod_relate : forall {CS:compspecs} e1 e2 ty m rho
   (TC1 : tc_val (typeof e1) (eval_expr e1 rho))
   (TC2 : tc_val (typeof e2) (eval_expr e2 rho)),
   denote_tc_assert (isBinOpResultType Omod e1 e2 ty) rho ⊢
@@ -166,7 +166,7 @@ Lemma sem_mod_relate : forall {CS} e1 e2 ty m rho
    Some (eval_binop Omod (typeof e1) (typeof e2) (eval_expr e1 rho) (eval_expr e2 rho))⌝.
 Proof.
   intros.
-  iIntros "H"; iDestruct (typecheck_binop_sound with "H") as %TC.
+  iIntros "H"; iDestruct (typecheck_binop_sound with "H") as %TC; try done.
   rewrite /eval_binop /force_val2 in TC |- *.
   destruct (sem_binary_operation' _ _ _ _ _) eqn: Heval; last by apply tc_val_Vundef in TC.
   rewrite /sem_binary_operation' in Heval.
@@ -235,12 +235,12 @@ specialize (Hcenv id). hnf in Hcenv. rewrite H in Hcenv. auto.
 rewrite -bi.pure_mono'; [|econstructor; [apply H1 | apply H2 | apply Hstable; eassumption]].
 clear - TC1 TC2.
 destruct (is_comparison b) eqn: Hcmp.
-{ iApply (sem_cmp_relate with "[$]"). }
+{ by iApply (sem_cmp_relate with "[$]"). }
 destruct (eq_dec b Odiv).
-{ subst; iApply (sem_div_relate with "H"). }
+{ subst; by iApply (sem_div_relate with "H"). }
 destruct (eq_dec b Omod).
-{ subst; iApply (sem_mod_relate with "H"). }
-iDestruct (typecheck_binop_sound b rho e1 e2 with "H") as %TC.
+{ subst; by iApply (sem_mod_relate with "H"). }
+iDestruct (typecheck_binop_sound b rho e1 e2 with "H") as %TC; try done.
 rewrite /eval_binop /force_val2 in TC |- *.
 destruct (sem_binary_operation' _ _ _ _ _) eqn: Heval; last by apply tc_val_Vundef in TC.
 rewrite /sem_binary_operation' in Heval.
