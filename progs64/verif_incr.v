@@ -150,7 +150,6 @@ Proof.
 Qed.
 Opaque wp.
 Ltac into_wp := rewrite <- wp_spec.
-Ltac from_wp := rewrite -> wp_spec.
 
 Typeclasses Opaque locald_denote.
 Arguments locald_denote : simpl never.
@@ -159,35 +158,45 @@ Global Instance into_and_local {Σ'} p P Q : IntoAnd p (@local Σ' (`(and) P Q))
 Proof. by rewrite /IntoAnd local_lift2_and. Qed.
 
 (* for diaframe *)
-Global Instance into_sep_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
-Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
+Global Instance into_sep_local  {Σ'} P Q: IntoSep (@local Σ' (`(and) P Q)) (local P) (local Q).
+Proof. rewrite /IntoSep. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
 
 Global Instance into_sep_careful_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
 Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
 
-Global Instance comine_sep_as_local  {Σ'} P Q: CombineSepAs (local P) (local Q) (@local Σ' (`(and) P Q)).
-Proof. rewrite /CombineSepAs. rewrite local_lift2_and. iIntros "[#? #?]". iFrame "#". Qed.
+Global Instance into_sep_careful_affine_local  {Σ'} P Qs: IntoSepCareful (<affine> @local Σ' (foldr (` and) (` True%type) (map locald_denote (P::Qs)))) 
+                                                                         (<affine> local (locald_denote P)) (<affine> local (foldr (` and) (` True%type) (map locald_denote Qs))).
+Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. rewrite bi.affinely_and. iIntros "[#$ #$]". Qed.
+
+Global Instance comine_sep_as_local  {Σ'} P: CombineSepAs (@local Σ' (` True%type)) (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote [P]))).
+Proof. rewrite /CombineSepAs. rewrite !local_lift2_and. iIntros "[#? #?]"; iFrame "#". Qed.
+
+Global Instance comine_sep_as_local_2  {Σ'} P Qs: CombineSepAs (@local Σ' (foldr (` and) (` True%type) (map locald_denote Qs))) (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote (P::Qs)))).
+Proof. rewrite /CombineSepAs. rewrite !local_lift2_and. iIntros "[#? #?]"; iFrame "#". Qed.
 
 (* SEP *)
 Global Instance into_sep_careful_SEP {A Σ'} P Q R: IntoSepCareful (@SEPx A Σ' (P::Q::R)) (SEPx [P]) (SEPx (Q::R)).
 Proof. rewrite /IntoSepCareful. iIntros "[$ $]". Qed.
 
-(* P is singleton, Q::R may or may not be *)
+(* P is singleton *)
 (* Global Instance combine_sep_as_SEP_1 {A Σ'} P Q R: CombineSepAs (SEPx [P]) (SEPx (Q::R)) (@SEPx A Σ' (P::Q::R)).
 Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp //. Qed. *)
 
-Global Instance combine_sep_as_SEP_2 {A Σ'} P Q R: CombineSepAs (SEPx (Q::R)) (SEPx [P]) (@SEPx A Σ' (P::Q::R)).
+Global Instance combine_sep_as_SEP {A Σ'} P Q R: CombineSepAs (SEPx (Q::R)) (SEPx [P]) (@SEPx A Σ' (P::Q::R)).
 Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp. rewrite [_ ∗ P]bi.sep_comm //. Qed.
 
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
 
-Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
+Example diaframe_too_aggressive {prop:bi} {P Q R: prop} : Persistent P -> P ∧ Q ⊢ P ∗ Q .
 Proof.
-  start_function.
-  forward.
+  (* Search bi_affinely bi_and bi_sep. *)
+  intros.
+  Set Typeclasses Debug.
+  iIntros "(? & ?)".
+  by iFrame. (* good *)
 
-  into_wp.
-  iSteps.
+  Undo 2. iSteps. Fail done. (* need the affine *)
+Abort.
 
 Tactic Notation "iSelect2" open_constr(pat1) open_constr(pat2) tactic1(tac) :=
 lazymatch goal with
@@ -210,19 +219,33 @@ Tactic Notation "combine" open_constr(pat1) open_constr(pat2):=
   iSelect2 pat1 pat2 
   ltac:(fun x y => iRename x into "AHHHHHH"; iRename y into "AAAAAAAAAAAAHHH"; iCombine "AHHHHHH" "AAAAAAAAAAAAHHH" as "?").
   
-  Typeclasses Opaque SEPx.
-  Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
-  repeat combine (local _) (local _).
-  repeat combine (SEPx _) (SEPx _).
-
-
-
-
-  rewrite FromSepCareful.
-
+Typeclasses Opaque SEPx.
+Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
   
-  iStep.
-  unfold SEPx.
+Set Nested Proofs Allowed.
+
+Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEPx R) 
+  (<affine> @local Σ' (foldr (liftx and) (liftx True%type) (map locald_denote Q))) 
+  (PROP () (LOCALx Q (SEPx R))).
+Proof. rewrite /CombineSepAs /PROPx /LOCALx /SEPx. iIntros "($ & $)". Qed.
+
+Ltac from_wp :=
+  repeat combine (local _) (local _);
+  repeat combine (SEPx _) (SEPx _);
+  repeat combine (SEPx _) (<affine> local _);
+  iStopProof;
+  rewrite -> wp_spec.
+
+
+Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
+Proof.
+  start_function.
+  forward.
+
+  into_wp.
+  iIntros "(% & ? & ?)".
+  (* iSelect (<affine> local _) ltac:(fun x=>iDestruct x as "[? ?]"). *)
+  from_wp.
 
   (* should be able to do this automatically with a hint about command  *)
   unfold cptr_lock_inv at 2.
