@@ -159,14 +159,18 @@ Proof. by rewrite /IntoAnd local_lift2_and. Qed.
 
 (* for diaframe *)
 Global Instance into_sep_local  {Σ'} P Q: IntoSep (@local Σ' (`(and) P Q)) (local P) (local Q).
-Proof. rewrite /IntoSep. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
+Proof. rewrite /IntoSep. rewrite local_lift2_and. Set Typeclasses Debug. iIntros "[#$ #$]". Qed.
 
 Global Instance into_sep_careful_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
-Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
+Proof. rewrite /IntoSepCareful local_lift2_and. iIntros "[#$ #$]". Qed.
 
-Global Instance into_sep_careful_affine_local  {Σ'} P Qs: IntoSepCareful (<affine> @local Σ' (foldr (` and) (` True%type) (map locald_denote (P::Qs)))) 
-                                                                         (<affine> local (locald_denote P)) (<affine> local (foldr (` and) (` True%type) (map locald_denote Qs))).
-Proof. rewrite /IntoSepCareful. rewrite local_lift2_and. rewrite bi.affinely_and. iIntros "[#$ #$]". Qed.
+(* maybe turn this into something more general, but we need to prove BiPositive mpred *)
+Global Instance into_sep_careful_affine_local  {Σ'} P Q: IntoSepCareful (<affine> @local Σ' (`(and) P Q)) (<affine> local P) (<affine> local Q).
+Proof. rewrite /IntoSepCareful local_lift2_and // bi.affinely_and. iIntros "[#$ #$]". Qed.
+
+Global Instance into_sep_careful_local_foldr_and  {Σ'} P Qs: IntoSepCareful (@local Σ' (foldr (` and) (` True%type) (map locald_denote (P::Qs)))) 
+                                                                         (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote Qs))).
+Proof. rewrite /IntoSepCareful. simpl. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
 
 Global Instance comine_sep_as_local  {Σ'} P: CombineSepAs (@local Σ' (` True%type)) (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote [P]))).
 Proof. rewrite /CombineSepAs. rewrite !local_lift2_and. iIntros "[#? #?]"; iFrame "#". Qed.
@@ -186,17 +190,6 @@ Global Instance combine_sep_as_SEP {A Σ'} P Q R: CombineSepAs (SEPx (Q::R)) (SE
 Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp. rewrite [_ ∗ P]bi.sep_comm //. Qed.
 
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
-
-Example diaframe_too_aggressive {prop:bi} {P Q R: prop} : Persistent P -> P ∧ Q ⊢ P ∗ Q .
-Proof.
-  (* Search bi_affinely bi_and bi_sep. *)
-  intros.
-  Set Typeclasses Debug.
-  iIntros "(? & ?)".
-  by iFrame. (* good *)
-
-  Undo 2. iSteps. Fail done. (* need the affine *)
-Abort.
 
 Tactic Notation "iSelect2" open_constr(pat1) open_constr(pat2) tactic1(tac) :=
 lazymatch goal with
@@ -236,15 +229,14 @@ Ltac from_wp :=
   iStopProof;
   rewrite -> wp_spec.
 
-
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
   forward.
 
   into_wp.
-  iIntros "(% & ? & ?)".
-  (* iSelect (<affine> local _) ltac:(fun x=>iDestruct x as "[? ?]"). *)
+  iSteps.
+
   from_wp.
 
   (* should be able to do this automatically with a hint about command  *)
