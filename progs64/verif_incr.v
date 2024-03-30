@@ -159,7 +159,7 @@ Proof. by rewrite /IntoAnd local_lift2_and. Qed.
 
 (* for diaframe *)
 Global Instance into_sep_local  {Σ'} P Q: IntoSep (@local Σ' (`(and) P Q)) (local P) (local Q).
-Proof. rewrite /IntoSep. rewrite local_lift2_and. Set Typeclasses Debug. iIntros "[#$ #$]". Qed.
+Proof. rewrite /IntoSep. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
 
 Global Instance into_sep_careful_local  {Σ'} P Q: IntoSepCareful (@local Σ' (`(and) P Q)) (local P) (local Q).
 Proof. rewrite /IntoSepCareful local_lift2_and. iIntros "[#$ #$]". Qed.
@@ -210,34 +210,89 @@ iCombine [H1;H2] as "?".
 
 Tactic Notation "combine" open_constr(pat1) open_constr(pat2):=
   iSelect2 pat1 pat2 
-  ltac:(fun x y => iRename x into "AHHHHHH"; iRename y into "AAAAAAAAAAAAHHH"; iCombine "AHHHHHH" "AAAAAAAAAAAAHHH" as "?").
+  ltac:(fun x y => iRename x into "__VerySecretName1";
+                   iRename y into "__VerySecretName2"; 
+                   iCombine "__VerySecretName1" "__VerySecretName2" as "?";
+                   try iClear "__VerySecretName1 __VerySecretName2").
   
 Typeclasses Opaque SEPx.
 Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
   
 Set Nested Proofs Allowed.
 
-Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEPx R) 
-  (<affine> @local Σ' (foldr (liftx and) (liftx True%type) (map locald_denote Q))) 
+Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEPx R)
+  (<affine> @local Σ' (foldr (liftx and) (liftx True%type) (map locald_denote Q)))
   (PROP () (LOCALx Q (SEPx R))).
-Proof. rewrite /CombineSepAs /PROPx /LOCALx /SEPx. iIntros "($ & $)". Qed.
+Proof. rewrite /CombineSepAs /PROPx /LOCALx /SEPx. iIntros "($ & #$)". Qed.
 
 Ltac from_wp :=
   repeat combine (local _) (local _);
   repeat combine (SEPx _) (SEPx _);
-  repeat combine (SEPx _) (<affine> local _);
+  repeat combine (SEPx _) (local _);
   iStopProof;
   rewrite -> wp_spec.
+
+
+(* see goal is _⊢acquire, iAssert acquire_hint so have context, can use diaframe to figure out args *)
+
+Definition ArgsWrap {Σ'} {T:Type} : T -> @assert Σ' := fun (args:T) => ⌜(forall (l:@list nat), rev (rev l) = l)⌝%type.
+Instance Persistent_ArgsWrap: forall {Σ'} {T:Type} (args:T), Persistent (@ArgsWrap Σ' T args).
+Proof. intros. apply _. Qed.
+(* Instance Absorbing_ArgsWrap: forall {Σ'} {T:Type} (args:T), Absorbing (@ArgsWrap Σ' T args).
+Proof. intros. apply _. Qed.
+Instance Affine_ArgsWrap: forall {Σ'} {T:Type} (args:T), Affine (@ArgsWrap Σ' T args).
+Proof. intros. unfold ArgsWrap. unfold Affine. iIntros "%?". apply _. Qed. *)
+
+Arguments ArgsWrap : simpl never.
+
+Global Instance acquire_hint  (sh:Qp) (h:lock_handle) (R:mpred) :
+  HINT1  (@SEPx mpred.environ_index Σ [lock_inv sh h R])%assert5 (* this should be Pre of acquire_spec *) ✱ [True]  
+    ⊫ [id] ; (<absorb> @ArgsWrap Σ (Qp * lock_handle * mpred) (sh, h, R)).
+Proof. intros. iSteps.  iPureIntro. apply rev_involutive. Qed.
+Opaque ArgsWrap.
 
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
   forward.
 
-  into_wp.
-  iSteps.
 
-  from_wp.
+  into_wp; iSteps.
+evar (__forward_call_arg: (Qp * lock_handle * mpred)%type).
+iAssert  (ArgsWrap __forward_call_arg) as "#__forward_call_arg"; unfold __forward_call_arg.
+iSteps.
+iClear "__forward_call_arg".
+
+iSelect ()
+rewrite bi.intuitionistically_elim.
+
+from_wp.
+rewrite bi.intuitionistically_elim.
+Search bi_intuitionistically.
+
+forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). __forward_call_arg.
+
+
+
+
+  (*
+  TODO fix this
+  repeat combine (local _) (local _);
+  repeat combine (SEPx _) (SEPx _).
+  iSelect (local _) ltac:(fun x=> iDestruct x as "-# HH").
+  iSelect (SEPx _)%assert5 ltac:(fun x=> iRename x into "HH2").
+  iCombine "HH" "HH2" as "?".
+
+  repeat combine (SEPx _) (<affine> local _).
+
+  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
+
+Global Instance unfold_cptr_lock_inv_hint  environ_index (sh:Qp) (h:lock_handle) (R:mpred) arg:
+
+  HINT1  (cptr_lock_inv g1 g2 (gv _c))%assert5 (* this should be Pre of acquire_spec *) ✱ [emp]  
+    ⊫ [id]; ⌜ ArgsWrap arg ⌝.
+Proof. intros. iSteps. unfold ArgsWrap. iPureIntro. apply rev_involutive. Qed.
+Opaque ArgsWrap.
 
   (* should be able to do this automatically with a hint about command  *)
   unfold cptr_lock_inv at 2.
