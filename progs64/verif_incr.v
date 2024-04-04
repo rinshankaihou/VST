@@ -88,11 +88,10 @@ Definition main_spec :=
 Definition Gprog : funspecs := ltac:(with_library prog [acquire_spec; release_spec; makelock_spec; freelock_spec;
   spawn_spec; incr_spec; read_spec; thread_func_spec; main_spec]).
 
-Class Exclusive_mpred (x : mpred) := exclusive  : x ∗ x ⊢ False.
 Instance ctr_inv_exclusive : forall g1 g2 p,
-Exclusive_mpred (cptr_lock_inv g1 g2 p).
+ExclusiveProp (cptr_lock_inv g1 g2 p).
 Proof.
-  unfold cptr_lock_inv, Exclusive_mpred; intros.
+  unfold cptr_lock_inv, ExclusiveProp; intros.
   iIntros "((% & ? & ?) & (% & ? & ?))".
   rewrite !field_at_field_at_; iApply (field_at__conflict with "[$]"); auto.
   { simpl; lia. }
@@ -100,9 +99,9 @@ Qed.
 #[local] Hint Resolve ctr_inv_exclusive : core.
 
 Instance thread_inv_exclusive : forall sh1 sh h g1 g2 p,
-  Exclusive_mpred (thread_lock_R sh1 sh h g1 g2 p).
+ExclusiveProp (thread_lock_R sh1 sh h g1 g2 p).
 Proof.
-  unfold cptr_lock_inv, Exclusive_mpred; intros.
+  unfold cptr_lock_inv, ExclusiveProp; intros.
   iIntros "((? & ? & g1) & (? & ? & g2))".
   iDestruct (own_valid_2 with "g1 g2") as %[]%@excl_auth_frag_op_valid.
 Qed.
@@ -291,15 +290,6 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
   forward.
   forward.
   
-  Global Instance ghost_hint  g1 g2 x y E Delta c P:
-  let G1:=(@SEPx mpred.environ_index Σ [ghost_auth g1 x])%assert5 in
-  let G2:=(@SEPx mpred.environ_index Σ [ghost_auth g2 y])%assert5 in
-  let G3:=(@SEPx mpred.environ_index Σ [ghost_auth g1 x])%assert5 in
-  HINT1  (G1 ∗ G2) ✱  [(G1 ∗ G2) -∗ G3]
-    ⊫ [id] ; (wp E Delta c P).
-Proof. intros. iSteps. Admitted.
-
-
   (* gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
     ghost_auth (if left then g1 else g2) (n+1)%nat ∗
@@ -312,21 +302,40 @@ Proof. intros. iSteps. Admitted.
   
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
   {
-     Typeclasses Opaque cptr_lock_inv.
-     Global Instance lock_prop_hint P:
-     Exclusive_mpred P ->
-        HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False)) ✱ [emp]. 
-        Proof. rewrite empty_hyp_first_eq. unfold Exclusive_mpred. intros->. iSteps as "H". Qed.
+  Typeclasses Opaque cptr_lock_inv.
+  (* TODO maybe write an instance for affine and ExclusiveProp? *)
+  Global Instance lock_prop_hint {prop:bi} (P:prop):
+  ExclusiveProp P ->
+    HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False)) ✱ [emp]. 
+    Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp. intros->. iSteps as "H". Qed.
+  
+  iSteps.
 
-          iSteps.
+  destruct left.
 
-  Global Instance close_cinv_hint z_int (x y: nat) g1 g2 _c (gv:globals):
-     z=x+y ->
-     HINT1 (field_at Ews t_counter (DOT _ctr) (Vint z) (gv _c)) ✱ 
-           [ghost_auth g1 x ∗ ghost_auth g2 y] ⊫ [id]; cptr_lock_inv g1 g2 (gv _c).
-     Proof. intros ->. iSteps. iExists x, y. iSteps. Qed.
-      
+  Global Instance ghost_auth_update g1 x n n':
+      HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
+  Proof.
+    iStep as "a f". iDestruct (ghost_var_inj with "[$a $f]") as %->.
+    iMod (own_update_2 with "a f") as "($ & $)"; last done.
+    apply @excl_auth_update.
+  Qed.
 
+  Global Instance close_cinv_hint n'_int  (n n' x y: nat) g1 g2 _c (gv:globals):
+    n'_int = Int.repr n' -> (* (Int.add (Int.repr z) (Int.repr 1)) *)
+    n' = (x + 1 + y)%nat ->
+    HINT (field_at Ews t_counter (DOT _ctr) (Vint n'_int) (gv _c)) ✱ 
+      [-; ghost_auth g1 x ∗ ghost_auth g2 y ∗ ghost_frag g1 n]
+      ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 (n')].
+  Proof. intros ->->. iStep. unfold cptr_lock_inv. iSteps. iExists (x+1), y. Admitted.
+    
+
+  iStepDebug.
+  Set Typeclasses Debug.
+  solveStep. 
+  (* FIXME
+    1.1-1.1-1.1-1: (Int.add (Int.repr z) (Int.repr 1) = Int.repr ?n')
+    1.1-1.1-1.1-1: looking for (Int.add (Int.repr z) (Int.repr 1) = Int.repr ?n') with backtracking*)
 
 
   forward_call.
