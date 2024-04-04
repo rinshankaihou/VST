@@ -88,20 +88,21 @@ Definition main_spec :=
 Definition Gprog : funspecs := ltac:(with_library prog [acquire_spec; release_spec; makelock_spec; freelock_spec;
   spawn_spec; incr_spec; read_spec; thread_func_spec; main_spec]).
 
-Lemma ctr_inv_exclusive : forall g1 g2 p,
-  exclusive_mpred (cptr_lock_inv g1 g2 p).
+Class Exclusive_mpred (x : mpred) := exclusive  : x ∗ x ⊢ False.
+Instance ctr_inv_exclusive : forall g1 g2 p,
+Exclusive_mpred (cptr_lock_inv g1 g2 p).
 Proof.
-  intros; unfold cptr_lock_inv.
+  unfold cptr_lock_inv, Exclusive_mpred; intros.
   iIntros "((% & ? & ?) & (% & ? & ?))".
   rewrite !field_at_field_at_; iApply (field_at__conflict with "[$]"); auto.
   { simpl; lia. }
 Qed.
 #[local] Hint Resolve ctr_inv_exclusive : core.
 
-Lemma thread_inv_exclusive : forall sh1 sh h g1 g2 p,
-  exclusive_mpred (thread_lock_R sh1 sh h g1 g2 p).
+Instance thread_inv_exclusive : forall sh1 sh h g1 g2 p,
+  Exclusive_mpred (thread_lock_R sh1 sh h g1 g2 p).
 Proof.
-  intros; unfold thread_lock_R.
+  unfold cptr_lock_inv, Exclusive_mpred; intros.
   iIntros "((? & ? & g1) & (? & ? & g2))".
   iDestruct (own_valid_2 with "g1 g2") as %[]%@excl_auth_frag_op_valid.
 Qed.
@@ -221,7 +222,7 @@ Tactic Notation "combine" open_constr(pat1) open_constr(pat2):=
   
 Typeclasses Opaque SEPx.
 Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
-  
+Typeclasses Opaque field_at.
 Set Nested Proofs Allowed.
 
 Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEPx R)
@@ -254,7 +255,6 @@ Global Instance acquire_hint  (sh:Qp) (h:lock_handle) (R:mpred) :
     ⊫ [id] ; (<absorb> @ArgsWrap Σ (Qp * lock_handle * mpred) (sh, h, R)).
 Proof. intros. iSteps.  iPureIntro. apply rev_involutive. Qed.
 Opaque ArgsWrap.
-
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
@@ -300,7 +300,7 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 Proof. intros. iSteps. Admitted.
 
 
-  gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
+  (* gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
     ghost_auth (if left then g1 else g2) (n+1)%nat ∗
     ghost_frag (if left then g1 else g2) (n+1)%nat ∗
@@ -308,24 +308,23 @@ Proof. intros. iSteps. Admitted.
   { go_lowerx.
     iIntros "(? & _)".
     by iMod (ghost_var_incr with "[$]"). }
-  Intros.
+  Intros. *)
   
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-  { Check exclusive_weak_exclusive.
-    (* match goal with |-context[weak_exclusive_mpred ?P && emp] => sep_apply (exclusive_weak_exclusive P) end.
-     [auto with share | try timeout 20 cancel] end. *)
-     
-  Global Instance lock_prop_hint P:
-  exclusive_mpred P ->
-     HINT (emp) ✱ [-; emp] ⊫ [bi_affinely] ; (P ∗ P -∗ False) ✱ [emp]. 
-     Proof. intros?. iSteps. rewrite H. iSteps. Qed.
-    
-  iStep.
-  Set Typeclasses Debug.
-  iStepDebug.
-  solveStep.
-  solveStep.
+  {
+     Typeclasses Opaque cptr_lock_inv.
+     Global Instance lock_prop_hint P:
+     Exclusive_mpred P ->
+        HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False)) ✱ [emp]. 
+        Proof. rewrite empty_hyp_first_eq. unfold Exclusive_mpred. intros->. iSteps as "H". Qed.
 
+          iSteps.
+
+  Global Instance close_cinv_hint z_int (x y: nat) g1 g2 _c (gv:globals):
+     z=x+y ->
+     HINT1 (field_at Ews t_counter (DOT _ctr) (Vint z) (gv _c)) ✱ 
+           [ghost_auth g1 x ∗ ghost_auth g2 y] ⊫ [id]; cptr_lock_inv g1 g2 (gv _c).
+     Proof. intros ->. iSteps. iExists x, y. iSteps. Qed.
       
 
 
