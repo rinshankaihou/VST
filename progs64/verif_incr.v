@@ -321,14 +321,34 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
     apply @excl_auth_update.
   Qed.
 
-  Global Instance close_cinv_hint n'_int  (n n' x y: nat) g1 g2 _c (gv:globals):
-    n'_int = Int.repr n' -> (* (Int.add (Int.repr z) (Int.repr 1)) *)
-    n' = (x + 1 + y)%nat ->
-    HINT (field_at Ews t_counter (DOT _ctr) (Vint n'_int) (gv _c)) ✱ 
+  Global Instance close_cinv_hint z'  (n n' x y: nat) g1 g2 _c (gv:globals):
+  n' = (x + 1)%nat ->
+  z' = Int.repr (n' + y)%nat -> (* (Int.add (Int.repr z) (Int.repr 1)) *)
+    HINT (field_at Ews t_counter (DOT _ctr) (Vint z') (gv _c)) ✱ 
       [-; ghost_auth g1 x ∗ ghost_auth g2 y ∗ ghost_frag g1 n]
       ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 (n')].
-  Proof. intros ->->. iStep. unfold cptr_lock_inv. iSteps. iExists (x+1), y. Admitted.
-    
+  Proof. intros -> ->. iStep as "H1 H2 H3 H4". unfold cptr_lock_inv.
+  iSteps.
+  iExists (x+1). iExists y. 
+  
+iStepDebug.
+
+  iStep.
+   iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
+   iAssert (|==>ghost_auth g1 (n+1) ∗ ghost_frag g1 (n+1))  with "[H2 H4]" as "> [H2 $]".
+   iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
+   apply @excl_auth_update.
+   iFrame.
+   done.
+   
+   
+   iModIntro.
+  iExists  (n + 1 + y).  iFrame "H1".  (n+1), y. Admitted.
+
+
+
+  Hint Extern 1 (_ = Int.repr _) => by rewrite add_repr; rep_lia : typeclass_instances.
+
 
   iStepDebug.
   Set Typeclasses Debug.
