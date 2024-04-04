@@ -172,10 +172,14 @@ Global Instance into_sep_careful_local_foldr_and  {Σ'} P Qs: IntoSepCareful (@l
                                                                          (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote Qs))).
 Proof. rewrite /IntoSepCareful. simpl. rewrite local_lift2_and. iIntros "[#$ #$]". Qed.
 
-Global Instance comine_sep_as_local  {Σ'} P: CombineSepAs (@local Σ' (` True%type)) (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote [P]))).
+Global Instance comine_sep_as_local  {Σ'} P: CombineSepAs (@local Σ' (liftx True%type)) 
+                                                          (local (locald_denote P))
+                                                          (local (foldr (` and) (` True%type) (map locald_denote [P]))).
 Proof. rewrite /CombineSepAs. rewrite !local_lift2_and. iIntros "[#? #?]"; iFrame "#". Qed.
 
-Global Instance comine_sep_as_local_2  {Σ'} P Qs: CombineSepAs (@local Σ' (foldr (` and) (` True%type) (map locald_denote Qs))) (local (locald_denote P)) (local (foldr (` and) (` True%type) (map locald_denote (P::Qs)))).
+Global Instance comine_sep_as_local_2  {Σ'} P Qs: CombineSepAs (@local Σ' (foldr (` and) (` True%type) (map locald_denote Qs)))
+                                                               (local (locald_denote P))
+                                                               (local (foldr (` and) (` True%type) (map locald_denote (P::Qs)))).
 Proof. rewrite /CombineSepAs. rewrite !local_lift2_and. iIntros "[#? #?]"; iFrame "#". Qed.
 
 (* SEP *)
@@ -257,48 +261,44 @@ Proof.
   forward.
 
 
-  into_wp; iSteps.
+  (* into_wp; iSteps.
 evar (__forward_call_arg: (Qp * lock_handle * mpred)%type).
 iAssert  (ArgsWrap __forward_call_arg) as "#__forward_call_arg"; unfold __forward_call_arg.
 iSteps.
 iClear "__forward_call_arg".
+(* Ltac move_local_to_sep_context:=
+  repeat iSelect (local _) (fun x => iDestruct x as "-#?");
+  repeat rewrite bi.affinely_elim. *)
 
-iSelect ()
-rewrite bi.intuitionistically_elim.
-
+  (* move_local_to_sep_context. *)
+  
 from_wp.
-rewrite bi.intuitionistically_elim.
-Search bi_intuitionistically.
-
-forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). __forward_call_arg.
 
 
 
+(* TODO setup proper instance for rewrite under semax 
+   rewrite bi.intuitionistically_elim. *)
 
-  (*
-  TODO fix this
-  repeat combine (local _) (local _);
-  repeat combine (SEPx _) (SEPx _).
-  iSelect (local _) ltac:(fun x=> iDestruct x as "-# HH").
-  iSelect (SEPx _)%assert5 ltac:(fun x=> iRename x into "HH2").
-  iCombine "HH" "HH2" as "?".
+forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 
-  repeat combine (SEPx _) (<affine> local _).
 
   forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-
-Global Instance unfold_cptr_lock_inv_hint  environ_index (sh:Qp) (h:lock_handle) (R:mpred) arg:
-
-  HINT1  (cptr_lock_inv g1 g2 (gv _c))%assert5 (* this should be Pre of acquire_spec *) ✱ [emp]  
-    ⊫ [id]; ⌜ ArgsWrap arg ⌝.
-Proof. intros. iSteps. unfold ArgsWrap. iPureIntro. apply rev_involutive. Qed.
-Opaque ArgsWrap.
 
   (* should be able to do this automatically with a hint about command  *)
   unfold cptr_lock_inv at 2.
   Intros z x y.
   forward.
   forward.
+  forward.
+  
+  Global Instance ghost_hint  g1 g2 x y E Delta c P:
+  let G1:=(@SEPx mpred.environ_index Σ [ghost_auth g1 x])%assert5 in
+  let G2:=(@SEPx mpred.environ_index Σ [ghost_auth g2 y])%assert5 in
+  let G3:=(@SEPx mpred.environ_index Σ [ghost_auth g1 x])%assert5 in
+  HINT1  (G1 ∗ G2) ✱  [(G1 ∗ G2) -∗ G3]
+    ⊫ [id] ; (wp E Delta c P).
+Proof. intros. iSteps. Admitted.
+
 
   gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
@@ -309,16 +309,22 @@ Opaque ArgsWrap.
     iIntros "(? & _)".
     by iMod (ghost_var_incr with "[$]"). }
   Intros.
-  forward.
+  
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-  { lock_props.
-
-  Opaque field_at.
-  destruct left.
-  - iSteps. (* abduct frame? *)
-
-    unfold cptr_lock_inv; Exists (z + 1)%nat.
+  { Check exclusive_weak_exclusive.
+    (* match goal with |-context[weak_exclusive_mpred ?P && emp] => sep_apply (exclusive_weak_exclusive P) end.
+     [auto with share | try timeout 20 cancel] end. *)
+     
+  Global Instance lock_prop_hint P:
+  exclusive_mpred P ->
+     HINT (emp) ✱ [-; emp] ⊫ [bi_affinely] ; (P ∗ P -∗ False) ✱ [emp]. 
+     Proof. intros?. iSteps. rewrite H. iSteps. Qed.
     
+  iStep.
+  Set Typeclasses Debug.
+  iStepDebug.
+  solveStep.
+  solveStep.
 
       
 
