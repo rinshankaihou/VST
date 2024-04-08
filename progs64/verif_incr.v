@@ -289,8 +289,9 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
   forward.
   forward.
   forward.
-  
-  (* gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
+
+
+  gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
     ghost_auth (if left then g1 else g2) (n+1)%nat ∗
     ghost_frag (if left then g1 else g2) (n+1)%nat ∗
@@ -298,7 +299,104 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
   { go_lowerx.
     iIntros "(? & _)".
     by iMod (ghost_var_incr with "[$]"). }
-  Intros. *)
+  Intros.
+  (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
+
+  (* lock_specs.release_spec mk_funspec *)
+
+
+(* NOTE tweaking floyd tactics seem difficult since all the reasoning is based on 
+   call_setup_1 or the sort and lemmas about it *)
+
+Ltac my_fwd_call_dep :=
+  try lazymatch goal with
+        | |- semax _ _ _ (Scall _ _ _) _ => rewrite -> semax_seq_skip
+        end;
+  repeat lazymatch goal with
+    | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
+        rewrite <- seq_assoc
+  end.
+my_fwd_call_dep.
+
+Ltac my_fwd_call' (*ts*) subsumes witness :=
+check_POSTCONDITION;
+lazymatch goal with
+| |- semax _ _ _ (Ssequence (Scall ?ret _ _) _) _ =>
+  eapply semax_seq'
+  (* ;
+    [prove_call_setup (*ts*) subsumes witness;
+     clear_Delta_specs; clear_MORE_POST;
+     [ .. |
+      lazymatch goal with
+      | |- _ -> semax _ _ _ (Scall (Some _) _ _) _ =>
+         forward_call_id1_wow
+      | |- call_setup2 _ _ _ _ _ _ _ _ _ _ _ _ ?retty _ _ _ _ _ _ _ _ _ _ _ _ _ -> 
+                semax _ _ _ (Scall None _ _) _ =>
+        tryif (unify retty Tvoid)
+        then forward_call_id00_wow
+        else forward_call_id01_wow
+     end]
+   | after_forward_call ] *)
+| |- _ => rewrite <- seq_assoc; fwd_call' (*ts*) subsumes witness
+end.
+my_fwd_call' release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+- 
+  (* prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
+  Ltac prove_call_setup (*ts*) subsumes witness :=
+ prove_call_setup1 subsumes
+ ;
+ [ .. | 
+ match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?A _ _ _ _  -> _ =>
+      check_witness_type (*ts*) Σ A witness
+ end
+ (* ;
+ prove_call_setup_aux witness *)
+ ]
+ .
+ prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+ simpl.
+ (* lock_specs.release_spec *)
+
+
+ Ltac prove_call_setup_aux  witness :=
+ let H := fresh "SetupOne" in
+ intro H;
+ match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
+ let Frame := fresh "Frame" in evar (Frame: list mpred); 
+ let cR := (fun R =>
+ exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
+ ;
+ [ 
+  try_convertPreElim
+ | check_prove_local2ptree
+ | check_vl_eq_args
+ | 
+ (* auto 50 with derives *)
+ | 
+ (* check_gvars_spec *)
+ | 
+ (* let lhs := fresh "lhs" in 
+   match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
+   try change_compspecs CS; subst lhs *)
+   (* ;
+   cancel_for_forward_call *)
+ |
+ ]
+ )
+  in strip1_later R' cR
+ end.
+ prove_call_setup_aux (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+
+
+  gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
+  viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
+    ghost_auth (if left then g1 else g2) (n+1)%nat ∗
+    ghost_frag (if left then g1 else g2) (n+1)%nat ∗
+    ghost_auth (if left then g2 else g1) (if left then y else x)).
+  { go_lowerx.
+    iIntros "(? & _)".
+    by iMod (ghost_var_incr with "[$]"). }
+  Intros.
   
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
   {
@@ -310,7 +408,12 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
     Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp. intros->. iSteps as "H". Qed.
   
   iSteps.
-
+  
+  (* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
+  rewrite add_repr.
+  assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia.
+  
+  (* user decides which side*)
   destruct left.
 
   Global Instance ghost_auth_update g1 x n n':
@@ -321,42 +424,26 @@ forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
     apply @excl_auth_update.
   Qed.
 
-  Global Instance close_cinv_hint z'  (n n' x y: nat) g1 g2 _c (gv:globals):
-  n' = (x + 1)%nat ->
-  z' = Int.repr (n' + y)%nat -> (* (Int.add (Int.repr z) (Int.repr 1)) *)
-    HINT (field_at Ews t_counter (DOT _ctr) (Vint z') (gv _c)) ✱ 
-      [-; ghost_auth g1 x ∗ ghost_auth g2 y ∗ ghost_frag g1 n]
-      ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 (n')].
-  Proof. intros -> ->. iStep as "H1 H2 H3 H4". unfold cptr_lock_inv.
-  iSteps.
-  iExists (x+1). iExists y. 
-  
+Global Instance close_cinv_hint (z _x x x' y: nat) g1 g2 _c (gv:globals):
+  TCEq z (x'+y)%nat ->
+  HINT (field_at Ews t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)) ✱ 
+    [-; ghost_auth g1 _x ∗ ghost_auth g2 y ∗ ghost_frag g1 x]
+    ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 x'].
+Proof.
+  intro H. inversion H.
+   iStep as (n) "H1 H2 H3 H4". unfold cptr_lock_inv.
+  iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
+  iAssert (|==>ghost_auth g1 x' ∗ ghost_frag g1 x') with "[H2 H4]" as "> [H2 H4]".
+  iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
+  apply @excl_auth_update.
+  iFrame. iSteps.
+Qed.
+
+-
 iStepDebug.
+Set Typeclasses Debug.
 
-  iStep.
-   iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
-   iAssert (|==>ghost_auth g1 (n+1) ∗ ghost_frag g1 (n+1))  with "[H2 H4]" as "> [H2 $]".
-   iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
-   apply @excl_auth_update.
-   iFrame.
-   done.
-   
-   
-   iModIntro.
-  iExists  (n + 1 + y).  iFrame "H1".  (n+1), y. Admitted.
-
-
-
-  Hint Extern 1 (_ = Int.repr _) => by rewrite add_repr; rep_lia : typeclass_instances.
-
-
-  iStepDebug.
-  Set Typeclasses Debug.
-  solveStep. 
-  (* FIXME
-    1.1-1.1-1.1-1: (Int.add (Int.repr z) (Int.repr 1) = Int.repr ?n')
-    1.1-1.1-1.1-1: looking for (Int.add (Int.repr z) (Int.repr 1) = Int.repr ?n') with backtracking*)
-
+ solveStep.
 
   forward_call.
   
