@@ -261,10 +261,10 @@ Proof.
 
 
   (* into_wp; iSteps.
-evar (__forward_call_arg: (Qp * lock_handle * mpred)%type).
-iAssert  (ArgsWrap __forward_call_arg) as "#__forward_call_arg"; unfold __forward_call_arg.
+evar (witness: (Qp * lock_handle * mpred)%type).
+iAssert  (ArgsWrap witness) as "#witness"; unfold witness.
 iSteps.
-iClear "__forward_call_arg".
+iClear "witness".
 (* Ltac move_local_to_sep_context:=
   repeat iSelect (local _) (fun x => iDestruct x as "-#?");
   repeat rewrite bi.affinely_elim. *)
@@ -342,12 +342,28 @@ end.
 my_fwd_call' release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
 - 
   (* prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
-  Ltac prove_call_setup (*ts*) subsumes witness :=
+  Ltac pose_witness_type (*ts*) Σ A witness :=
+  (unify A (ConstType Ridiculous); (* because [is_evar A] doesn't seem to work *)
+             exfalso)
+ ||
+ let TA := constr:(ofe_car (@dtfr Σ A)) in
+  let TA' := eval cbv [dtfr dependent_type_functor_rec constOF idOF prodOF discrete_funOF
+      ofe_morOF sigTOF list.listOF oFunctor_car ofe_car] in TA
+ in let TA'' := eval simpl in TA'
+  in match type of witness with ?T => 
+       (unify T TA''; let ARG:=fresh "ARG" in pose T as ARG)
+      + (fail "Type of witness does not match type required by funspec WITH clause.
+Witness value: " witness "
+Witness type: " T "
+Funspec type: " TA'')
+     end.
+  
+ Ltac prove_call_setup (*ts*) subsumes witness :=
  prove_call_setup1 subsumes
  ;
  [ .. | 
  match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?A _ _ _ _  -> _ =>
-      check_witness_type (*ts*) Σ A witness
+ pose_witness_type (*ts*) Σ A witness
  end
  (* ;
  prove_call_setup_aux witness *)
@@ -355,38 +371,100 @@ my_fwd_call' release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
  .
  prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
  simpl.
- (* lock_specs.release_spec *)
 
+ match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?Pre _ _ _ -> _  => let PreName := fresh "PRE" in pose Pre as PreName end.
+ 
+ pose (PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))) as PRE1; simpl in PRE1.
+ 
+ match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "Rpre" in pose Rpre as RpreName end.
+ intros _.
+ into_wp; iStep.
+
+ 
+ iAssert (SEPx Rpre) as "Rpre".
+ 
+
+ let H := fresh "SetupOne" in
+  intro H;
+  match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
+  let Frame := fresh "Frame" in evar (Frame: list mpred); 
+  exploit (call_setup2_i _ _ _ _ _ _ _ _ R' R' _ _ _ _ (*ts*) _ _ _ _ _ H (sh, h, cptr_lock_inv g1 g2 (gv _c)) Frame); clear H end
+  ;[ 
+    try_convertPreElim
+   | check_prove_local2ptree
+   | check_vl_eq_args
+   | 
+   (* auto 50 with derives *)
+   | 
+   check_gvars_spec
+   | 
+   let lhs := fresh "lhs" in 
+     match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
+     try change_compspecs CS; subst lhs
+     ;
+     cancel_for_forward_call
+   |
+   ] .
+   unfold SEPx.
 
  Ltac prove_call_setup_aux  witness :=
- let H := fresh "SetupOne" in
- intro H;
- match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
- let Frame := fresh "Frame" in evar (Frame: list mpred); 
- let cR := (fun R =>
- exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
- ;
- [ 
-  try_convertPreElim
- | check_prove_local2ptree
- | check_vl_eq_args
- | 
- (* auto 50 with derives *)
- | 
- (* check_gvars_spec *)
- | 
- (* let lhs := fresh "lhs" in 
-   match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
-   try change_compspecs CS; subst lhs *)
-   (* ;
-   cancel_for_forward_call *)
- |
- ]
- )
-  in strip1_later R' cR
- end.
- prove_call_setup_aux (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+  let H := fresh "SetupOne" in
+  intro H;
+  match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
+  let Frame := fresh "Frame" in evar (Frame: list mpred); 
+  let cR := (fun R =>
+  exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
+  ;
+  (* [ 
+   try_convertPreElim
+  | check_prove_local2ptree
+  | check_vl_eq_args
+  | 
+  (* auto 50 with derives *)
+  | 
+  (* check_gvars_spec *)
+  | 
+  (* let lhs := fresh "lhs" in 
+    match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
+    try change_compspecs CS; subst lhs *)
+    (* ;
+    cancel_for_forward_call *)
+  |
+  ] *)
+  )
+   in strip1_later R' cR
+  end.
+  prove_call_setup_aux (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+ 
 
+
+ prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
+ simpl.
+ evar (witness: (Qp * lock_handle * mpred)%type).
+ 
+ (* lock_specs.release_spec *)
+ (* intros cs. *)
+ match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?Pre _ _ _ -> _  => let PreName := fresh "PRE" in pose Pre as PreName end.
+
+ intros _ .
+ match goal with |- semax _ _ ?PPP _ _ => 
+ let PP := fresh "Pre" in pose PPP as PP; simpl in PP end.
+
+
+ into_wp; iStep.
+
+ (* The term "PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))" has type
+ "ofe_car (argsEnviron -d> Ofe (iPropI Σ) ouPred_ofe_mixin)"
+while it is expected to have type
+ "monPred environ_index (iPropI Σ)". *)
+
+simpl in Pre.
+
+ iAssert PRE1 as "?".
+ 
+
+
+ 
 
   gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
