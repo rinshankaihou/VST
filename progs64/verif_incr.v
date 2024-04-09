@@ -149,7 +149,8 @@ Proof.
     iIntros; iExists P; iSplit; auto.
 Qed.
 Opaque wp.
-Ltac into_wp := rewrite <- wp_spec.
+
+Ltac into_ipm := rewrite <- wp_spec.
 
 Typeclasses Opaque locald_denote.
 Arguments locald_denote : simpl never.
@@ -229,13 +230,6 @@ Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEP
   (PROP () (LOCALx Q (SEPx R))).
 Proof. rewrite /CombineSepAs /PROPx /LOCALx /SEPx. iIntros "($ & #$)". Qed.
 
-Ltac from_wp :=
-  repeat combine (local _) (local _);
-  repeat combine (SEPx _) (SEPx _);
-  repeat combine (SEPx _) (local _);
-  iStopProof;
-  rewrite -> wp_spec.
-
 
 (* see goal is _⊢acquire, iAssert acquire_hint so have context, can use diaframe to figure out args *)
 
@@ -254,31 +248,39 @@ Global Instance acquire_hint  (sh:Qp) (h:lock_handle) (R:mpred) :
     ⊫ [id] ; (<absorb> @ArgsWrap Σ (Qp * lock_handle * mpred) (sh, h, R)).
 Proof. intros. iSteps.  iPureIntro. apply rev_involutive. Qed.
 Opaque ArgsWrap.
+
+
+Global Instance semax_mono: ∀ {OK_ty : Type} {Σ' : gFunctors} {VSTGS0 : VSTGS OK_ty Σ'} 
+{OK_spec : ext_spec OK_ty} {CS : compspecs} (E : coPset) (Delta : tycontext),
+  Proper (bi_entails ==> eq ==> equiv ==> flip impl)
+         (semax E Delta).
+Proof. intros. rewrite /Proper /respectful /flip /impl. intros ?????->??->. by apply ConseqFacts.semax_pre_simple. Qed.
+
+Lemma add_PROPx : forall {Σ} Q R, (LOCALx Q (SEPx R) ⊣⊢ PROP ( ) @LOCALx Σ Q (SEPx R))%assert5.
+Proof. intros. unfold PROPx; simpl. rewrite bi.True_and //. Qed.
+
+Ltac from_ipm :=
+  repeat combine (local _) (local _);
+  repeat combine (SEPx _) (SEPx _);
+  repeat combine (SEPx _) (local _);
+  iStopProof;
+  match goal with 
+  | |- _ ⊢ wp _ _ _ _ =>
+      rewrite -> ?wp_spec;
+      rewrite -(bi.persistently_and_intuitionistically_sep_l (local _));
+      rewrite (bi.persistently_elim (local _));
+      match goal with | |- context[(@local ?Σ (foldr _ _ (map locald_denote ?Q)))] => fold (@LOCALx Σ Q) end;
+      rewrite add_PROPx
+  | _ => idtac
+  end.
+
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
   forward.
 
-
-  (* into_wp; iSteps.
-evar (witness: (Qp * lock_handle * mpred)%type).
-iAssert  (ArgsWrap witness) as "#witness"; unfold witness.
-iSteps.
-iClear "witness".
-(* Ltac move_local_to_sep_context:=
-  repeat iSelect (local _) (fun x => iDestruct x as "-#?");
-  repeat rewrite bi.affinely_elim. *)
-
-  (* move_local_to_sep_context. *)
-  
-from_wp.
-
-
-
-(* TODO setup proper instance for rewrite under semax 
-   rewrite bi.intuitionistically_elim. *)
-
-forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
+  into_ipm; iSteps.
+  from_ipm.
 
 
   forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
@@ -378,10 +380,83 @@ Funspec type: " TA'')
  
  match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "Rpre" in pose Rpre as RpreName end.
  intros _.
- into_wp; iStep.
+ into_ipm. iStep.
 
- 
+Ltac iCutL Q :=
+  match goal with |- envs_entails _ ?P =>
+    rewrite -[P](bi.wand_elim_r Q) end.
+Ltac iCutPre Rpre:=
+    iCutL (@SEPx environ_index _ Rpre).
+iCutPre Rpre; subst Rpre.
+
+iSplitL.
++ 
+
+Typeclasses Opaque cptr_lock_inv.
+(* TODO maybe write an instance for affine and ExclusiveProp? *)
+Global Instance lock_prop_hint {prop:bi} (P:prop):
+ExclusiveProp P ->
+  HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False))%assert5 ✱ [emp]. 
+  Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp, SEPx, fold_right_sepcon. intros->. iSteps as "H". Qed.
+
+(* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
+rewrite add_repr.
+assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia.
+
+(* user decides which side *)
+destruct left.
+
+*
+
+Global Instance ghost_auth_update g1 x n n':
+    HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
+Proof.
+  iStep as "a f". iDestruct (ghost_var_inj with "[$a $f]") as %->.
+  iMod (own_update_2 with "a f") as "($ & $)"; last done.
+  apply @excl_auth_update.
+Qed.
+
+Global Instance close_cinv_hint (z _x x x' y: nat) g1 g2 _c (gv:globals):
+TCEq z (x'+y)%nat ->
+HINT (field_at Ews t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)) ✱ 
+  [-; ghost_auth g1 _x ∗ ghost_auth g2 y ∗ ghost_frag g1 x]
+  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 x'].
+Proof.
+intro H. inversion H.
+ iStep as (n) "H1 H2 H3 H4". unfold cptr_lock_inv.
+iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
+iAssert (|==>ghost_auth g1 x' ∗ ghost_frag g1 x') with "[H2 H4]" as "> [H2 H4]".
+iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
+apply @excl_auth_update.
+iFrame. iSteps.
+Qed.
+
+
+Global Instance SplitIntoSepCareful {prop:bi} (P Q R: prop):
+CombineSepAs P Q R ->
+HINT1 (ε₀) ✱ [P ∗ Q] ⊫ [id] ; R.
+Proof.
+  intros. unfold CombineSepAs in H. rewrite -H. simpl. Transparent empty_hyp_first.
+  unfold Abduct . simpl. rewrite empty_hyp_first_eq. iSteps. Qed.
+
+from_ipm.
+Print Instances Proper.
+Lemma lift_SEPx : forall {Σ} {heapGS0: heapGS Σ} (P Q: list (@mpred Σ heapGS0)),
+  (fold_right_sepcon P ⊢ fold_right_sepcon Q) 
+  -> @SEPx environ_index Σ P ⊢ @SEPx environ_index Σ Q.
+Proof.
+  intros. iStartProof (mpred). iIntros (i).
+    unfold SEPx. rewrite H. iSteps. Unshelve. assumption. Qed.
+apply lift_SEPx. simpl. iSteps.
+
+
+
+
+
+
+iSteps.
  iAssert (SEPx Rpre) as "Rpre".
+ 
  
 
  let H := fresh "SetupOne" in
@@ -451,7 +526,7 @@ Funspec type: " TA'')
  let PP := fresh "Pre" in pose PPP as PP; simpl in PP end.
 
 
- into_wp; iStep.
+ into_ipm; iStep.
 
  (* The term "PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))" has type
  "ofe_car (argsEnviron -d> Ofe (iPropI Σ) ouPred_ofe_mixin)"
@@ -478,44 +553,7 @@ simpl in Pre.
   
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
   {
-  Typeclasses Opaque cptr_lock_inv.
-  (* TODO maybe write an instance for affine and ExclusiveProp? *)
-  Global Instance lock_prop_hint {prop:bi} (P:prop):
-  ExclusiveProp P ->
-    HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False)) ✱ [emp]. 
-    Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp. intros->. iSteps as "H". Qed.
-  
-  iSteps.
-  
-  (* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
-  rewrite add_repr.
-  assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia.
-  
-  (* user decides which side*)
-  destruct left.
 
-  Global Instance ghost_auth_update g1 x n n':
-      HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
-  Proof.
-    iStep as "a f". iDestruct (ghost_var_inj with "[$a $f]") as %->.
-    iMod (own_update_2 with "a f") as "($ & $)"; last done.
-    apply @excl_auth_update.
-  Qed.
-
-Global Instance close_cinv_hint (z _x x x' y: nat) g1 g2 _c (gv:globals):
-  TCEq z (x'+y)%nat ->
-  HINT (field_at Ews t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)) ✱ 
-    [-; ghost_auth g1 _x ∗ ghost_auth g2 y ∗ ghost_frag g1 x]
-    ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 x'].
-Proof.
-  intro H. inversion H.
-   iStep as (n) "H1 H2 H3 H4". unfold cptr_lock_inv.
-  iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
-  iAssert (|==>ghost_auth g1 x' ∗ ghost_frag g1 x') with "[H2 H4]" as "> [H2 H4]".
-  iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
-  apply @excl_auth_update.
-  iFrame. iSteps.
-Qed.
 
 -
 iStepDebug.
