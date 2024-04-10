@@ -148,9 +148,19 @@ Proof.
   + unfold wp.
     iIntros; iExists P; iSplit; auto.
 Qed.
+
+(* explicitly gain Delta from semax *)
+Definition wp_spec_Delta: forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) P c Q,
+  (ENTAIL Delta, P ⊢ @wp OK_ty Σ VSTGS0 Espec cs E Delta c Q) <-> @semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q.
+Proof.
+  intros. rewrite wp_spec.
+  split; apply semax_pre.
+  - done. 
+  - iSteps.
+Qed.
 Opaque wp.
 
-Ltac into_ipm := rewrite <- wp_spec.
+Ltac into_ipm := rewrite <- wp_spec_Delta.
 
 Typeclasses Opaque locald_denote.
 Arguments locald_denote : simpl never.
@@ -196,15 +206,16 @@ Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp. re
 
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
 
+(* select 2 different hyps that match pat1 and pat2 respectively *)
 Tactic Notation "iSelect2" open_constr(pat1) open_constr(pat2) tactic1(tac) :=
 lazymatch goal with
-| |- context[ environments.Esnoc ?Es ?x pat1 ] =>
+| |- context[ environments.Esnoc _ ?x pat1 ] =>
   lazymatch iTypeOf x with
   | Some (_,?T) => unify T pat1;
-    lazymatch Es with
-    | context [ environments.Esnoc _ ?y pat2 ] =>
+    match goal with
+    | |- context[ environments.Esnoc ?Es ?y pat2 ] =>
       lazymatch iTypeOf y with
-      | Some (_,?T) => unify T pat2; tac x y
+      | Some (_,?T) => (assert_fails (unify x y)); unify T pat2; tac x y
       end
     end
   end
@@ -219,10 +230,11 @@ Tactic Notation "combine" open_constr(pat1) open_constr(pat2):=
                    iRename y into "__VerySecretName2"; 
                    iCombine "__VerySecretName1" "__VerySecretName2" as "?";
                    try iClear "__VerySecretName1 __VerySecretName2").
-  
+
 Typeclasses Opaque SEPx.
 Typeclasses Opaque local. (* do same thing as sepx so it is always LOCALx*)
 Typeclasses Opaque field_at.
+Typeclasses Opaque tc_environ.
 Set Nested Proofs Allowed.
 
 Global Instance combine_sep_as_PQR {Σ'} (Q: list localdef) R: CombineSepAs (SEPx R)
@@ -260,17 +272,26 @@ Lemma add_PROPx : forall {Σ} Q R, (LOCALx Q (SEPx R) ⊣⊢ PROP ( ) @LOCALx Σ
 Proof. intros. unfold PROPx; simpl. rewrite bi.True_and //. Qed.
 
 Ltac from_ipm :=
-  repeat combine (local _) (local _);
-  repeat combine (SEPx _) (SEPx _);
-  repeat combine (SEPx _) (local _);
-  iStopProof;
   match goal with 
+  | |- envs_entails _ (wp _ _ _ _) =>
+      (* if goal is wp, Delta is already in wp and redundant *)
+      iSelect (local (tc_environ _)) (fun x => iClear x)
+  | _ => 
+      (* otherwise, keep it, move to spatial context for merging *)
+    iSelect (local (tc_environ _)) (fun x => iDestruct x as "-#?")
+  end;
+  (* combine LOCALs, base case and then recurive case *)
+  combine (local (liftx True%type)) (local (locald_denote _));
+  repeat combine (local (foldr (liftx and) _ _)) (local (locald_denote _));
+  (* combine SEPs *)
+  repeat combine (SEPx _) (SEPx _);
+  (* move LOCAL to spatial context, combine with SEP *)
+  iSelect (local (foldr (liftx and) _ _ )) (fun x => iDestruct x as "-#?");
+  combine (SEPx _) (<affine> local (foldr (liftx and) _ _ ));
+  iStopProof;
+  match goal with
   | |- _ ⊢ wp _ _ _ _ =>
-      rewrite -> ?wp_spec;
-      rewrite -(bi.persistently_and_intuitionistically_sep_l (local _));
-      rewrite (bi.persistently_elim (local _));
-      match goal with | |- context[(@local ?Σ (foldr _ _ (map locald_denote ?Q)))] => fold (@LOCALx Σ Q) end;
-      rewrite add_PROPx
+      rewrite -> ?wp_spec
   | _ => idtac
   end.
 
@@ -439,8 +460,39 @@ Proof.
   intros. unfold CombineSepAs in H. rewrite -H. simpl. Transparent empty_hyp_first.
   unfold Abduct . simpl. rewrite empty_hyp_first_eq. iSteps. Qed.
 
-from_ipm.
-Print Instances Proper.
+
+
+
+  
+  Ltac from_ipm2 :=
+    match goal with 
+    | |- envs_entails _ (wp _ _ _ _) =>
+        (* if goal is wp, Delta is already in wp and redundant *)
+        iSelect (local (tc_environ _)) (fun x => iClear x)
+    | _ => 
+        (* otherwise, keep it, move to spatial context for merging *)
+      idtac
+    end;
+    (* combine LOCALs, base case and then recurive case *)
+    combine (local (liftx True%type)) (local (locald_denote _));
+    repeat combine (local (foldr (liftx and) _ _)) (local (locald_denote _));
+    (* combine SEPs *)
+    repeat combine (SEPx _) (SEPx _);
+    (* move LOCAL to spatial context, combine with SEP *)
+    iSelect (local (foldr (liftx and) _ _ )) (fun x => iDestruct x as "-#?");
+    combine (SEPx _) (<affine> local (foldr (liftx and) _ _ ));
+    iStopProof;
+    match goal with
+    | |- _ ⊢ wp _ _ _ _ =>
+        rewrite -> ?wp_spec
+    | _ => idtac
+    end.
+from_ipm2.
+Search Persistent bi_and bi_sep.
+Search bi_intuitionistically.
+
+Search Proper monPred bi_entails.
+
 Lemma lift_SEPx : forall {Σ} {heapGS0: heapGS Σ} (P Q: list (@mpred Σ heapGS0)),
   (fold_right_sepcon P ⊢ fold_right_sepcon Q) 
   -> @SEPx environ_index Σ P ⊢ @SEPx environ_index Σ Q.
