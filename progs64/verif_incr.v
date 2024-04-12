@@ -271,6 +271,12 @@ Proof. intros. rewrite /Proper /respectful /flip /impl. intros ?????->??->. by a
 Lemma add_PROPx : forall {Σ} Q R, (LOCALx Q (SEPx R) ⊣⊢ PROP ( ) @LOCALx Σ Q (SEPx R))%assert5.
 Proof. intros. unfold PROPx; simpl. rewrite bi.True_and //. Qed.
 
+Global Instance comine_sep_as_Delta_PQR {Σ'} P Q R Delta:
+CombineSepAs (<affine> local (tc_environ Delta)) 
+             (@PROPx _ Σ' P (LOCALx Q (SEPx R)))
+             (local (tc_environ Delta) ∧ (PROPx P (LOCALx Q (SEPx R)))).
+Proof. rewrite /CombineSepAs. rewrite -bi.persistent_and_affinely_sep_l. rewrite comm //. Qed.
+
 Ltac from_ipm :=
   match goal with 
   | |- envs_entails _ (wp _ _ _ _) =>
@@ -278,7 +284,7 @@ Ltac from_ipm :=
       iSelect (local (tc_environ _)) (fun x => iClear x)
   | _ => 
       (* otherwise, keep it, move to spatial context for merging *)
-    iSelect (local (tc_environ _)) (fun x => iDestruct x as "-#?")
+    idtac
   end;
   (* combine LOCALs, base case and then recurive case *)
   combine (local (liftx True%type)) (local (locald_denote _));
@@ -288,19 +294,25 @@ Ltac from_ipm :=
   (* move LOCAL to spatial context, combine with SEP *)
   iSelect (local (foldr (liftx and) _ _ )) (fun x => iDestruct x as "-#?");
   combine (SEPx _) (<affine> local (foldr (liftx and) _ _ ));
+  lazymatch goal with
+  | |- envs_entails _ (wp _ _ _ _) => idtac
+  | _ => iSelect (local (tc_environ _)) (fun x => iDestruct x as "-#?");
+          combine (<affine> local (tc_environ _)) (PROPx _ _)
+  end;
   iStopProof;
-  match goal with
+  lazymatch goal with
   | |- _ ⊢ wp _ _ _ _ =>
       rewrite -> ?wp_spec
   | _ => idtac
-  end.
+  end
+  .
 
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
   forward.
 
-  into_ipm; iSteps.
+  into_ipm; iSteps. 
   from_ipm.
 
 
@@ -312,7 +324,6 @@ Proof.
   forward.
   forward.
   forward.
-
 
   gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
   viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
@@ -460,38 +471,8 @@ Proof.
   intros. unfold CombineSepAs in H. rewrite -H. simpl. Transparent empty_hyp_first.
   unfold Abduct . simpl. rewrite empty_hyp_first_eq. iSteps. Qed.
 
+from_ipm.
 
-
-
-  
-  Ltac from_ipm2 :=
-    match goal with 
-    | |- envs_entails _ (wp _ _ _ _) =>
-        (* if goal is wp, Delta is already in wp and redundant *)
-        iSelect (local (tc_environ _)) (fun x => iClear x)
-    | _ => 
-        (* otherwise, keep it, move to spatial context for merging *)
-      idtac
-    end;
-    (* combine LOCALs, base case and then recurive case *)
-    combine (local (liftx True%type)) (local (locald_denote _));
-    repeat combine (local (foldr (liftx and) _ _)) (local (locald_denote _));
-    (* combine SEPs *)
-    repeat combine (SEPx _) (SEPx _);
-    (* move LOCAL to spatial context, combine with SEP *)
-    iSelect (local (foldr (liftx and) _ _ )) (fun x => iDestruct x as "-#?");
-    combine (SEPx _) (<affine> local (foldr (liftx and) _ _ ));
-    iStopProof;
-    match goal with
-    | |- _ ⊢ wp _ _ _ _ =>
-        rewrite -> ?wp_spec
-    | _ => idtac
-    end.
-from_ipm2.
-Search Persistent bi_and bi_sep.
-Search bi_intuitionistically.
-
-Search Proper monPred bi_entails.
 
 Lemma lift_SEPx : forall {Σ} {heapGS0: heapGS Σ} (P Q: list (@mpred Σ heapGS0)),
   (fold_right_sepcon P ⊢ fold_right_sepcon Q) 
@@ -499,11 +480,9 @@ Lemma lift_SEPx : forall {Σ} {heapGS0: heapGS Σ} (P Q: list (@mpred Σ heapGS0
 Proof.
   intros. iStartProof (mpred). iIntros (i).
     unfold SEPx. rewrite H. iSteps. Unshelve. assumption. Qed.
+
+
 apply lift_SEPx. simpl. iSteps.
-
-
-
-
 
 
 iSteps.
