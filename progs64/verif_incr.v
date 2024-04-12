@@ -325,15 +325,6 @@ Proof.
   forward.
   forward.
 
-  gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
-  viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
-    ghost_auth (if left then g1 else g2) (n+1)%nat ∗
-    ghost_frag (if left then g1 else g2) (n+1)%nat ∗
-    ghost_auth (if left then g2 else g1) (if left then y else x)).
-  { go_lowerx.
-    iIntros "(? & _)".
-    by iMod (ghost_var_incr with "[$]"). }
-  Intros.
   (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 
   (* lock_specs.release_spec mk_funspec *)
@@ -412,17 +403,7 @@ Funspec type: " TA'')
  
  match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "Rpre" in pose Rpre as RpreName end.
  intros _.
- into_ipm. iStep.
 
-Ltac iCutL Q :=
-  match goal with |- envs_entails _ ?P =>
-    rewrite -[P](bi.wand_elim_r Q) end.
-Ltac iCutPre Rpre:=
-    iCutL (@SEPx environ_index _ Rpre).
-iCutPre Rpre; subst Rpre.
-
-iSplitL.
-+ 
 
 Typeclasses Opaque cptr_lock_inv.
 (* TODO maybe write an instance for affine and ExclusiveProp? *)
@@ -432,13 +413,10 @@ ExclusiveProp P ->
   Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp, SEPx, fold_right_sepcon. intros->. iSteps as "H". Qed.
 
 (* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
-rewrite add_repr.
-assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia.
+(* rewrite add_repr.
+assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
 
 (* user decides which side *)
-destruct left.
-
-*
 
 Global Instance ghost_auth_update g1 x n n':
     HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
@@ -448,126 +426,85 @@ Proof.
   apply @excl_auth_update.
 Qed.
 
-Global Instance close_cinv_hint (z _x x x' y: nat) g1 g2 _c (gv:globals):
-TCEq z (x'+y)%nat ->
-HINT (field_at Ews t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)) ✱ 
-  [-; ghost_auth g1 _x ∗ ghost_auth g2 y ∗ ghost_frag g1 x]
-  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [ghost_frag g1 x'].
+Lemma SEP_entails_SEP  {Σ'} {heap: heapGS Σ'} (R R': list (@mpred Σ' heap)):
+  (fold_right_sepcon R ⊢ fold_right_sepcon R')
+  -> SEPx R ⊢ @SEPx environ_index Σ' R'.
 Proof.
-intro H. inversion H.
- iStep as (n) "H1 H2 H3 H4". unfold cptr_lock_inv.
-iDestruct (ghost_var_inj with "[$H2 $H4]") as %->.
-iAssert (|==>ghost_auth g1 x' ∗ ghost_frag g1 x') with "[H2 H4]" as "> [H2 H4]".
-iMod (own_update_2 with "H2 H4") as "($ & $)"; last done.
+  intros. iStartProof (@mpred Σ' heap). iIntros (i).
+    unfold SEPx. rewrite H. iSteps. Qed.
+
+(* Lemma PROP_LOCAL_SEP_entails_SEP {Σ'} {heap:heapGS Σ'} Delta P Q (R R': list (@mpred Σ' heap)):
+  (bi_and ⌜(fold_right and (True%type) (map locald_denote Q))⌝ (fold_right_sepcon R) ⊢ fold_right_sepcon R') ->
+  ENTAIL Delta, PROPx P (LOCALx(Σ:=Σ') Q (SEPx R)) ⊢ SEPx R'.
+Proof.
+  intros. iStartProof (@mpred Σ' heap). iIntros (i).
+    unfold SEPx. rewrite H. iSteps. Qed. *)
+
+
+
+Global Instance close_cinv_update_g1_hint (x1 x2 δx y z: nat) g1 g2 _c (gv:globals):
+HINT field_at Ews t_counter (DOT _ctr) (Vint (Int.add (Int.repr (Z.of_nat z)) (Int.repr 1))) (gv _c) ✱ 
+  [-; ghost_auth g1 x1 ∗ ghost_frag g1 x2 ∗ ghost_auth g2 y ∗ ⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝ ]
+  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝  ∗ ghost_frag g1 (x1+δx)].
+Proof.
+(* intros H; inversion H. *)
+iStep as "●g1  ◯g1 ●g2 _ ctr". unfold cptr_lock_inv.
+iDestruct (ghost_var_inj with "[$●g1 $◯g1]") as %<-.
+iAssert (|==>ghost_auth g1 (x1+δx) ∗ ghost_frag g1 (x1+δx)) with "[●g1 ◯g1]" as "> [●g1 ◯g1]".
+iMod (own_update_2 with "●g1 ◯g1") as "($ & $)"; last done.
 apply @excl_auth_update.
-iFrame. iSteps.
+rewrite add_repr. replace 1%Z with (Z.of_nat (Z.to_nat 1)) by lia. rewrite -Nat2Z.inj_add.
+iFrame. iSteps. 
 Qed.
 
+ 
 
-Global Instance SplitIntoSepCareful {prop:bi} (P Q R: prop):
-CombineSepAs P Q R ->
-HINT1 (ε₀) ✱ [P ∗ Q] ⊫ [id] ; R.
-Proof.
-  intros. unfold CombineSepAs in H. rewrite -H. simpl. Transparent empty_hyp_first.
-  unfold Abduct . simpl. rewrite empty_hyp_first_eq. iSteps. Qed.
+
+
+Ltac iCutL Q :=
+  match goal with |- envs_entails _ ?P =>
+    rewrite -[P](bi.wand_elim_r Q) end.
+Ltac iCutPre Rpre:=
+    iCutL (|==> @SEPx environ_index _ Rpre).
+
+destruct left.
+*
+into_ipm;iStep.
+
+iCutPre Rpre.
+(* pose (|==> @SEPx environ_index _ Rpre) as rr.
+unfold SEPx, fold_right_sepcon, Rpre in rr.
+rewrite bi.sep_emp in rr. *)
 
 from_ipm.
+go_lowerx.
+replace (cptr_lock_inv g1 g2 (gv _c) ∗ emp) with (cptr_lock_inv g1 g2 (gv _c)) by admit.
 
 
-Lemma lift_SEPx : forall {Σ} {heapGS0: heapGS Σ} (P Q: list (@mpred Σ heapGS0)),
-  (fold_right_sepcon P ⊢ fold_right_sepcon Q) 
-  -> @SEPx environ_index Σ P ⊢ @SEPx environ_index Σ Q.
-Proof.
-  intros. iStartProof (mpred). iIntros (i).
-    unfold SEPx. rewrite H. iSteps. Unshelve. assumption. Qed.
+
+iStep.
+iStepDebug.
 
 
-apply lift_SEPx. simpl. iSteps.
+match goal with |- context[SolveOne  _ (bi_sep _ ?Q)] => replace Q with (@bi_emp (mpred )) by admit end.
+  (* rewrite bi.sep_emp. *)
+Set Typeclasses Debug.
 
+
+
+
+
+ iSteps. 
+
+
+
+iClear "f".
+iSelect (field_at)
 
 iSteps.
- iAssert (SEPx Rpre) as "Rpre".
- 
- 
 
- let H := fresh "SetupOne" in
-  intro H;
-  match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
-  let Frame := fresh "Frame" in evar (Frame: list mpred); 
-  exploit (call_setup2_i _ _ _ _ _ _ _ _ R' R' _ _ _ _ (*ts*) _ _ _ _ _ H (sh, h, cptr_lock_inv g1 g2 (gv _c)) Frame); clear H end
-  ;[ 
-    try_convertPreElim
-   | check_prove_local2ptree
-   | check_vl_eq_args
-   | 
-   (* auto 50 with derives *)
-   | 
-   check_gvars_spec
-   | 
-   let lhs := fresh "lhs" in 
-     match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
-     try change_compspecs CS; subst lhs
-     ;
-     cancel_for_forward_call
-   |
-   ] .
-   unfold SEPx.
+unfold cptr_lock_inv. iSteps.
 
- Ltac prove_call_setup_aux  witness :=
-  let H := fresh "SetupOne" in
-  intro H;
-  match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
-  let Frame := fresh "Frame" in evar (Frame: list mpred); 
-  let cR := (fun R =>
-  exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
-  ;
-  (* [ 
-   try_convertPreElim
-  | check_prove_local2ptree
-  | check_vl_eq_args
-  | 
-  (* auto 50 with derives *)
-  | 
-  (* check_gvars_spec *)
-  | 
-  (* let lhs := fresh "lhs" in 
-    match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
-    try change_compspecs CS; subst lhs *)
-    (* ;
-    cancel_for_forward_call *)
-  |
-  ] *)
-  )
-   in strip1_later R' cR
-  end.
-  prove_call_setup_aux (sh, h, cptr_lock_inv g1 g2 (gv _c)).
- 
-
-
- prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
- simpl.
- evar (witness: (Qp * lock_handle * mpred)%type).
- 
- (* lock_specs.release_spec *)
- (* intros cs. *)
- match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?Pre _ _ _ -> _  => let PreName := fresh "PRE" in pose Pre as PreName end.
-
- intros _ .
- match goal with |- semax _ _ ?PPP _ _ => 
- let PP := fresh "Pre" in pose PPP as PP; simpl in PP end.
-
-
- into_ipm; iStep.
-
- (* The term "PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))" has type
- "ofe_car (argsEnviron -d> Ofe (iPropI Σ) ouPred_ofe_mixin)"
-while it is expected to have type
- "monPred environ_index (iPropI Σ)". *)
-
-simpl in Pre.
-
- iAssert PRE1 as "?".
- 
 
 
  
@@ -588,7 +525,6 @@ simpl in Pre.
 
 -
 iStepDebug.
-Set Typeclasses Debug.
 
  solveStep.
 
