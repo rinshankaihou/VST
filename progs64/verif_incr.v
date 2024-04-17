@@ -401,7 +401,7 @@ Funspec type: " TA'')
  
  pose (PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))) as PRE1; simpl in PRE1.
  
- match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "Rpre" in pose Rpre as RpreName end.
+ match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "fR" in pose Rpre as RpreName end.
  intros _.
 
 
@@ -457,9 +457,6 @@ rewrite add_repr. replace 1%Z with (Z.of_nat (Z.to_nat 1)) by lia. rewrite -Nat2
 iFrame. iSteps. 
 Qed.
 
- 
-
-
 
 Ltac iCutL Q :=
   match goal with |- envs_entails _ ?P =>
@@ -469,15 +466,93 @@ Ltac iCutPre Rpre:=
 
 destruct left.
 *
+(* eapply semax_pre.
+
+pose (fold_right_sepcon fR) as Rpre. unfold fold_right_sepcon, fR in Rpre.
+
+unfold SEPx. unfold fold_right_sepcon. *)
+unfold fold_right_sepcon, fR in fR.
+
+
+Create HintDb vst_unseal.
+
+Definition GatherHyp_def {prop:bi}(P: prop) := P.
+Definition GatherHyp_aux : seal (@GatherHyp_def). by eexists. Qed.
+Definition GatherHyp := GatherHyp_aux.(unseal).
+Global Opaque GatherHyp.
+Global Arguments GatherHyp {_} _ : simpl never.
+Lemma GatherHyp_eq : @GatherHyp = @GatherHyp_def.
+Proof. rewrite -GatherHyp_aux.(seal_eq) //. Qed.
+
+Definition ForceAtom_def {prop:bi}(P: prop) := P.
+Definition ForceAtom_aux : seal (@ForceAtom_def). by eexists. Qed.
+Definition ForceAtom := ForceAtom_aux.(unseal).
+Global Opaque ForceAtom.
+Global Arguments ForceAtom {_} _ : simpl never.
+Lemma ForceAtom_eq : @ForceAtom = @ForceAtom_def.
+Proof. rewrite -ForceAtom_aux.(seal_eq) //. Qed.
+  
+Ltac unseal := rewrite ?GatherHyp_eq /GatherHyp_def ?ForceAtom_eq /ForceAtom_def .
+
+Global Instance solve_ForceAtom : forall {prop: bi} {BiBUpd0 : BiBUpd prop} (P: prop),
+HINT (empty_hyp_first) ✱ [-; |==> P] ⊫ [id]; ForceAtom (|==> P) ✱ [ emp ].
+Proof. unseal. intros. rewrite /BiAbd. simpl.  rewrite bi.sep_emp. iSteps. Qed.
+
+Fixpoint fold_right_sepcon' {prop : bi} (l : list (bi_car prop)) {struct l} :
+	bi_car prop :=
+  match l with
+  | [] => emp
+  | b :: [] => b
+  | b :: r => b ∗ @fold_right_sepcon' prop r end.
+
+(* input: current precondition is R, assert R' holds; output: the residue R'' *)
+Lemma change_pre_SEP_tac  `{!VSTGS unit Σ} {BiBUpd0 : BiBUpd mpred} d Q (R : list mpred) (R' R'':mpred):
+  (fold_right_sepcon R ⊢ R' ∗ @GatherHyp mpred R'') ->
+    local (tc_environ d) ∧  PROPx [] $ LOCALx Q $ SEPx R ⊢ local (tc_environ d) ∧ PROPx [] $ LOCALx Q $ ⎡R' ∗ R''⎤.
+Proof. unseal => H. go_lowerx. rewrite H. iSteps. Qed.
+
+(* the bupd must be before GatherHyp and R', otherwise diaframe stucks *)
+Lemma change_pre_SEP_with_bupd_tac `{!VSTGS unit Σ} {BiBUpd0 : BiBUpd mpred} d Q (R : list mpred) (R' R'':mpred):
+  (fold_right_sepcon R ⊢ (ForceAtom $ |==> R') ∗ @GatherHyp mpred R'') ->
+    local (tc_environ d) ∧  PROPx [] $ LOCALx Q $ SEPx R ⊢ local (tc_environ d) ∧ PROPx [] $ LOCALx Q $ ⎡|==> R' ∗ |==> R''⎤.
+Proof. unseal => H. go_lowerx. rewrite H. iSteps. Qed. 
+
+eapply semax_pre.
+(* change R into (fR ∗ (fR -∗ R)) *)
+match goal with |- context[ SEPx ?R  ] =>
+eapply (change_pre_SEP_with_bupd_tac _ _ R (fold_right_sepcon' fR)) end.
+unfold fR; simpl. iSteps.
+
+
+try iModIntro;
+match goal with
+  | |- envs_entails _ $ GatherHyp _ => rewrite GatherHyp_eq /GatherHyp_def; iAccu
+  | _ => fail "error: fail to synthesize precondition"
+end.
+
 into_ipm;iStep.
 
-iCutPre Rpre.
-(* pose (|==> @SEPx environ_index _ Rpre) as rr.
-unfold SEPx, fold_right_sepcon, Rpre in rr.
-rewrite bi.sep_emp in rr. *)
+(* pose ( @SEPx environ_index _ Rpre) as rr.
+unfold SEPx, fold_right_sepcon, Rpre in rr. *)
 
-from_ipm.
-go_lowerx.
+Lemma emp_sep : forall {Σ} (P : iPropI Σ), @bi_equiv assert (⎡emp ∗ P⎤) ⎡P⎤ .
+intros. go_lowerx. rewrite bi.emp_sep //. Qed.
+Lemma sep_emp : forall {Σ} (P : iPropI Σ), @bi_equiv assert (⎡P ∗ emp⎤) ⎡P⎤ .
+intros. go_lowerx. rewrite bi.sep_emp //. Qed.
+Lemma sep_assoc : forall {Σ} (P Q R: iPropI Σ), @bi_equiv assert ⎡P ∗ Q ∗ R⎤ ⎡(P ∗ Q) ∗ R⎤ .
+intros. go_lowerx. rewrite bi.sep_assoc //. Qed.
+Lemma sep_emp2 : forall {Σ} (P Q R: iPropI Σ), @bi_equiv assert ⎡P ∗ Q ∗ R ∗ emp⎤ ⎡P ∗ Q ∗ R⎤ .
+intros. go_lowerx. rewrite bi.sep_emp //. Qed.
+
+iCutL (|==> (@embed _ assert _ 
+  (<affine> (cptr_lock_inv g1 g2 (gv _c) ∗ cptr_lock_inv g1 g2 (gv _c) -∗ False) ∗
+   lock_inv sh h (cptr_lock_inv g1 g2 (gv _c)) ∗
+   cptr_lock_inv g1 g2 (gv _c)))).
+   
+   from_ipm. go_lowerx.
+
+
+
 replace (cptr_lock_inv g1 g2 (gv _c) ∗ emp) with (cptr_lock_inv g1 g2 (gv _c)) by admit.
 
 
