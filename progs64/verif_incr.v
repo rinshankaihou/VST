@@ -204,6 +204,9 @@ Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp //.
 Global Instance combine_sep_as_SEP {A Σ'} P Q R: CombineSepAs (SEPx (Q::R)) (SEPx [P]) (@SEPx A Σ' (P::Q::R)).
 Proof. rewrite /CombineSepAs /SEPx -!embed_sep /fold_right_sepcon bi.sep_emp. rewrite [_ ∗ P]bi.sep_comm //. Qed.
 
+Global Instance combine_sep_as_fold_right_sep_con {prop:bi} (P: prop) (Q: list prop): CombineSepAs (fold_right_sepcon Q) (fold_right_sepcon [P]) (fold_right_sepcon $ P::Q).
+Proof. rewrite /CombineSepAs. simpl. iSteps. Qed.
+
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
 
 (* select 2 different hyps that match pat1 and pat2 respectively *)
@@ -325,6 +328,74 @@ Proof.
   forward.
   forward.
 
+
+Typeclasses Opaque cptr_lock_inv.
+(* TODO maybe write an instance for affine and ExclusiveProp? *)
+Global Instance lock_prop_hint {prop:bi} (P:prop):
+ExclusiveProp P ->
+  HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False))%assert5 ✱ [emp]. 
+  Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp, SEPx, fold_right_sepcon. intros->. iSteps as "H". Qed.
+Global Instance lock_prop_hint2 (P:mpred)  E:
+ExclusiveProp P ->
+  HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (|={E}=> <affine> (P ∗ P -∗ False))%assert5 ✱ [emp]. 
+  Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp, SEPx, fold_right_sepcon, BiAbd. simpl. intros.
+    rewrite !bi.sep_emp.
+    rewrite -(fupd_intro E _). rewrite H. iSteps. Qed.
+(* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
+(* rewrite add_repr.
+assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
+
+(* user decides which side *)
+
+Global Instance ghost_auth_update g1 x n n':
+    HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
+Proof.
+  iStep as "a f". iDestruct (ghost_var_inj with "[$a $f]") as %->.
+  iMod (own_update_2 with "a f") as "($ & $)"; last done.
+  apply @excl_auth_update.
+Qed.
+
+Lemma SEP_entails_SEP  {Σ'} {heap: heapGS Σ'} (R R': list (@mpred Σ' heap)):
+  (fold_right_sepcon R ⊢ fold_right_sepcon R')
+  -> SEPx R ⊢ @SEPx environ_index Σ' R'.
+Proof.
+  intros. iStartProof (@mpred Σ' heap). iIntros (i).
+    unfold SEPx. rewrite H. iSteps. Qed.
+
+(* Lemma PROP_LOCAL_SEP_entails_SEP {Σ'} {heap:heapGS Σ'} Delta P Q (R R': list (@mpred Σ' heap)):
+  (bi_and ⌜(fold_right and (True%type) (map locald_denote Q))⌝ (fold_right_sepcon R) ⊢ fold_right_sepcon R') ->
+  ENTAIL Delta, PROPx P (LOCALx(Σ:=Σ') Q (SEPx R)) ⊢ SEPx R'.
+Proof.
+  intros. iStartProof (@mpred Σ' heap). iIntros (i).
+    unfold SEPx. rewrite H. iSteps. Qed. *)
+
+
+
+Global Instance close_cinv_update_g1_hint (x1 x2 δx y z: nat) g1 g2 _c (gv:globals):
+HINT field_at Ews t_counter (DOT _ctr) (Vint (Int.add (Int.repr (Z.of_nat z)) (Int.repr 1))) (gv _c) ✱ 
+  [-; ghost_auth g1 x1 ∗ ghost_frag g1 x2 ∗ ghost_auth g2 y ∗ □⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝ ]
+  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [□⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝  ∗ ghost_frag g1 (x1+δx)].
+Proof.
+(* intros H; inversion H. *)
+iStep as "●g1  ◯g1 ●g2 _ _ ctr". unfold cptr_lock_inv.
+iDestruct (ghost_var_inj with "[$●g1 $◯g1]") as %<-.
+iAssert (|==>ghost_auth g1 (x1+δx) ∗ ghost_frag g1 (x1+δx)) with "[●g1 ◯g1]" as "> [●g1 ◯g1]".
+iMod (own_update_2 with "●g1 ◯g1") as "($ & $)"; last done.
+apply @excl_auth_update.
+rewrite add_repr. replace 1%Z with (Z.of_nat (Z.to_nat 1)) by lia. rewrite -Nat2Z.inj_add.
+iFrame. iSteps.
+Qed.
+
+
+Ltac iCutL Q :=
+  match goal with |- envs_entails _ ?P =>
+    rewrite -[P](bi.wand_elim_r Q) end.
+Ltac iCutPre Rpre:=
+    iCutL (|==> @SEPx environ_index _ Rpre).
+
+destruct left.
+*
+
   (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 
   (* lock_specs.release_spec mk_funspec *)
@@ -376,13 +447,79 @@ my_fwd_call' release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
       ofe_morOF sigTOF list.listOF oFunctor_car ofe_car] in TA
  in let TA'' := eval simpl in TA'
   in match type of witness with ?T => 
-       (unify T TA''; let ARG:=fresh "ARG" in pose T as ARG)
+       (unify T TA''; let ARG:=fresh "ARG" in pose witness as ARG)
       + (fail "Type of witness does not match type required by funspec WITH clause.
 Witness value: " witness "
 Witness type: " T "
 Funspec type: " TA'')
      end.
   
+  
+
+ (* Definition call_setup2 `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS : compspecs}
+  E Qtemp Qvar GV a Delta P Q R R'
+   fs argsig retty cc (A: TypeTree)  Pre Post
+  (bl: list expr) (vl : list val)
+  witness
+  (Frame: list mpred)
+  (Ppre: list Prop) (Rpre: list mpred)
+  GV' gv args :=
+ call_setup1 E Qtemp Qvar GV a Delta P Q R' fs argsig retty cc A Pre Post bl vl (*Qactuals*) /\
+  (PROPx P (LOCALx Q (SEPx R')) ⊢  ▷ PROPx P (LOCALx Q (SEPx R))) /\
+  Pre witness = PROPx Ppre (LAMBDAx gv args (SEPx Rpre)) /\
+  local2ptree (map gvars gv) = (PTree.empty _, PTree.empty _, nil, GV') /\
+  (ENTAIL Delta, PROPx P (LOCALx Q (SEPx R')) ⊢ ⌜firstn (length argsig) vl=args⌝) /\
+  check_gvars_spec GV GV' /\
+  (fold_right_sepcon R ⊢ |={⊤}=> (fold_right_sepcon Rpre) ∗ fold_right_sepcon Frame).
+
+Lemma call_setup2_i:
+ forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS : compspecs} E Qtemp Qvar GV a Delta P Q R R'
+   fs argsig retty cc (A: TypeTree) Pre Post
+  (bl: list expr) (vl : list val)
+  (SETUP1: call_setup1 E Qtemp Qvar GV a Delta P Q R' fs argsig retty cc A Pre Post bl vl (*Qactuals*))
+  witness'
+  (Frame: list mpred)
+  (Ppre: list Prop) (Rpre: list mpred)
+  GV' gv args,
+  Pre witness' = PROPx Ppre (LAMBDAx gv args (SEPx Rpre)) ->
+  local2ptree (map gvars gv) = (PTree.empty _, PTree.empty _, nil, GV') ->
+
+  ENTAIL Delta, PROPx P (LOCALx Q (SEPx R')) ⊢ ⌜firstn (length argsig) vl=args⌝ ->
+
+  (PROPx P (LOCALx Q (SEPx R')) ⊢ ▷ PROPx P (LOCALx Q (SEPx R))) ->
+  check_gvars_spec GV GV' ->
+  (fold_right_sepcon R ⊢ |={⊤}=> (fold_right_sepcon Rpre) ∗ fold_right_sepcon Frame) ->
+  call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty cc A Pre Post bl vl (*Qactuals*)
+      witness' Frame Ppre Rpre GV' gv args.
+Proof.
+  intros. split. auto. split; repeat match goal with |- _ /\ _ => split end; auto.
+Qed. *)
+
+Ltac prove_call_setup_aux  witness :=
+ let H := fresh "SetupOne" in
+ intro H;
+ match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
+ let Frame := fresh "Frame" in evar (Frame: list mpred); 
+ let cR := (fun R =>
+ exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
+ (* ;
+
+ [ try_convertPreElim
+ | check_prove_local2ptree
+ | check_vl_eq_args
+ | auto 50 with derives
+ | check_gvars_spec
+ | let lhs := fresh "lhs" in 
+   match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
+   try change_compspecs CS; subst lhs;
+   cancel_for_forward_call
+ |
+ ] *)
+ )
+  in strip1_later R' cR
+ end.
+
+
  Ltac prove_call_setup (*ts*) subsumes witness :=
  prove_call_setup1 subsumes
  ;
@@ -394,84 +531,107 @@ Funspec type: " TA'')
  prove_call_setup_aux witness *)
  ]
  .
- prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
- simpl.
+ prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)); simpl.
 
- match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?Pre _ _ _ -> _  => let PreName := fresh "PRE" in pose Pre as PreName end.
- 
- pose (PRE0 (sh, h, cptr_lock_inv g1 g2 (gv _c))) as PRE1; simpl in PRE1.
- 
- match goal with | PRE1 := context[SEPx ?Rpre] |- _ => let RpreName := fresh "fR" in pose Rpre as RpreName end.
- intros _.
+ intro SETUP.
+ destruct SETUP as [_  [Hsub [SSPEC [ATY [_ [_ _]]]]]].
+  
+match goal with | Hsub : (funspec_sub _ (mk_funspec _ _ _ _ ?fpre _)) |- _ =>
+  let fpre := eval cbn in (fpre ARG) in
+  let fpre_name := fresh "fpre" in
+  pose fpre as fpre_name end.
 
+match goal with | fpre := context[SEPx ?fpre_sep] |- _ => pose fpre_sep  end.
 
-Typeclasses Opaque cptr_lock_inv.
-(* TODO maybe write an instance for affine and ExclusiveProp? *)
-Global Instance lock_prop_hint {prop:bi} (P:prop):
-ExclusiveProp P ->
-  HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False))%assert5 ✱ [emp]. 
-  Proof. rewrite empty_hyp_first_eq. unfold ExclusiveProp, SEPx, fold_right_sepcon. intros->. iSteps as "H". Qed.
-
-(* TODO as a normalization step for calculating offset? make the thing in vint to vint (f ... g (some_nat)) *)
-(* rewrite add_repr.
-assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
-
-(* user decides which side *)
-
-Global Instance ghost_auth_update g1 x n n':
-    HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
+Lemma semax_change_pre_SEP:
+  forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R R' c Post,
+      (fold_right_sepcon R ⊢ fold_right_sepcon R') ->
+      @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx R') c Post -> semax E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post.
 Proof.
-  iStep as "a f". iDestruct (ghost_var_inj with "[$a $f]") as %->.
-  iMod (own_update_2 with "a f") as "($ & $)"; last done.
-  apply @excl_auth_update.
+intros until 1.
+apply semax_pre. go_lowerx. rewrite H //. Qed.
+
+
+Lemma into_fold_right_sepcon_singleton : forall {Σ:gFunctors} (P: iProp Σ),
+  P ⊣⊢ fold_right_sepcon [P].
+Proof. intros. iSteps. Qed.
+
+Ltac into_fold_right_sepcons Γs :=
+lazymatch Γs with
+|  Esnoc ?Γs' _ (fold_right_sepcon _) => idtac
+|  Esnoc ?Γs' _ ?P => rewrite [(X in (Esnoc Γs' _ X))](into_fold_right_sepcon_singleton P);
+                      into_fold_right_sepcons Γs'
+| _ => idtac 
+end.
+
+Ltac into_fold_right_sepcons_Γs :=
+match goal with
+| |- envs_entails (Envs _ ?Γs _) _ =>
+  into_fold_right_sepcons Γs
+end.
+
+
+(* 
+ { (* TRIAL 1, synthesize the new precondition P', try to prove P ⊢ |==>P' *)
+  (* synthesize the new precondition P' *)
+  evar (P': @assert Σ).
+  match goal with |- semax ?E ?Delta ?P ?c ?R => assert (ENTAIL Delta, P ⊢ P') end.
+  erewrite (change_SEP _ _ _ _ (|==> (fold_right_sepcon l) ∗ (fold_right_sepcon l -∗ _)%I)); last first.
+  {
+  cbn. iSteps.
+  into_fold_right_sepcons_Γs.
+  repeat (combine (fold_right_sepcon _) (fold_right_sepcon _)).
+  iStopProof; f_equal.
+  }
+  subst P'; f_equal.
+  (* prove that P ⊢ P' *)
+  match goal with | P' := context [⎡|==> (_ ∗ (_ -∗ fold_right_sepcon ?P'_SEPs))⎤] |- _ =>
+    let P'_SEPs_name := fresh "P'_SEPs" in
+    pose P'_SEPs as P'_SEPs_name end.
+
+  eapply (semax_change_pre_SEP ⊤ Delta _ _ _ (map (λ s, |==> s) P'_SEPs)).
+  cbn. iSteps.
+  Undo 15. *)
+
+
+  Lemma change_SEP `{!VSTGS unit Σ} E d P Q (R: list mpred) (R' R'': list mpred):
+  (fold_right_sepcon R ⊢  |={E}=> fold_right_sepcon $ (R'++ R'')) ->
+    local (tc_environ d) ∧ PROPx P $ LOCALx Q $ SEPx R ⊢ PROPx P $ LOCALx Q $ |={E}=> (SEPx $ R'++R'').
+Proof. intros. go_lowerx. rewrite H //. Qed.
+ (* TRIAL 2, try to prove directly *)
+  eapply semax_pre_fupd.
+  erewrite (change_SEP _ _ _ _ _ l)%I; last first.
+  {
+  cbn.  (* FIXME this does not work because diaframe needs to pull modalities out first,
+   but that would be weaker than what we are proving *)
+   iSteps.
+   
+  into_fold_right_sepcons_Γs.
+  repeat (combine (fold_right_sepcon _) (fold_right_sepcon _)).
+  iStopProof. rewrite -fupd_intro. f_equal.
+  }
+  (* what to do with update? *)
+rewrite -fupd_intro. subst l. cbn.
+  unfold SEPx. rewrite -embed_fupd.
+  f_equal.
+
+(* into canon *)
+
+Lemma semax_pre_SEP_fupd:
+  forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R c Post,
+        @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post  ->
+         semax E Delta (PROPx P $ LOCALx Q $ ⎡ |={E}=> fold_right_sepcon R⎤) c Post.
+Proof.
+intros until 1. generalize H.
+unfold SEPx.
+apply semax_pre_fupd. 
+iIntros "(#? & #? & ? & H)"; iFrame "#".
+iMod "H". iFrame. done.
 Qed.
-
-Lemma SEP_entails_SEP  {Σ'} {heap: heapGS Σ'} (R R': list (@mpred Σ' heap)):
-  (fold_right_sepcon R ⊢ fold_right_sepcon R')
-  -> SEPx R ⊢ @SEPx environ_index Σ' R'.
-Proof.
-  intros. iStartProof (@mpred Σ' heap). iIntros (i).
-    unfold SEPx. rewrite H. iSteps. Qed.
-
-(* Lemma PROP_LOCAL_SEP_entails_SEP {Σ'} {heap:heapGS Σ'} Delta P Q (R R': list (@mpred Σ' heap)):
-  (bi_and ⌜(fold_right and (True%type) (map locald_denote Q))⌝ (fold_right_sepcon R) ⊢ fold_right_sepcon R') ->
-  ENTAIL Delta, PROPx P (LOCALx(Σ:=Σ') Q (SEPx R)) ⊢ SEPx R'.
-Proof.
-  intros. iStartProof (@mpred Σ' heap). iIntros (i).
-    unfold SEPx. rewrite H. iSteps. Qed. *)
+apply semax_pre_SEP_fupd.
 
 
-
-Global Instance close_cinv_update_g1_hint (x1 x2 δx y z: nat) g1 g2 _c (gv:globals):
-HINT field_at Ews t_counter (DOT _ctr) (Vint (Int.add (Int.repr (Z.of_nat z)) (Int.repr 1))) (gv _c) ✱ 
-  [-; ghost_auth g1 x1 ∗ ghost_frag g1 x2 ∗ ghost_auth g2 y ∗ ⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝ ]
-  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝  ∗ ghost_frag g1 (x1+δx)].
-Proof.
-(* intros H; inversion H. *)
-iStep as "●g1  ◯g1 ●g2 _ ctr". unfold cptr_lock_inv.
-iDestruct (ghost_var_inj with "[$●g1 $◯g1]") as %<-.
-iAssert (|==>ghost_auth g1 (x1+δx) ∗ ghost_frag g1 (x1+δx)) with "[●g1 ◯g1]" as "> [●g1 ◯g1]".
-iMod (own_update_2 with "●g1 ◯g1") as "($ & $)"; last done.
-apply @excl_auth_update.
-rewrite add_repr. replace 1%Z with (Z.of_nat (Z.to_nat 1)) by lia. rewrite -Nat2Z.inj_add.
-iFrame. iSteps. 
-Qed.
-
-
-Ltac iCutL Q :=
-  match goal with |- envs_entails _ ?P =>
-    rewrite -[P](bi.wand_elim_r Q) end.
-Ltac iCutPre Rpre:=
-    iCutL (|==> @SEPx environ_index _ Rpre).
-
-destruct left.
-*
-(* eapply semax_pre.
-
-pose (fold_right_sepcon fR) as Rpre. unfold fold_right_sepcon, fR in Rpre.
-
-unfold SEPx. unfold fold_right_sepcon. *)
-unfold fold_right_sepcon, fR in fR.
+forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
 
 
 Create HintDb vst_unseal.
