@@ -310,25 +310,6 @@ Ltac from_ipm :=
   end
   .
 
-Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
-Proof.
-  start_function.
-  forward.
-
-  into_ipm; iSteps. 
-  from_ipm.
-
-
-  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-
-  (* should be able to do this automatically with a hint about command  *)
-  unfold cptr_lock_inv at 2.
-  Intros z x y.
-  forward.
-  forward.
-  forward.
-
-
 Typeclasses Opaque cptr_lock_inv.
 (* TODO maybe write an instance for affine and ExclusiveProp? *)
 Global Instance lock_prop_hint {prop:bi} (P:prop):
@@ -362,19 +343,11 @@ Proof.
   intros. iStartProof (@mpred Σ' heap). iIntros (i).
     unfold SEPx. rewrite H. iSteps. Qed.
 
-(* Lemma PROP_LOCAL_SEP_entails_SEP {Σ'} {heap:heapGS Σ'} Delta P Q (R R': list (@mpred Σ' heap)):
-  (bi_and ⌜(fold_right and (True%type) (map locald_denote Q))⌝ (fold_right_sepcon R) ⊢ fold_right_sepcon R') ->
-  ENTAIL Delta, PROPx P (LOCALx(Σ:=Σ') Q (SEPx R)) ⊢ SEPx R'.
-Proof.
-  intros. iStartProof (@mpred Σ' heap). iIntros (i).
-    unfold SEPx. rewrite H. iSteps. Qed. *)
-
-
 
 Global Instance close_cinv_update_g1_hint (x1 x2 δx y z: nat) g1 g2 _c (gv:globals):
 HINT field_at Ews t_counter (DOT _ctr) (Vint (Int.add (Int.repr (Z.of_nat z)) (Int.repr 1))) (gv _c) ✱ 
   [-; ghost_auth g1 x1 ∗ ghost_frag g1 x2 ∗ ghost_auth g2 y ∗ □⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝ ]
-  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [□⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝  ∗ ghost_frag g1 (x1+δx)].
+  ⊫ [bupd]; cptr_lock_inv g1 g2 (gv _c) ✱ [□⌜(Z.of_nat δx=1∧x1+y=z)%nat⌝  ∗ ghost_frag g1 (x2+δx)].
 Proof.
 (* intros H; inversion H. *)
 iStep as "●g1  ◯g1 ●g2 _ _ ctr". unfold cptr_lock_inv.
@@ -386,12 +359,62 @@ rewrite add_repr. replace 1%Z with (Z.of_nat (Z.to_nat 1)) by lia. rewrite -Nat2
 iFrame. iSteps.
 Qed.
 
+Lemma into_fold_right_sepcon_singleton : forall {Σ:gFunctors} (P: iProp Σ),
+  P ⊣⊢ fold_right_sepcon [P].
+Proof. intros. iSteps. Qed.
 
-Ltac iCutL Q :=
-  match goal with |- envs_entails _ ?P =>
-    rewrite -[P](bi.wand_elim_r Q) end.
-Ltac iCutPre Rpre:=
-    iCutL (|==> @SEPx environ_index _ Rpre).
+Ltac into_fold_right_sepcons Γs :=
+lazymatch Γs with
+|  Esnoc ?Γs' _ (fold_right_sepcon _) => idtac
+|  Esnoc ?Γs' _ ?P => rewrite [(X in (Esnoc Γs' _ X))](into_fold_right_sepcon_singleton P);
+                      into_fold_right_sepcons Γs'
+| _ => idtac 
+end.
+
+(* assume in ipm, change every hyp in the sep context to "fold_right_sepcon [hyp]" *)
+Ltac into_fold_right_sepcons_Γs :=
+match goal with
+| |- envs_entails (Envs _ ?Γs _) _ =>
+  into_fold_right_sepcons Γs
+end.
+
+
+Lemma change_SEP `{!VSTGS unit Σ} E d P Q (R: list mpred) (R' R'': list mpred):
+  (fold_right_sepcon R ⊢  |={E}=> fold_right_sepcon $ (R'++ R'')) ->
+    local (tc_environ d) ∧ PROPx P $ LOCALx Q $ SEPx R ⊢ PROPx P $ LOCALx Q $ |={E}=> (SEPx $ R'++R'').
+Proof. intros. go_lowerx. rewrite H //. Qed.
+ (* TRIAL 2, try to prove directly *)
+
+(* todo try and merge change_SEP, semax_pre_fupd and semax_pre_SEP_fupd *)
+Lemma semax_change_pre_for_forward_call:
+  forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R R' R'' c Post,
+      (fold_right_sepcon R ⊢ |={E}=> fold_right_sepcon $ (R'++ R'')) ->
+      @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx (R'++R'')) c Post -> semax E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post.
+Proof.
+intros until 1.
+apply semax_pre_fupd. go_lowerx. rewrite H //.
+Qed.
+
+Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
+Proof.
+  start_function.
+  forward.
+
+  into_ipm; iSteps. 
+  from_ipm.
+
+
+  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
+
+  (* should be able to do this automatically with a hint about command  *)
+  unfold cptr_lock_inv at 2.
+  Intros z x y.
+  forward.
+  forward.
+  forward.
+
+
+
 
 destruct left.
 *
@@ -401,44 +424,8 @@ destruct left.
   (* lock_specs.release_spec mk_funspec *)
 
 
-(* NOTE tweaking floyd tactics seem difficult since all the reasoning is based on 
-   call_setup_1 or the sort and lemmas about it *)
-
-Ltac my_fwd_call_dep :=
-  try lazymatch goal with
-        | |- semax _ _ _ (Scall _ _ _) _ => rewrite -> semax_seq_skip
-        end;
-  repeat lazymatch goal with
-    | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
-        rewrite <- seq_assoc
-  end.
-my_fwd_call_dep.
-
-Ltac my_fwd_call' (*ts*) subsumes witness :=
-check_POSTCONDITION;
-lazymatch goal with
-| |- semax _ _ _ (Ssequence (Scall ?ret _ _) _) _ =>
-  eapply semax_seq'
-  (* ;
-    [prove_call_setup (*ts*) subsumes witness;
-     clear_Delta_specs; clear_MORE_POST;
-     [ .. |
-      lazymatch goal with
-      | |- _ -> semax _ _ _ (Scall (Some _) _ _) _ =>
-         forward_call_id1_wow
-      | |- call_setup2 _ _ _ _ _ _ _ _ _ _ _ _ ?retty _ _ _ _ _ _ _ _ _ _ _ _ _ -> 
-                semax _ _ _ (Scall None _ _) _ =>
-        tryif (unify retty Tvoid)
-        then forward_call_id00_wow
-        else forward_call_id01_wow
-     end]
-   | after_forward_call ] *)
-| |- _ => rewrite <- seq_assoc; fwd_call' (*ts*) subsumes witness
-end.
-my_fwd_call' release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-- 
-  (* prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
-  Ltac pose_witness_type (*ts*) Σ A witness :=
+ (* from get_function_witness_type *)
+ Ltac pose_witness_type (*ts*) Σ A witness :=
   (unify A (ConstType Ridiculous); (* because [is_evar A] doesn't seem to work *)
              exfalso)
  ||
@@ -453,326 +440,73 @@ Witness value: " witness "
 Witness type: " T "
 Funspec type: " TA'')
      end.
-  
-  
 
- (* Definition call_setup2 `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS : compspecs}
-  E Qtemp Qvar GV a Delta P Q R R'
-   fs argsig retty cc (A: TypeTree)  Pre Post
-  (bl: list expr) (vl : list val)
-  witness
-  (Frame: list mpred)
-  (Ppre: list Prop) (Rpre: list mpred)
-  GV' gv args :=
- call_setup1 E Qtemp Qvar GV a Delta P Q R' fs argsig retty cc A Pre Post bl vl (*Qactuals*) /\
-  (PROPx P (LOCALx Q (SEPx R')) ⊢  ▷ PROPx P (LOCALx Q (SEPx R))) /\
-  Pre witness = PROPx Ppre (LAMBDAx gv args (SEPx Rpre)) /\
-  local2ptree (map gvars gv) = (PTree.empty _, PTree.empty _, nil, GV') /\
-  (ENTAIL Delta, PROPx P (LOCALx Q (SEPx R')) ⊢ ⌜firstn (length argsig) vl=args⌝) /\
-  check_gvars_spec GV GV' /\
-  (fold_right_sepcon R ⊢ |={⊤}=> (fold_right_sepcon Rpre) ∗ fold_right_sepcon Frame).
-
-Lemma call_setup2_i:
- forall `{!VSTGS OK_ty Σ} {OK_spec : ext_spec OK_ty} {CS : compspecs} E Qtemp Qvar GV a Delta P Q R R'
-   fs argsig retty cc (A: TypeTree) Pre Post
-  (bl: list expr) (vl : list val)
-  (SETUP1: call_setup1 E Qtemp Qvar GV a Delta P Q R' fs argsig retty cc A Pre Post bl vl (*Qactuals*))
-  witness'
-  (Frame: list mpred)
-  (Ppre: list Prop) (Rpre: list mpred)
-  GV' gv args,
-  Pre witness' = PROPx Ppre (LAMBDAx gv args (SEPx Rpre)) ->
-  local2ptree (map gvars gv) = (PTree.empty _, PTree.empty _, nil, GV') ->
-
-  ENTAIL Delta, PROPx P (LOCALx Q (SEPx R')) ⊢ ⌜firstn (length argsig) vl=args⌝ ->
-
-  (PROPx P (LOCALx Q (SEPx R')) ⊢ ▷ PROPx P (LOCALx Q (SEPx R))) ->
-  check_gvars_spec GV GV' ->
-  (fold_right_sepcon R ⊢ |={⊤}=> (fold_right_sepcon Rpre) ∗ fold_right_sepcon Frame) ->
-  call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty cc A Pre Post bl vl (*Qactuals*)
-      witness' Frame Ppre Rpre GV' gv args.
-Proof.
-  intros. split. auto. split; repeat match goal with |- _ /\ _ => split end; auto.
-Qed. *)
-
-Ltac prove_call_setup_aux  witness :=
- let H := fresh "SetupOne" in
- intro H;
- match goal with | |- @semax _ _ _ _ ?CS _ _ (PROPx ?P (LOCALx ?L (SEPx ?R'))) _ _ =>
- let Frame := fresh "Frame" in evar (Frame: list mpred); 
- let cR := (fun R =>
- exploit (call_setup2_i _ _ _ _ _ _ _ _ R R' _ _ _ _ (*ts*) _ _ _ _ _ H witness Frame); clear H
- (* ;
-
- [ try_convertPreElim
- | check_prove_local2ptree
- | check_vl_eq_args
- | auto 50 with derives
- | check_gvars_spec
- | let lhs := fresh "lhs" in 
-   match goal with |- ?A ⊢ ?B => pose (lhs := A); change (lhs ⊢ B) end;
-   try change_compspecs CS; subst lhs;
-   cancel_for_forward_call
- |
- ] *)
- )
-  in strip1_later R' cR
- end.
-
-
- Ltac prove_call_setup (*ts*) subsumes witness :=
+  (* from prove_call_setup *)
+ Ltac get_pre_sep_of_spec subsumes witness :=
  prove_call_setup1 subsumes
  ;
  [ .. | 
  match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?A _ _ _ _  -> _ =>
  pose_witness_type (*ts*) Σ A witness
  end
- (* ;
- prove_call_setup_aux witness *)
  ]
  .
- prove_call_setup release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)); simpl.
-
- intro SETUP.
- destruct SETUP as [_  [Hsub [SSPEC [ATY [_ [_ _]]]]]].
-  
-match goal with | Hsub : (funspec_sub _ (mk_funspec _ _ _ _ ?fpre _)) |- _ =>
-  let fpre := eval cbn in (fpre ARG) in
-  let fpre_name := fresh "fpre" in
-  pose fpre as fpre_name end.
-
-match goal with | fpre := context[SEPx ?fpre_sep] |- _ => pose fpre_sep  end.
-
-Lemma semax_change_pre_SEP:
-  forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R R' c Post,
-      (fold_right_sepcon R ⊢ fold_right_sepcon R') ->
-      @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx R') c Post -> semax E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post.
-Proof.
-intros until 1.
-apply semax_pre. go_lowerx. rewrite H //. Qed.
 
 
-Lemma into_fold_right_sepcon_singleton : forall {Σ:gFunctors} (P: iProp Σ),
-  P ⊣⊢ fold_right_sepcon [P].
-Proof. intros. iSteps. Qed.
+(* from forward_call i.e. new_fwd_call. *)
+Ltac vstep_call :=
+  try lazymatch goal with
+        | |- semax _ _ _ (Scall _ _ _) _ => rewrite -> semax_seq_skip
+        end;
+  repeat lazymatch goal with
+    | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
+        rewrite <- seq_assoc
+  end
+  (* lazymatch goal with |- semax _ ?Delta _ (Ssequence ?C _) _ =>
+    lazymatch C with context [Scall _ _ _] =>
+           new_fwd_call'
+      end
+  end. *)
+  .
 
-Ltac into_fold_right_sepcons Γs :=
-lazymatch Γs with
-|  Esnoc ?Γs' _ (fold_right_sepcon _) => idtac
-|  Esnoc ?Γs' _ ?P => rewrite [(X in (Esnoc Γs' _ X))](into_fold_right_sepcon_singleton P);
-                      into_fold_right_sepcons Γs'
-| _ => idtac 
-end.
-
-Ltac into_fold_right_sepcons_Γs :=
-match goal with
-| |- envs_entails (Envs _ ?Γs _) _ =>
-  into_fold_right_sepcons Γs
-end.
-
-
-(* 
- { (* TRIAL 1, synthesize the new precondition P', try to prove P ⊢ |==>P' *)
-  (* synthesize the new precondition P' *)
-  evar (P': @assert Σ).
-  match goal with |- semax ?E ?Delta ?P ?c ?R => assert (ENTAIL Delta, P ⊢ P') end.
-  erewrite (change_SEP _ _ _ _ (|==> (fold_right_sepcon l) ∗ (fold_right_sepcon l -∗ _)%I)); last first.
-  {
-  cbn. iSteps.
-  into_fold_right_sepcons_Γs.
-  repeat (combine (fold_right_sepcon _) (fold_right_sepcon _)).
-  iStopProof; f_equal.
-  }
-  subst P'; f_equal.
-  (* prove that P ⊢ P' *)
-  match goal with | P' := context [⎡|==> (_ ∗ (_ -∗ fold_right_sepcon ?P'_SEPs))⎤] |- _ =>
-    let P'_SEPs_name := fresh "P'_SEPs" in
-    pose P'_SEPs as P'_SEPs_name end.
-
-  eapply (semax_change_pre_SEP ⊤ Delta _ _ _ (map (λ s, |==> s) P'_SEPs)).
-  cbn. iSteps.
-  Undo 15. *)
-
-
-  Lemma change_SEP `{!VSTGS unit Σ} E d P Q (R: list mpred) (R' R'': list mpred):
-  (fold_right_sepcon R ⊢  |={E}=> fold_right_sepcon $ (R'++ R'')) ->
-    local (tc_environ d) ∧ PROPx P $ LOCALx Q $ SEPx R ⊢ PROPx P $ LOCALx Q $ |={E}=> (SEPx $ R'++R'').
-Proof. intros. go_lowerx. rewrite H //. Qed.
- (* TRIAL 2, try to prove directly *)
-  eapply semax_pre_fupd.
-  erewrite (change_SEP _ _ _ _ _ l)%I; last first.
-  {
-  cbn.  (* FIXME this does not work because diaframe needs to pull modalities out first,
-   but that would be weaker than what we are proving *)
-   iSteps.
-   
-  into_fold_right_sepcons_Γs.
-  repeat (combine (fold_right_sepcon _) (fold_right_sepcon _)).
-  iStopProof. rewrite -fupd_intro. f_equal.
-  }
-  (* what to do with update? *)
-rewrite -fupd_intro. subst l. cbn.
-  unfold SEPx. rewrite -embed_fupd.
-  f_equal.
-
-(* into canon *)
-
-Lemma semax_pre_SEP_fupd:
-  forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R c Post,
-        @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post  ->
-         semax E Delta (PROPx P $ LOCALx Q $ ⎡ |={E}=> fold_right_sepcon R⎤) c Post.
-Proof.
-intros until 1. generalize H.
-unfold SEPx.
-apply semax_pre_fupd. 
-iIntros "(#? & #? & ? & H)"; iFrame "#".
-iMod "H". iFrame. done.
-Qed.
-apply semax_pre_SEP_fupd.
-
-
-forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-
-
-Create HintDb vst_unseal.
-
-Definition GatherHyp_def {prop:bi}(P: prop) := P.
-Definition GatherHyp_aux : seal (@GatherHyp_def). by eexists. Qed.
-Definition GatherHyp := GatherHyp_aux.(unseal).
-Global Opaque GatherHyp.
-Global Arguments GatherHyp {_} _ : simpl never.
-Lemma GatherHyp_eq : @GatherHyp = @GatherHyp_def.
-Proof. rewrite -GatherHyp_aux.(seal_eq) //. Qed.
-
-Definition ForceAtom_def {prop:bi}(P: prop) := P.
-Definition ForceAtom_aux : seal (@ForceAtom_def). by eexists. Qed.
-Definition ForceAtom := ForceAtom_aux.(unseal).
-Global Opaque ForceAtom.
-Global Arguments ForceAtom {_} _ : simpl never.
-Lemma ForceAtom_eq : @ForceAtom = @ForceAtom_def.
-Proof. rewrite -ForceAtom_aux.(seal_eq) //. Qed.
-  
-Ltac unseal := rewrite ?GatherHyp_eq /GatherHyp_def ?ForceAtom_eq /ForceAtom_def .
-
-Global Instance solve_ForceAtom : forall {prop: bi} {BiBUpd0 : BiBUpd prop} (P: prop),
-HINT (empty_hyp_first) ✱ [-; |==> P] ⊫ [id]; ForceAtom (|==> P) ✱ [ emp ].
-Proof. unseal. intros. rewrite /BiAbd. simpl.  rewrite bi.sep_emp. iSteps. Qed.
-
-Fixpoint fold_right_sepcon' {prop : bi} (l : list (bi_car prop)) {struct l} :
-	bi_car prop :=
-  match l with
-  | [] => emp
-  | b :: [] => b
-  | b :: r => b ∗ @fold_right_sepcon' prop r end.
-
-(* input: current precondition is R, assert R' holds; output: the residue R'' *)
-Lemma change_pre_SEP_tac  `{!VSTGS unit Σ} {BiBUpd0 : BiBUpd mpred} d Q (R : list mpred) (R' R'':mpred):
-  (fold_right_sepcon R ⊢ R' ∗ @GatherHyp mpred R'') ->
-    local (tc_environ d) ∧  PROPx [] $ LOCALx Q $ SEPx R ⊢ local (tc_environ d) ∧ PROPx [] $ LOCALx Q $ ⎡R' ∗ R''⎤.
-Proof. unseal => H. go_lowerx. rewrite H. iSteps. Qed.
-
-(* the bupd must be before GatherHyp and R', otherwise diaframe stucks *)
-Lemma change_pre_SEP_with_bupd_tac `{!VSTGS unit Σ} {BiBUpd0 : BiBUpd mpred} d Q (R : list mpred) (R' R'':mpred):
-  (fold_right_sepcon R ⊢ (ForceAtom $ |==> R') ∗ @GatherHyp mpred R'') ->
-    local (tc_environ d) ∧  PROPx [] $ LOCALx Q $ SEPx R ⊢ local (tc_environ d) ∧ PROPx [] $ LOCALx Q $ ⎡|==> R' ∗ |==> R''⎤.
-Proof. unseal => H. go_lowerx. rewrite H. iSteps. Qed. 
-
-eapply semax_pre.
-(* change R into (fR ∗ (fR -∗ R)) *)
-match goal with |- context[ SEPx ?R  ] =>
-eapply (change_pre_SEP_with_bupd_tac _ _ R (fold_right_sepcon' fR)) end.
-unfold fR; simpl. iSteps.
-
-
-try iModIntro;
-match goal with
-  | |- envs_entails _ $ GatherHyp _ => rewrite GatherHyp_eq /GatherHyp_def; iAccu
-  | _ => fail "error: fail to synthesize precondition"
-end.
-
-into_ipm;iStep.
-
-(* pose ( @SEPx environ_index _ Rpre) as rr.
-unfold SEPx, fold_right_sepcon, Rpre in rr. *)
-
-Lemma emp_sep : forall {Σ} (P : iPropI Σ), @bi_equiv assert (⎡emp ∗ P⎤) ⎡P⎤ .
-intros. go_lowerx. rewrite bi.emp_sep //. Qed.
-Lemma sep_emp : forall {Σ} (P : iPropI Σ), @bi_equiv assert (⎡P ∗ emp⎤) ⎡P⎤ .
-intros. go_lowerx. rewrite bi.sep_emp //. Qed.
-Lemma sep_assoc : forall {Σ} (P Q R: iPropI Σ), @bi_equiv assert ⎡P ∗ Q ∗ R⎤ ⎡(P ∗ Q) ∗ R⎤ .
-intros. go_lowerx. rewrite bi.sep_assoc //. Qed.
-Lemma sep_emp2 : forall {Σ} (P Q R: iPropI Σ), @bi_equiv assert ⎡P ∗ Q ∗ R ∗ emp⎤ ⎡P ∗ Q ∗ R⎤ .
-intros. go_lowerx. rewrite bi.sep_emp //. Qed.
-
-iCutL (|==> (@embed _ assert _ 
-  (<affine> (cptr_lock_inv g1 g2 (gv _c) ∗ cptr_lock_inv g1 g2 (gv _c) -∗ False) ∗
-   lock_inv sh h (cptr_lock_inv g1 g2 (gv _c)) ∗
-   cptr_lock_inv g1 g2 (gv _c)))).
-   
-   from_ipm. go_lowerx.
-
-
-
-replace (cptr_lock_inv g1 g2 (gv _c) ∗ emp) with (cptr_lock_inv g1 g2 (gv _c)) by admit.
-
-
-
-iStep.
-iStepDebug.
-
-
-match goal with |- context[SolveOne  _ (bi_sep _ ?Q)] => replace Q with (@bi_emp (mpred )) by admit end.
-  (* rewrite bi.sep_emp. *)
-Set Typeclasses Debug.
-
-
-
-
-
- iSteps. 
-
-
-
-iClear "f".
-iSelect (field_at)
-
-iSteps.
-
-unfold cptr_lock_inv. iSteps.
-
-
+  vstep_call.
 
  
 
-  gather_SEP (ghost_auth g1 x) (ghost_auth g2 y) (ghost_frag _ n).
-  viewshift_SEP 0 (⌜(if left then x else y) = n⌝ ∧
-    ghost_auth (if left then g1 else g2) (n+1)%nat ∗
-    ghost_frag (if left then g1 else g2) (n+1)%nat ∗
-    ghost_auth (if left then g2 else g1) (if left then y else x)).
-  { go_lowerx.
-    iIntros "(? & _)".
-    by iMod (ghost_var_incr with "[$]"). }
-  Intros.
-  
-  forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-  {
+get_pre_sep_of_spec release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)); simpl.
 
 
--
-iStepDebug.
 
- solveStep.
 
-  forward_call.
-  
-  (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-    unfold Frame; instantiate (1 := [ghost_frag (if left then g1 else g2) (n+1)%nat;
-      field_at sh1 t_counter (DOT _lock) (ptr_of h) (gv _c)]); simpl.
-    destruct left.
-    - Exists (n+1)%nat y; subst; entailer!.
-      rewrite !Nat2Z.inj_add //.
-    - Exists x (n+1)%nat; entailer!.
-      rewrite !Nat2Z.inj_add //. }
+
+Ltac change_pre_sep_with fpre_sep :=
+eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep);
+[
+cbn;
+iSteps;
+into_fold_right_sepcons_Γs;
+repeat (combine (fold_right_sepcon _) (fold_right_sepcon _));
+iStopProof; rewrite -fupd_intro; f_equal
+| simpl app].
+
+(* TODO give SETUP a new name *)
+let SETUP := fresh "SETUP" in
+intro SETUP; destruct SETUP as [_  [Hsub _]];
+match goal with | Hsub : (funspec_sub _ (mk_funspec _ _ _ _ ?fpre _)) |- _ =>
+  let fpre := eval cbn in (fpre ARG) in
+  let fpre_name := fresh "fpre" in
+  pose fpre as fpre_name end;
+match goal with | fpre := context[SEPx ?fpre_sep] |- _ =>
+  change_pre_sep_with fpre_sep end.
+
+forward_call release_simple ARG.
+entailer!!.
+
+(* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
+
+forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). entailer!!.
+
+* 
   forward.
   cancel.
 Qed.
