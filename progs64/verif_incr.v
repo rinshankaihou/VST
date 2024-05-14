@@ -484,116 +484,52 @@ vstep_call.
 
 prove_call_setup1 release_simple.
 
-Ltac pose_ewitness Σ A :=
-  (unify A (ConstType Ridiculous); (* because [is_evar A] doesn't seem to work *)
-              exfalso)
-  ||
-  let TA := constr:(ofe_car (@dtfr Σ A)) in
-  let TA' := eval cbv [dtfr dependent_type_functor_rec constOF idOF prodOF discrete_funOF
-      ofe_morOF sigTOF list.listOF oFunctor_car ofe_car] in TA in
-  let TA'' := eval simpl in TA' in
-  let ARG_TYPE := fresh "ARG_TYPE" in
-  pose TA'' as ARG_TYPE
-      .
-
-match goal with |- @call_setup1 _ ?Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?A _ _ _ _  -> _ =>
-pose_ewitness Σ A 
-end.
-
 Opaque lock_handle.
+From Ltac2 Require Import Ltac2 Printf.
 
-pose (nat, (bool, nat)) as ty.
-
-From Ltac2 Require Import Ltac2.
-Ltac2 rec evar_tuple (arg: constr) : constr :=
-  lazy_match! arg with
+Ltac2 rec evar_tuple (ty: constr) : constr :=
+  let ty := eval hnf in $ty in (* allows you to pass `ty` instead of having to pass `(nat * (bool * nat))%type` *)
+  lazy_match! ty with
   | prod ?a ?b =>
-    let evar_a :=  (evar_tuple a) in
-    let evar_b :=  (evar_tuple b) in 
-    constr:(prod $evar_a $evar_b)
+      let evar_a := evar_tuple a in
+      let evar_b := evar_tuple b in
+      constr:(@pair $a $b $evar_a $evar_b) (* typing constraints on the evars are enforced here;
+note that this will give you an evar with evar type,
+rather than a typed evar, if you pass it a type that is not a prod *)
   | ?a =>
-    let arg_i := Fresh.fresh (Fresh.Free.of_ids []) ident:(arg) in
-    (ltac1:(a arg |- evar (arg: a)) (Ltac1.of_constr a) (Ltac1.of_ident arg_i));
-    (Control.hyp arg_i)
+      let arg_i := Fresh.in_goal @h in (* this uses base name "h" *)
+      epose _ as $arg_i; (* _ gives a new evar, use '_ or open_constr:(_) in other contexts *)
+      Control.hyp arg_i
   end.
 
+ltac2:(
+let setup := Fresh.in_goal @SETUP in
+intro setup;
+destruct setup as [_  [sub _]];
+lazy_match! (Constr.type &sub) with 
+| funspec_sub _ (mk_funspec _ _ _ _ ?fpre _) =>
+  match! fpre with λne _ : ?arg_type, _ =>
+  let arg_type := eval cbn in $arg_type in
+  let arg_evar := evar_tuple arg_type in
+  pose $arg_evar as arg_evar;
+  let fpre := constr:($fpre $arg_evar) in
+  let fpre := eval cbn in $fpre in
+  let fpre_name := Fresh.in_goal @fpre in
+  pose $fpre as $fpre_name
+end
+end
+).
 
+(* TODO subst_tuple arg_evar *)
 
-Ltac2 rec evar_tuple (wit_ident: constr) : constr :=
-  Message.print (Message.of_constr wit_ident);
-  lazy_match! wit_ident with
-  | prod ?a ?b =>
-    Message.print (Message.of_string "a");
-    let evar_a :=  (evar_tuple a) in
-    let evar_b :=  (evar_tuple b) in 
-    constr:(prod $evar_a $evar_b)
-  | ?a =>
-    Message.print (Message.of_string "b");
-    let arg_i := Fresh.fresh (Fresh.Free.of_ids []) ident:(arg) in
-    (ltac1:(a arg |- evar (arg: a)) (Ltac1.of_constr a) (Ltac1.of_ident arg_i));
-    (Control.hyp arg_i)
-  end.
-
-  pose (1+1) as def.
-  Ltac2 
-  
-  let setup := fresh "SETUP" in
-  intro setup;
-  destruct setup as [_  [Hsub _]];
-match goal with | Hsub : (funspec_sub _ (mk_funspec _ _ _ _ ?fpre _)) |- _ =>
-  match fpre with λne _ : ?arg_type, _ =>
-  let arg_type := eval cbn in arg_type in
-  idtac "arg_type is" arg_type;
-  let arg_evar := ltac2:(evar_tuple (Option.get (Ltac1.to_constr ltac1val:(arg_type)))) in
-  pose arg_evar
-  end
-end.
-  (* let fpre1 := eval cbn in (fpre) in *)
-  let fpre_name := fresh "fpre" in
-  pose fpre as fpre_name end; clear Hsub.
-
-
-
-
-
-  ltac2:(lazy_match! goal with | [fpre := λne _ : ?arg_type, _ |- _] =>
-let bndr := Constr.Binder.make (Some ident:(witttt)) constr:(arg_type) in
-           Message.print (Message.of_constr (Constr.Binder.type bndr)) end).
-    pose ARG_TYPE as HH;
-    ltac2:(evar_tuple @HH) end.
-    idtac ARG_TYPE end.
-    
-
-ltac2: (Message.print (Message.of_constr  &ARG_TYPE1)).
-ltac:(idtac ARG_TYPE1).
-ltac2:(Constr.Binder.make (Some ident:(emm)) constr:(I)).
-
-
-
-Ltac evar_tuple' A :=
-  match A with
-  | prod ?A ?B =>
-    evar_tuple' A;
-    evar_tuple' B
-  | ?A =>
-    let arg_i := fresh "arg" in
-    evar (arg_i: A)
-  end.
-  lazymatch goal with | ARG_TYPE1 := ?X |- _ =>
-    let x := evar_tuple' X in idtac x
-  end.
-
-pose (arg, arg0, arg1) as ARGS.
-pose (fpre ARGS) as fpre'; simpl in fpre'.
-
-match goal with | fpre' := context[SEPx ?fpre_sep] |- _ =>
+match goal with | fpre := context[SEPx ?fpre_sep] |- _ =>
   let fpre_sep_name := fresh "fpre_sep" in
   pose fpre_sep as fpre_sep_name
 end.
 
 eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep).
 -
-  subst fpre_sep. subst arg. subst arg0. subst arg1.
+  subst fpre_sep. subst fpre. subst arg0. subst arg1.
 cbn;
 iSteps.
 into_fold_right_sepcons_Γs.
