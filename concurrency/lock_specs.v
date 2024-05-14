@@ -148,7 +148,7 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
     PRE [ tptr t_lock ]
        PROP ()
        PARAMS (ptr_of h)
-       SEP (<affine> (R ∗ R -∗ False); lock_inv sh h R; R)
+       SEP (lock_inv sh h R; <affine> (R ∗ R -∗ False); R)
     POST [ tvoid ]
        PROP ()
        LOCAL ()
