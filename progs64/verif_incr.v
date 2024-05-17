@@ -462,11 +462,6 @@ Ltac vstep_call :=
     | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
         rewrite <- seq_assoc
   end
-  (* lazymatch goal with |- semax _ ?Delta _ (Ssequence ?C _) _ =>
-    lazymatch C with context [Scall _ _ _] =>
-           new_fwd_call'
-      end
-  end. *)
   .
 
 Ltac change_pre_sep_with fpre_sep :=
@@ -479,10 +474,6 @@ repeat (combine (fold_right_sepcon _) (fold_right_sepcon _));
 iStopProof; rewrite -fupd_intro; f_equal
 | simpl app].
 
-vstep_call.
-
-
-prove_call_setup1 release_simple.
 
 Opaque lock_handle.
 From Ltac2 Require Import Ltac2 Printf.
@@ -531,47 +522,42 @@ Ltac2 get_fpre_sep ():=
     pose $fpre_sep as $fpre_sep_name
   end;
   Std.subst evar_ids;
-  clear sub
+  clear sub;
+  (fpre_sep_name, arg_evar_name)
   end end
 .
 
-ltac2:(get_fpre_sep ()).
+(* name of function (an AST.ident), a list of specs to try  *)
+Ltac2 Type vstep_specs_type := (constr * constr) list.
+Ltac2 mutable vstep_specs : unit -> vstep_specs_type  := fun _ => [].
+
+Ltac2 Set vstep_specs := fun _ => (constr:(_release), constr:(release_simple))::(vstep_specs ()).
+
+(* a list of specs for the function name f *)
+(* Ltac2 rec get_specs_for (f :constr) : (constr list) :=
+  match! (vstep_specs ()) with
+  | [] => []
+  | (?f', ?spec) :: ?t =>
+  Control.plus (fun () => ( (Std.unify f f'); (spec :: (get_specs_for t))))
+                                    (fun _ => get_specs_for t)
+  end. *)
 
 
 
+  (* ltac2:(let f_name := match! goal with 
+  | [ |- context [Scall _ ?f  _]] => f end in
+  ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr constr:(release_spec_simple))). *)
 
 
+(* lookup with glob_spec
+   *)
+vstep_call.
+prove_call_setup1 release_simple.
+ltac2:(let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in
+       ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
+       ltac1:(spec args |- forward_call spec args)(Ltac1.of_constr constr:(release_simple)) (Ltac1.of_constr (Control.hyp arg_evar_name))).
 
-eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep);
-[
-cbn;
-iSteps;
-into_fold_right_sepcons_Γs;
-repeat (combine (fold_right_sepcon _) (fold_right_sepcon _));
-iStopProof; rewrite -fupd_intro; f_equal
-| simpl app].
-
-forward_call release_simple arg_evar.
-
-match goal with | fpre := context[SEPx ?fpre_sep] |- _ =>
-  change_pre_sep_with fpre_sep end.
-
-
-get_pre_sep_of_spec release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)); simpl.
-
-
-(* TODO give SETUP a new name *)
-let SETUP := fresh "SETUP" in
-intro SETUP; destruct SETUP as [_  [Hsub _]];
-match goal with | Hsub : (funspec_sub _ (mk_funspec _ _ _ _ ?fpre _)) |- _ =>
-  let fpre := eval cbn in (fpre ARG) in
-  let fpre_name := fresh "fpre" in
-  pose fpre as fpre_name end;
-match goal with | fpre := context[SEPx ?fpre_sep] |- _ =>
-  change_pre_sep_with fpre_sep end.
-
-forward_call release_simple ARG.
-entailer!!.
+        entailer!!.
 
 (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 
