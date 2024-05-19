@@ -328,6 +328,17 @@ assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
 
 (* user decides which side *)
 
+(* TODO would it be beneficial to spawn an obligation to (try to) close cinv,
+        i.e. fold the data structure predicate back?
+   TODO this just sound like an unfold; is there a better way? *)
+Global Instance open_cinv_hint g1 g2 _c (gv:globals):
+HINT cptr_lock_inv g1 g2 (gv _c) ✱ [-; emp]
+  ⊫ [id] sh z; field_at sh t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)
+  ✱[∃ x y : nat, ⌜z = (x + y)%nat⌝ ∧ ghost_auth g1 x ∗ ghost_auth g2 y ].
+Proof.
+  unfold cptr_lock_inv. iSteps. iExists _, _. iSteps.
+Qed.
+
 Global Instance ghost_auth_update g1 x n n':
     HINT (ghost_auth g1 x ∗ ghost_frag g1 n) ✱ [-; emp] ⊫ [bupd]; (ghost_frag g1 (n')%nat) ✱ [ghost_auth g1 (n')%nat].
 Proof.
@@ -383,7 +394,15 @@ Lemma change_SEP `{!VSTGS unit Σ} E d P Q (R: list mpred) (R' R'': list mpred):
   (fold_right_sepcon R ⊢  |={E}=> fold_right_sepcon $ (R'++ R'')) ->
     local (tc_environ d) ∧ PROPx P $ LOCALx Q $ SEPx R ⊢ PROPx P $ LOCALx Q $ |={E}=> (SEPx $ R'++R'').
 Proof. intros. go_lowerx. rewrite H //. Qed.
- (* TRIAL 2, try to prove directly *)
+
+Lemma semax_change_pre:
+ forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R R' R'' c Post,
+     (fold_right_sepcon R ⊢ fold_right_sepcon $ (R'++ R'')) ->
+     @semax OK_ty Σ VSTGS0 Espec cs E Delta (PROPx P $ LOCALx Q $ SEPx (R'++R'')) c Post -> semax E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post.
+Proof.
+intros until 1.
+apply semax_pre_fupd. go_lowerx. rewrite H //. iIntros. done.
+Qed.
 
 (* todo try and merge change_SEP, semax_pre_fupd and semax_pre_SEP_fupd *)
 Lemma semax_change_pre_for_forward_call:
@@ -394,6 +413,33 @@ Proof.
 intros until 1.
 apply semax_pre_fupd. go_lowerx. rewrite H //.
 Qed.
+
+
+
+Lemma body_incr_forward: semax_body Vprog Gprog f_incr incr_spec.
+Proof.
+  start_function.
+  forward.
+  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
+
+  into_ipm.
+
+  
+   go_lowerx.
+  Transparent wp.
+  unfold wp.
+  iIntros "P".
+  iExists _.
+  iSplit; last first.
+ 
+ { instantiate (1:= SEPx [_]).
+ unfold SEPx.
+ monPred.unseal.
+ rewrite !bi.sep_emp.
+ iApply "P". }
+
+iPureIntro.
+Abort.
 
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
@@ -527,22 +573,27 @@ Ltac2 get_fpre_sep ():=
   end end
 .
 
-(* name of function (an AST.ident), a list of specs to try  *)
+(* name of function (an AST.ident), a list of spec subsume relations to try  *)
 Ltac2 Type vstep_specs_type := (constr * constr) list.
 Ltac2 mutable vstep_specs : unit -> vstep_specs_type  := fun _ => [].
 
-Ltac2 Set vstep_specs := fun _ => (constr:(_release), constr:(release_simple))::(vstep_specs ()).
+Ltac2 Set vstep_specs as old_vstep_specs :=
+    fun _ => (constr:(_release), constr:(release_simple))::(old_vstep_specs ()).
 
-(* a list of specs for the function name f *)
-(* Ltac2 rec get_specs_for (f :constr) : (constr list) :=
-  match! (vstep_specs ()) with
-  | [] => []
-  | (?f', ?spec) :: ?t =>
-  Control.plus (fun () => ( (Std.unify f f'); (spec :: (get_specs_for t))))
-                                    (fun _ => get_specs_for t)
-  end. *)
+Ltac2 rec get_specs_for_aux (f_id: constr) (specs: vstep_specs_type) :=
+    match specs with
+    | [] => []
+    | (f', sub)::t => Control.plus (fun () => Std.unify f_id f'; sub :: (get_specs_for_aux f_id t))
+                                   (fun _ => get_specs_for_aux f_id t)
+    end.
 
+(* a list of spec subsume relations for the function name f *)
+Ltac2 get_specs_for (f_id: constr) : (constr list) :=
+  let s := vstep_specs () in
+  get_specs_for_aux f_id s.
+Ltac2 emm () := get_specs_for constr:(_release).
 
+Ltac2 Eval  match (emm ()) with | t :: _ => printf "%t" t | _ => () end.
 
   (* ltac2:(let f_name := match! goal with 
   | [ |- context [Scall _ ?f  _]] => f end in
@@ -557,7 +608,7 @@ ltac2:(let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in
        ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
        ltac1:(spec args |- forward_call spec args)(Ltac1.of_constr constr:(release_simple)) (Ltac1.of_constr (Control.hyp arg_evar_name))).
 
-        entailer!!.
+entailer!!.
 
 (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
 
