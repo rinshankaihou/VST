@@ -128,8 +128,10 @@ Proof.
     apply @excl_auth_update.
 Qed.
 
-Definition wp {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
+Definition wp_aux {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
   ∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P.
+Definition wp := seal (@wp_aux).
+Lemma wp_eq : @wp_aux = @wp . (* TODO fix this*)
 
 (* Notation wp OK_ty Σ VSTGS0 Espec cs E Delta c Q := (∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P). *)
 Definition wp_spec: forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) P c Q,
@@ -441,35 +443,6 @@ Proof.
 iPureIntro.
 Abort.
 
-Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
-Proof.
-  start_function.
-  forward.
-
-  into_ipm; iSteps. 
-  from_ipm.
-
-
-  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-
-  (* should be able to do this automatically with a hint about command  *)
-  unfold cptr_lock_inv at 2.
-  Intros z x y.
-  forward.
-  forward.
-  forward.
-
-
-
-
-destruct left.
-*
-
-  (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
-
-  (* lock_specs.release_spec mk_funspec *)
-
-
  (* from get_function_witness_type *)
  Ltac pose_witness_type (*ts*) Σ A witness :=
   (unify A (ConstType Ridiculous); (* because [is_evar A] doesn't seem to work *)
@@ -497,18 +470,6 @@ Funspec type: " TA'')
  end
  ]
  .
-
-
-(* from forward_call i.e. new_fwd_call. *)
-Ltac vstep_call :=
-  try lazymatch goal with
-        | |- semax _ _ _ (Scall _ _ _) _ => rewrite -> semax_seq_skip
-        end;
-  repeat lazymatch goal with
-    | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
-        rewrite <- seq_assoc
-  end
-  .
 
 Ltac change_pre_sep_with fpre_sep :=
 eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep);
@@ -538,7 +499,7 @@ rather than a typed evar, if you pass it a type that is not a prod *)
       epose _ as $arg_i; (* _ gives a new evar, use '_ or open_constr:(_) in other contexts *)
       (Control.hyp arg_i, [arg_i])
   end.
-  
+
 (* TODO subst_tuple arg_evar *)
 Ltac2 rec subst_tuple t : ident :=
   lazy_match! t with
@@ -577,9 +538,6 @@ Ltac2 get_fpre_sep ():=
 Ltac2 Type vstep_specs_type := (constr * constr) list.
 Ltac2 mutable vstep_specs : unit -> vstep_specs_type  := fun _ => [].
 
-Ltac2 Set vstep_specs as old_vstep_specs :=
-    fun _ => (constr:(_release), constr:(release_simple))::(old_vstep_specs ()).
-
 Ltac2 rec get_specs_for_aux (f_id: constr) (specs: vstep_specs_type) :=
     match specs with
     | [] => []
@@ -587,26 +545,110 @@ Ltac2 rec get_specs_for_aux (f_id: constr) (specs: vstep_specs_type) :=
                                    (fun _ => get_specs_for_aux f_id t)
     end.
 
-(* a list of spec subsume relations for the function name f *)
-Ltac2 get_specs_for (f_id: constr) : (constr list) :=
-  let s := vstep_specs () in
-  get_specs_for_aux f_id s.
-Ltac2 emm () := get_specs_for constr:(_release).
-
-Ltac2 Eval  match (emm ()) with | t :: _ => printf "%t" t | _ => () end.
-
-  (* ltac2:(let f_name := match! goal with 
-  | [ |- context [Scall _ ?f  _]] => f end in
-  ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr constr:(release_spec_simple))). *)
+Ltac2 get_specs_for (f_id: constr) :=
+  let specs := vstep_specs () in
+  get_specs_for_aux f_id specs.
 
 
-(* lookup with glob_spec
-   *)
-vstep_call.
-prove_call_setup1 release_simple.
-ltac2:(let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in
-       ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
-       ltac1:(spec args |- forward_call spec args)(Ltac1.of_constr constr:(release_simple)) (Ltac1.of_constr (Control.hyp arg_evar_name))).
+Ltac2 Set vstep_specs as old_vstep_specs :=
+  fun _ => (constr:(_release), constr:(release_simple))::
+           (constr:(_acquire), constr:(funspec_sub_refl_dep))::
+           (old_vstep_specs ()).
+
+ 
+Ltac vstep_call_preprocess :=
+   (* from forward_call i.e. new_fwd_call. *)
+  try lazymatch goal with
+        | |- semax _ _ _ (Scall _ _ _) _ => rewrite -> semax_seq_skip
+        end;
+  repeat lazymatch goal with
+    | |- semax _ _ _ (Ssequence (Ssequence (Ssequence _ _) _) _) _ =>
+        rewrite <- seq_assoc
+  end
+  .
+
+Ltac2 vstep_call () :=
+  ltac1:(vstep_call_preprocess);
+  let specs := match! goal with 
+               | [ |- context [Scall _ (Evar ?ff _)  _]] => get_specs_for ff end
+  in
+  let rec try_specs sps :=
+    match sps with
+    | sp :: sps' => Control.plus (fun () => printf "In vstep_call: try applying spec %t" sp; 
+                                            ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp);
+                                              let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in
+                                              ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
+                                              ltac1:(spec args |- forward_call spec args)(Ltac1.of_constr sp) (Ltac1.of_constr (Control.hyp arg_evar_name)))
+                                 (fun _ => printf "In vstep_call: applying %t failed" sp; try_specs sps') 
+    | _ => ()
+    end 
+  in try_specs specs.
+
+
+Ltac2 vstep_entail () := ltac1:(solve [entailer!!]).
+
+Ltac2 is_entail () :=
+  match! goal with
+  | [ |- ENTAIL _, _ ⊢ _] => true
+  | [ |- _] => false
+  end.
+
+Ltac2 is_call () :=
+  match! goal with
+  | [ |- semax _ _ _ (Scall _ _ _) _] => true
+  | [ |- semax _ _ _ (Ssequence (Scall _ _ _) _) _] => true
+  | [ |- _] => false
+  end.
+
+Ltac2 vstep_forward () :=
+  ltac1:(forward).
+
+
+Ltac2 vstep () :=
+  if is_entail () then vstep_entail ()
+  else if is_call () then vstep_call ()
+  else vstep_forward ()
+.
+Set Default Proof Mode "Classic".
+
+Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
+Proof.
+  start_function.
+
+  ltac2:(repeat (vstep ())).
+  (* repeat ltac2:(vstep ()). *)
+  destruct left.
+
+  into_ipm.
+  go_lowerx.
+  Transparent wp.
+  unfold wp.
+  iIntros "P".
+  iExists _.
+  iSplit; last first.
+ 
+ { instantiate (1:= SEPx [_]).
+ unfold SEPx.
+ monPred.unseal.
+ rewrite !bi.sep_emp.
+ iApply "P". }
+
+iPureIntro.
+  ltac2:(repeat (vstep ())).
+repeat ltac2:(vstep ()).
+*
+
+  (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
+
+  (* lock_specs.release_spec mk_funspec *)
+
+
+
+
+ltac2:(vstep ()).
+
+ltac2:(vstep ()).
+
 
 entailer!!.
 
