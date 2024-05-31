@@ -128,10 +128,11 @@ Proof.
     apply @excl_auth_update.
 Qed.
 
-Definition wp_aux {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
+Definition wp_def {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
   ∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P.
-Definition wp := seal (@wp_aux).
-Lemma wp_eq : @wp_aux = @wp . (* TODO fix this*)
+Definition wp_aux : seal (@wp_def). by eexists. Qed.
+Definition wp := unseal wp_aux.
+Definition wp_eq : @wp = @wp_def := seal_eq wp_aux. (* TODO fix this*)
 
 (* Notation wp OK_ty Σ VSTGS0 Espec cs E Delta c Q := (∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P). *)
 Definition wp_spec: forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) P c Q,
@@ -141,13 +142,13 @@ Proof.
   split; intros.
   + eapply semax_pre.
     - rewrite bi.and_elim_r H //.
-    - unfold wp.
+    - rewrite wp_eq.
       apply semax_extract_exists.
       clear P H.
       intros P.
       apply semax_extract_prop.
       auto.
-  + unfold wp.
+  + rewrite wp_eq.
     iIntros; iExists P; iSplit; auto.
 Qed.
 
@@ -160,7 +161,6 @@ Proof.
   - done. 
   - iSteps.
 Qed.
-Opaque wp.
 
 Ltac into_ipm := rewrite <- wp_spec_Delta.
 
@@ -418,29 +418,53 @@ Qed.
 
 
 
+Ltac iCutL Q :=
+  match goal with |- envs_entails _ ?P =>
+    rewrite -[P](bi.wand_elim_r Q) end.
+      From Ltac2 Require Import Ltac2 Printf.
+      
+Set Default Proof Mode "Classic".
+
+
 Lemma body_incr_forward: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
+  
+  
+  rewrite <-?seq_assoc.
+  
   forward.
   forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-
+    
   into_ipm.
+  go_lowerx.
+  iStep as "a b c d".
+  unfold cptr_lock_inv at 2.
 
+  ltac2:(match! goal with
+  | [|- envs_entails _ $ wp _ _ _ _ _ _ _ 
+        (Ssequence (Ssequence (Sset _ (Efield (Evar _c (Tstruct _counter noattr)) _ctr tuint)))) _ _] => () end).
+
+  iCutL (∃ sh z, <affine> ⌜readable_share sh⌝ ∗ field_at sh t_counter (DOT _ctr) z (gv _c)).
+  iSteps.
   
-   go_lowerx.
-  Transparent wp.
-  unfold wp.
-  iIntros "P".
-  iExists _.
+  iStopProof;
+  rewrite wp_eq /wp_def;
+  iIntros "?";
+  iExists _;
   iSplit; last first.
- 
- { instantiate (1:= SEPx [_]).
- unfold SEPx.
- monPred.unseal.
- rewrite !bi.sep_emp.
- iApply "P". }
-
-iPureIntro.
+  {
+  iStartProof.
+  instantiate (1:= PROPx nil $ LOCALx [((temp _t'3 (ptr_of h))); (gvars gv)] $ SEPx [_]);
+ unfold PROPx, LOCALx, SEPx;
+ monPred.unseal;
+ rewrite bi.True_and !bi.sep_emp;
+ iSplit; [done|iAccu];
+  }
+  iPureIntro.
+  Intros.
+  
+  forward.
 Abort.
 
  (* from get_function_witness_type *)
@@ -483,7 +507,7 @@ iStopProof; rewrite -fupd_intro; f_equal
 
 
 Opaque lock_handle.
-From Ltac2 Require Import Ltac2 Printf.
+
 
 Ltac2 rec evar_tuple (ty: constr) : (constr * ident list) :=
   let ty := eval hnf in $ty in (* allows you to pass `ty` instead of having to pass `(nat * (bool * nat))%type` *)
@@ -609,56 +633,13 @@ Ltac2 vstep () :=
   else if is_call () then vstep_call ()
   else vstep_forward ()
 .
-Set Default Proof Mode "Classic".
 
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   start_function.
 
   ltac2:(repeat (vstep ())).
-  (* repeat ltac2:(vstep ()). *)
-  destruct left.
-
-  into_ipm.
-  go_lowerx.
-  Transparent wp.
-  unfold wp.
-  iIntros "P".
-  iExists _.
-  iSplit; last first.
- 
- { instantiate (1:= SEPx [_]).
- unfold SEPx.
- monPred.unseal.
- rewrite !bi.sep_emp.
- iApply "P". }
-
-iPureIntro.
-  ltac2:(repeat (vstep ())).
-repeat ltac2:(vstep ()).
-*
-
-  (* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
-
-  (* lock_specs.release_spec mk_funspec *)
-
-
-
-
-ltac2:(vstep ()).
-
-ltac2:(vstep ()).
-
-
-entailer!!.
-
-(* forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). *)
-
-forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)). entailer!!.
-
-* 
-  forward.
-  cancel.
+  destruct left; ltac2:(repeat (vstep ())).
 Qed.
 
 Lemma body_read : semax_body Vprog Gprog f_read read_spec.
