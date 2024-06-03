@@ -162,7 +162,8 @@ Proof.
   - iSteps.
 Qed.
 
-Ltac into_ipm := rewrite <- wp_spec_Delta.
+(* change goal from semax to `hyp ⊢ monPred_at (wp ...) rho` *)
+Ltac into_ipm := rewrite -?seq_assoc; rewrite <- wp_spec_Delta; go_lowerx.
 
 Typeclasses Opaque locald_denote.
 Arguments locald_denote : simpl never.
@@ -313,6 +314,7 @@ Ltac from_ipm :=
   .
 
 Typeclasses Opaque cptr_lock_inv.
+
 (* TODO maybe write an instance for affine and ExclusiveProp? *)
 Global Instance lock_prop_hint {prop:bi} (P:prop):
 ExclusiveProp P ->
@@ -330,15 +332,17 @@ assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
 
 (* user decides which side *)
 
-(* TODO would it be beneficial to spawn an obligation to (try to) close cinv,
+(* TODO would it be useful to spawn an obligation to (try to) close cinv,
         i.e. fold the data structure predicate back?
    TODO this just sound like an unfold; is there a better way? *)
-Global Instance open_cinv_hint g1 g2 _c (gv:globals):
+(* TODO make the pure conclusions affine, and fix diaframe so that iSteps can solve them *)
+(* TODO change sh to Ews? *)
+Global Instance unfold_cinv_hint g1 g2 _c (gv:globals):
 HINT cptr_lock_inv g1 g2 (gv _c) ✱ [-; emp]
-  ⊫ [id] sh z; field_at sh t_counter (DOT _ctr) (vint (Z.of_nat z)) (gv _c)
-  ✱[∃ x y : nat, ⌜z = (x + y)%nat⌝ ∧ ghost_auth g1 x ∗ ghost_auth g2 y ].
+  ⊫ [id] sh vint_z; field_at sh t_counter (DOT _ctr) vint_z (gv _c)
+  ✱[∃ x y z: nat, <affine> ⌜z = (x + y)%nat ∧ (vint (Z.of_nat z)) = vint_z⌝ ∗ ghost_auth g1 x ∗ ghost_auth g2 y ].
 Proof.
-  unfold cptr_lock_inv. iSteps. iExists _, _. iSteps.
+  unfold cptr_lock_inv. iSteps.
 Qed.
 
 Global Instance ghost_auth_update g1 x n n':
@@ -425,47 +429,147 @@ Ltac iCutL Q :=
       
 Set Default Proof Mode "Classic".
 
+Lemma cut_with_exists_tac {prop:bi} {A:Type} (P: A -> prop) (Q:prop):
+  (∃ x, (P x ∗ (P x -∗ Q))) ⊢ Q.
+Proof. iSteps. Qed.
 
-Lemma body_incr_forward: semax_body Vprog Gprog f_incr incr_spec.
-Proof.
-  start_function.
-  
-  
-  rewrite <-?seq_assoc.
-  
-  forward.
-  forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-    
-  into_ipm.
-  go_lowerx.
-  iStep as "a b c d".
-  unfold cptr_lock_inv at 2.
+Lemma cut_with_exists_tac2 {prop:bi} {A B:Type} (P: A -> B -> prop) (Q:prop):
+  (∃ x y, (P x y ∗ (P x y -∗ Q))) ⊢ Q.
+Proof. iSteps. Qed.
 
-  ltac2:(match! goal with
-  | [|- envs_entails _ $ wp _ _ _ _ _ _ _ 
-        (Ssequence (Ssequence (Sset _ (Efield (Evar _c (Tstruct _counter noattr)) _ctr tuint)))) _ _] => () end).
 
-  iCutL (∃ sh z, <affine> ⌜readable_share sh⌝ ∗ field_at sh t_counter (DOT _ctr) z (gv _c)).
-  iSteps.
+
+Ltac2 is_Sset cmd :=
+  match! cmd with 
+    | Ssequence (Sset _ _) _ => true
+    | Sset _ _  => true
+    | _ => false
+  end.
+
+Ltac2 get_gv () :=
+  match! goal with
+  | [ gv : globals |- _] => gv
+  end.
+
+  Lemma body_incr_forward: semax_body Vprog Gprog f_incr incr_spec.
+  Proof.
+    start_function.
+
   
+    forward.
+    forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
+
+
+(* get a list of localdefs from the context *)
+(* Ltac2 get_locals () := *)
+Ltac2 rec get_locals_helper (ls: (ident * constr option * constr) list) : constr :=
+  match ls with 
+  | (_, _, ty) :: ls' =>
+    match! ty with 
+    | locald_denote ?t _ =>
+     let locals' := (get_locals_helper ls') in constr:(@cons localdef $t $locals')
+    | _ => get_locals_helper ls'
+    end
+  | [] => constr:(@nil localdef)
+  end.
+
+(* get a list of localdefs from the context *)
+Ltac2 get_locals () :=
+  get_locals_helper (Control.hyps ()).
+
+Ltac monPred_at_wp_to_semax :=
   iStopProof;
   rewrite wp_eq /wp_def;
   iIntros "?";
   iExists _;
-  iSplit; last first.
-  {
-  iStartProof.
-  instantiate (1:= PROPx nil $ LOCALx [((temp _t'3 (ptr_of h))); (gvars gv)] $ SEPx [_]);
- unfold PROPx, LOCALx, SEPx;
- monPred.unseal;
- rewrite bi.True_and !bi.sep_emp;
- iSplit; [done|iAccu];
-  }
-  iPureIntro.
+  iSplit; last first; 
+  [ iStartProof;
+    let locals := ltac2val:(Ltac1.of_constr (get_locals ())) in
+    instantiate (1:= PROPx nil $ LOCALx locals $ SEPx [_]);
+    unfold PROPx, LOCALx, SEPx;
+    monPred.unseal;
+    rewrite bi.True_and !bi.sep_emp;
+    iSplit; [done|iAccu]
+  | iPureIntro];
   Intros.
+
+(* goal has the form `_ ⊢ g` *)
+Ltac2 pose_Sset_pre (cmd:constr) (g:constr):=
+  lazy_match! cmd with
+      | context [Sset _ (Efield (Evar ?_struct_id ?struct_type) ?_field_id _)] =>
+        ltac1:(G struct_type _field_id _struct_id gv |-
+               rewrite -[G](cut_with_exists_tac2 (fun sh z => field_at sh struct_type (DOT _field_id) z (gv _struct_id)) G))
+        (Ltac1.of_constr g) (Ltac1.of_constr struct_type) (Ltac1.of_constr _field_id) (Ltac1.of_constr _struct_id) (Ltac1.of_ident (get_gv ()))
+      | _ => Control.throw (Invalid_argument (Some (Message.of_string "unimplemented shape of Sset` ")))
+    end.
+
+
+Ltac2 vstep_forward () :=
+  ltac1:(into_ipm);
+  let g := lazy_match! goal with
+    | [|- _ ⊢ ?g] => g
+    | [|- _ ] => Control.throw (Invalid_argument (Some (Message.of_string "expect goal to be an entailment; did you do `rewrite -?seq_assoc; into_ipm; go_lowerx`?"))) end in
+  let cmd := lazy_match! g with
+    | monPred_at (wp _ _ _ _ _ _ _ ?cmd _) _ => cmd
+    | _ => Control.throw (Invalid_argument (Some (Message.of_string "expect goal to be `monPred_at (wp ...)` "))) end in
+  (* assert precondition that forward needs *)
+  if is_Sset cmd then pose_Sset_pre cmd g 
+  else ()
+  (* solve asserted precondition *)
+  (* ltac1:(iSteps); *)
+  (* restore goal shape to semax *)
+  (* ltac1:(monPred_at_wp_to_semax) *)
+.
+
+
+ltac2:(vstep_forward ()).
+
+
+
+(* TODO fix hint *)
+iStep.
+iStepDebug.
+do 11 solveStep.
+
+Lemma this_is_fine {prop:bi} {P Q:prop}:
+  P ⊢ <affine> ⌜True⌝ -∗ P.
+Proof. iSteps. Qed.
+
+Lemma this_seems_buggy {prop:bi} {P Q:prop}:
+  P ⊢ <affine> ⌜True = True ∧ True = True⌝ -∗ P.
+Proof. iSteps.
+ (* should have keep the affine modality or discharge into Coq context? *)
+Undo 1. by iIntros "? _". Qed.
+
+
+iStopProof.
+
+ rewrite ?bi.True_sep.
+ 
+ rewrite bi.True_sep.
+ rewrite ?bi.sep_True. ?bi.sep_emp
+  rewrite wp_eq /wp_def;
+  iIntros "?";
+  iExists _;
+  iSplit; last first.
+  - iStartProof;
+    let locals := ltac2val:(Ltac1.of_constr (get_locals ())) in
+    instantiate (1:= PROPx nil $ LOCALx locals $ SEPx [_]).
+    unfold PROPx, LOCALx, SEPx;
+    monPred.unseal.
+    iSplit; [done|iAccu]
+  | iPureIntro];
+  Intros.
+
+monPred_at_wp_to_semax.
+  iStep as "a b c d".
+  unfold cptr_lock_inv at 2.
+  ltac2:(vstep_pre_forward ()).
+
+  
   
   forward.
-Abort.
+
 
  (* from get_function_witness_type *)
  Ltac pose_witness_type (*ts*) Σ A witness :=
