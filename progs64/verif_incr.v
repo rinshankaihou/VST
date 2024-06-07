@@ -339,7 +339,7 @@ assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
 (* TODO change sh to Ews? *)
 Global Instance unfold_cinv_hint g1 g2 _c (gv:globals):
 HINT cptr_lock_inv g1 g2 (gv _c) ✱ [-; emp]
-  ⊫ [id] sh vint_z; field_at sh t_counter (DOT _ctr) vint_z (gv _c)
+  ⊫ [id] vint_z; field_at Ews t_counter (DOT _ctr) vint_z (gv _c)
   ✱[∃ x y z: nat, <affine> ⌜z = (x + y)%nat ∧ (vint (Z.of_nat z)) = vint_z⌝ ∗ ghost_auth g1 x ∗ ghost_auth g2 y ].
 Proof.
   unfold cptr_lock_inv. iSteps.
@@ -437,8 +437,6 @@ Lemma cut_with_exists_tac2 {prop:bi} {A B:Type} (P: A -> B -> prop) (Q:prop):
   (∃ x y, (P x y ∗ (P x y -∗ Q))) ⊢ Q.
 Proof. iSteps. Qed.
 
-
-
 Ltac2 is_Sset cmd :=
   match! cmd with 
     | Ssequence (Sset _ _) _ => true
@@ -450,15 +448,6 @@ Ltac2 get_gv () :=
   match! goal with
   | [ gv : globals |- _] => gv
   end.
-
-  Lemma body_incr_forward: semax_body Vprog Gprog f_incr incr_spec.
-  Proof.
-    start_function.
-
-  
-    forward.
-    forward_call (sh, h, (cptr_lock_inv g1 g2 (gv _c))).
-
 
 (* get a list of localdefs from the context *)
 (* Ltac2 get_locals () := *)
@@ -479,6 +468,7 @@ Ltac2 get_locals () :=
 
 Ltac monPred_at_wp_to_semax :=
   iStopProof;
+  rewrite ?bi.True_sep ?bi.sep_emp;
   rewrite wp_eq /wp_def;
   iIntros "?";
   iExists _;
@@ -504,7 +494,7 @@ Ltac2 pose_Sset_pre (cmd:constr) (g:constr):=
     end.
 
 
-Ltac2 vstep_forward () :=
+Ltac2 vstep_forward_abd_pre () :=
   ltac1:(into_ipm);
   let g := lazy_match! goal with
     | [|- _ ⊢ ?g] => g
@@ -514,62 +504,17 @@ Ltac2 vstep_forward () :=
     | _ => Control.throw (Invalid_argument (Some (Message.of_string "expect goal to be `monPred_at (wp ...)` "))) end in
   (* assert precondition that forward needs *)
   if is_Sset cmd then pose_Sset_pre cmd g 
-  else ()
+  else ();
   (* solve asserted precondition *)
-  (* ltac1:(iSteps); *)
+  ltac1:(iSteps);
   (* restore goal shape to semax *)
-  (* ltac1:(monPred_at_wp_to_semax) *)
+  ltac1:(monPred_at_wp_to_semax);
+  ltac1:(rho |- clear dependent rho) (Ltac1.of_ident (Option.get (Ident.of_string "rho")))
 .
 
-
-ltac2:(vstep_forward ()).
-
-
-
-(* TODO fix hint *)
-iStep.
-iStepDebug.
-do 11 solveStep.
-
-Lemma this_is_fine {prop:bi} {P Q:prop}:
-  P ⊢ <affine> ⌜True⌝ -∗ P.
-Proof. iSteps. Qed.
-
-Lemma this_seems_buggy {prop:bi} {P Q:prop}:
-  P ⊢ <affine> ⌜True = True ∧ True = True⌝ -∗ P.
-Proof. iSteps.
- (* should have keep the affine modality or discharge into Coq context? *)
-Undo 1. by iIntros "? _". Qed.
-
-
-iStopProof.
-
- rewrite ?bi.True_sep.
- 
- rewrite bi.True_sep.
- rewrite ?bi.sep_True. ?bi.sep_emp
-  rewrite wp_eq /wp_def;
-  iIntros "?";
-  iExists _;
-  iSplit; last first.
-  - iStartProof;
-    let locals := ltac2val:(Ltac1.of_constr (get_locals ())) in
-    instantiate (1:= PROPx nil $ LOCALx locals $ SEPx [_]).
-    unfold PROPx, LOCALx, SEPx;
-    monPred.unseal.
-    iSplit; [done|iAccu]
-  | iPureIntro];
-  Intros.
-
-monPred_at_wp_to_semax.
-  iStep as "a b c d".
-  unfold cptr_lock_inv at 2.
-  ltac2:(vstep_pre_forward ()).
-
-  
-  
-  forward.
-
+Ltac2 vstep_forward () :=
+  Control.plus (fun () => ltac1:(forward))
+               (fun _ => vstep_forward_abd_pre (); ltac1:(forward)).
 
  (* from get_function_witness_type *)
  Ltac pose_witness_type (*ts*) Σ A witness :=
@@ -713,7 +658,7 @@ Ltac2 vstep_call () :=
   in try_specs specs.
 
 
-Ltac2 vstep_entail () := ltac1:(solve [entailer!!]).
+Ltac2 vstep_entail () := ltac1:(entailer!!).
 
 Ltac2 is_entail () :=
   match! goal with
@@ -728,22 +673,20 @@ Ltac2 is_call () :=
   | [ |- _] => false
   end.
 
-Ltac2 vstep_forward () :=
-  ltac1:(forward).
-
-
 Ltac2 vstep () :=
   if is_entail () then vstep_entail ()
   else if is_call () then vstep_call ()
   else vstep_forward ()
 .
 
+Set Default Proof Mode "Ltac2".
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
-  start_function.
+  ltac1:(start_function).
+  vstep ().
+  destruct left; repeat (vstep ()).
 
-  ltac2:(repeat (vstep ())).
-  destruct left; ltac2:(repeat (vstep ())).
+
 Qed.
 
 Lemma body_read : semax_body Vprog Gprog f_read read_spec.
