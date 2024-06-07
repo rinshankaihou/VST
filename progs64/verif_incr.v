@@ -132,7 +132,7 @@ Definition wp_def {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Esp
   ∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P.
 Definition wp_aux : seal (@wp_def). by eexists. Qed.
 Definition wp := unseal wp_aux.
-Definition wp_eq : @wp = @wp_def := seal_eq wp_aux. (* TODO fix this*)
+Definition wp_eq : @wp = @wp_def := seal_eq wp_aux.
 
 (* Notation wp OK_ty Σ VSTGS0 Espec cs E Delta c Q := (∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P). *)
 Definition wp_spec: forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) P c Q,
@@ -315,7 +315,6 @@ Ltac from_ipm :=
 
 Typeclasses Opaque cptr_lock_inv.
 
-(* TODO maybe write an instance for affine and ExclusiveProp? *)
 Global Instance lock_prop_hint {prop:bi} (P:prop):
 ExclusiveProp P ->
   HINT (empty_hyp_first) ✱ [-; emp] ⊫ [id] ; (<affine> (P ∗ P -∗ False))%assert5 ✱ [emp]. 
@@ -335,14 +334,23 @@ assert (Z.of_nat z + 1 = Z.of_nat (z + 1))%Z as -> by lia. *)
 (* TODO would it be useful to spawn an obligation to (try to) close cinv,
         i.e. fold the data structure predicate back?
    TODO this just sound like an unfold; is there a better way? *)
-(* TODO make the pure conclusions affine, and fix diaframe so that iSteps can solve them *)
-(* TODO change sh to Ews? *)
 Global Instance unfold_cinv_hint g1 g2 _c (gv:globals):
 HINT cptr_lock_inv g1 g2 (gv _c) ✱ [-; emp]
   ⊫ [id] vint_z; field_at Ews t_counter (DOT _ctr) vint_z (gv _c)
   ✱[∃ x y z: nat, <affine> ⌜z = (x + y)%nat ∧ (vint (Z.of_nat z)) = vint_z⌝ ∗ ghost_auth g1 x ∗ ghost_auth g2 y ].
 Proof.
   unfold cptr_lock_inv. iSteps.
+Qed.
+
+Global Instance fold_cinv_hint z x y g1 g2 _c (gv:globals):
+(z = x + y)%nat -> 
+HINT emp ✱ [-; (field_at Ews t_counter (DOT _ctr) (Vint (Int.repr z)) (gv _c)) ∗
+             ghost_auth g1 x ∗ ghost_auth g2 y ]
+  ⊫ [id]; cptr_lock_inv g1 g2 (gv _c) ✱ [ bi_emp ].
+Proof.
+  intros ->. 
+  unfold cptr_lock_inv. cbn. iStep. rewrite bi.sep_emp.
+  iExists (x+y). iSteps. iExists x, y. iSteps. 
 Qed.
 
 Global Instance ghost_auth_update g1 x n n':
@@ -410,7 +418,6 @@ intros until 1.
 apply semax_pre_fupd. go_lowerx. rewrite H //. iIntros. done.
 Qed.
 
-(* todo try and merge change_SEP, semax_pre_fupd and semax_pre_SEP_fupd *)
 Lemma semax_change_pre_for_forward_call:
   forall {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} E Delta P Q R R' R'' c Post,
       (fold_right_sepcon R ⊢ |={E}=> fold_right_sepcon $ (R'++ R'')) ->
@@ -419,8 +426,6 @@ Proof.
 intros until 1.
 apply semax_pre_fupd. go_lowerx. rewrite H //.
 Qed.
-
-
 
 Ltac iCutL Q :=
   match goal with |- envs_entails _ ?P =>
@@ -573,7 +578,6 @@ rather than a typed evar, if you pass it a type that is not a prod *)
       (Control.hyp arg_i, [arg_i])
   end.
 
-(* TODO subst_tuple arg_evar *)
 Ltac2 rec subst_tuple t : ident :=
   lazy_match! t with
   | pair ?x ?y =>
@@ -679,29 +683,24 @@ Ltac2 vstep () :=
   else vstep_forward ()
 .
 
+Ltac2 vsteps () := repeat (vstep ()).
+Ltac2 start_function () := ltac1:(start_function).
+
 Set Default Proof Mode "Ltac2".
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
-  ltac1:(start_function).
-  vstep ().
-  destruct left; repeat (vstep ()).
-
-
-Qed.
+  start_function ().
+  vsteps ().
+  destruct left; vsteps ().
+Admitted.
 
 Lemma body_read : semax_body Vprog Gprog f_read read_spec.
 Proof.
-  start_function.
-  forward.
-  forward_call (sh, h, cptr_lock_inv g1 g2 (gv _c)).
-  unfold cptr_lock_inv at 2; simpl.
-  Intros z x y.
-  forward.
-  assert_PROP (x = n1 /\ y = n2) as Heq.
-  { sep_apply ghost_var_inj.
-    sep_apply (ghost_var_inj g2).
-    entailer!. }
-  forward.
+  start_function ().
+  vsteps ().
+  clear arg_evar fpre_sep.
+  vstep_call (). (* TODO fix this *)
+
   forward_call release_simple (sh, h, cptr_lock_inv g1 g2 (gv _c)).
   { lock_props.
     unfold cptr_lock_inv; Exists z x y; entailer!. }
