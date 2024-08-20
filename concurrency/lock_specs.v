@@ -67,7 +67,7 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
     PRE [ tptr t_lock ]
      PROP ()
      PARAMS (ptr_of h)
-     SEP (<affine> (R ∗ R -∗ False); lock_inv 1 h R; R)
+     SEP (lock_inv 1 h R; <affine> (R ∗ R -∗ False); R)
    POST[ tvoid ]
      PROP ()
      LOCAL ()
@@ -93,7 +93,7 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
     repeat (iSplit; first done).
     rewrite /SEPx /= /LOCALx /argsassert2assert /=; monPred.unseal.
     repeat (iSplit; first done).
-    iDestruct "H" as "(? & HR & $ & $ & _)".
+    iDestruct "H" as "(? & $ & HR & $ & _)".
     repeat (iSplit; last done).
     iApply (bi.affinely_mono with "HR").
     iIntros "HR (? & ? & ?)"; iApply ("HR" with "[$]").
@@ -149,7 +149,7 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
     PRE [ tptr t_lock ]
        PROP ()
        PARAMS (ptr_of h)
-       SEP (<affine> (R ∗ R -∗ False); lock_inv sh h R; R)
+       SEP (lock_inv sh h R; <affine> (R ∗ R -∗ False); R)
     POST [ tvoid ]
        PROP ()
        LOCAL ()
