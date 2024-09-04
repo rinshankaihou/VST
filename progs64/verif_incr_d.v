@@ -13,6 +13,25 @@ Import LiftNotation.
 
 Unset Universe Polymorphism.
 
+Set Nested Proofs Allowed.
+
+
+Global Instance func_ptr_affine `{!VSTGS unit Σ} phi v : Affine $ func_ptr phi v.
+Proof. by rewrite /Affine func_ptr_emp. Qed.
+
+Lemma semax_extract_affine_sep `{!VSTGS unit Σ} {espec} {cs}:
+  forall E Delta P Q R RR c Post,
+        Affine RR ->
+        @semax _ _ _ espec cs E Delta (PROPx P $ LOCALx Q $ SEPx R) c Post ->
+        @semax _ _ _ espec cs E Delta (PROPx P $ LOCALx Q $ SEPx (RR::R)) c Post.
+Proof.
+  intros.
+  eapply semax_pre_simple, H0.
+  go_lowerx.
+  iIntros "(_ & $)".
+Qed.
+
+
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
@@ -301,13 +320,118 @@ Ltac2 Set vstep_specs as old_vstep_specs :=
            (old_vstep_specs ()).
   
   
-Set Default Proof Mode "Ltac2".
+(* Set Default Proof Mode "Ltac2". *)
 Lemma body_main:  semax_body Vprog Gprog f_compute2 compute2_spec.
 Proof.
-  vstep ().
-  vstep ().
-  vstep ().
+  start_function. forward.
 
+
+
+  Ltac2 print_syntax_kind (c:constr) :=
+  printf "The constr %t has kind: " c;
+  match Constr.Unsafe.kind c with
+  | Constr.Unsafe.Constant _ _ => printf "Constant"
+  | Constr.Unsafe.Var _ => printf "Var"
+  | Constr.Unsafe.App _ _ => printf "App"
+  | Constr.Unsafe.Lambda _ _ => printf "Lambda"
+  | Constr.Unsafe.Prod _ _ => printf "Prod"
+  | Constr.Unsafe.LetIn _ _ _ => printf "LetIn"
+  | Constr.Unsafe.Cast _ _ _ => printf "Cast"
+  | Constr.Unsafe.Evar _ _ => printf "Evar"
+  | Constr.Unsafe.Case _ _ _ _ _ => printf "Case"
+  | Constr.Unsafe.Fix _ _ _ _ => printf "Fix"
+  | Constr.Unsafe.CoFix _ _ _ => printf "CoFix"
+  | Constr.Unsafe.Proj _ _ _ => printf "Proj"
+  | Constr.Unsafe.Array _ _ _ _ => printf "Array"
+  | Constr.Unsafe.Float _  => printf "Float"
+  | Constr.Unsafe.Uint63 _ => printf "Uint63"
+  | Constr.Unsafe.Constructor _ _ => printf "Constructor"
+  | Constr.Unsafe.Ind _ _ => printf "Ind"
+  | Constr.Unsafe.Sort _ => printf "Sort"
+  | Constr.Unsafe.Meta _ => printf "Meta"
+  | Constr.Unsafe.Rel _ => printf "Rel"
+  end.
+
+
+  Ltac2 get_fpre_sep2 (sub:constr) :=
+    lazy_match! (Constr.type sub) with
+    |  funspec_sub _ ?sp_pre =>
+    (* print_syntax_kind sp_pre; *)
+    let sp := match (Constr.Unsafe.kind sp_pre) with
+              | Constr.Unsafe.Constant sp_def _ => let sp_ref :=  Std.ConstRef sp_def in eval unfold $sp_ref in $sp_pre
+              | _ => sp_pre
+              end in
+    lazy_match! sp with
+    | (mk_funspec _ _ _ _ ?fpre _) =>
+    (* apply semax_extract_affine_sep > [apply _|]; *)
+    match! fpre with λne _ : ?arg_type, _ =>
+    let arg_type := eval cbn in $arg_type in
+    let (arg_evar, evar_ids) := evar_tuple arg_type in
+    let arg_evar_name := Fresh.in_goal @arg_evar in
+    epose $arg_evar as $arg_evar_name;
+    let fpre := constr:($fpre $arg_evar) in
+    let fpre := eval cbn in $fpre in
+    let fpre_sep_name := Fresh.in_goal @fpre_sep in
+    lazy_match! fpre with | context [SEPx ?fpre_sep] =>
+      pose $fpre_sep as $fpre_sep_name
+    end;
+    Std.subst evar_ids;
+    clear sub;
+    (fpre_sep_name, arg_evar_name)
+    end end end
+  .
+
+
+  Ltac2 vstep_call2 () :=
+ltac1:(vstep_call_preprocess);
+let specs := match! goal with 
+              | [ |- context [Scall _ (Evar ?ff _)  _]] => get_specs_for ff end
+in
+let rec try_specs sps :=
+  match sps with
+  | sp :: sps' => Control.plus (fun () => printf "In vstep_call: try applying spec %t" sp; 
+                                          (* ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp); *)
+                                            let (fpre_sep_name, arg_evar_name) := get_fpre_sep2 sp in
+                                            printf "2";
+                                            ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
+                                            (* have to pass body of arg_evar_name, otherwise forward_call sometimes fails to unfold it *)
+                                            let arg_evar_body:constr := get_body_of_localdef arg_evar_name in
+                                            ltac1:(spec args |- forward_call spec args) (Ltac1.of_constr sp) (Ltac1.of_constr arg_evar_body);
+                                            clear fpre_sep_name, arg_evar_name; ())
+                                (fun _ => printf "In vstep_call: applying %t failed" sp; try_specs sps') 
+  | _ => () (* TODO explicitly fail here when all possible specs are tried? *)
+  end 
+in try_specs specs.
+
+
+ltac2:(vstep ()).
+
+Intros lock. (* FIXME this takes 3 seconds *)
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
+(* ltac2:(get_fpre_sep2 constr:(release_simple2)). *)
+
+eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep0);
+[
+cbn;
+iSteps;
+(* into_fold_right_sepcons_Γs;
+repeat (Combine (fold_right_sepcon _) (fold_right_sepcon _));
+iStopProof; rewrite -fupd_intro;
+match goal with
+    | |- emp ⊢ fold_right_sepcon _ => rewrite emp_fold_right_sepcon_nil
+    | _ => idtac
+end;    
+f_equal *)
+idtac
+| simpl app].
+  ltac2:(vstep_call2 ()).
+
+
+  vstep ().
+  vstep ().
+  vstep ().
   ltac1:(Intros lock).
   vstep ().
   vstep ().
