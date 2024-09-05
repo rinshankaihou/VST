@@ -389,30 +389,6 @@ Ltac2 rec subst_tuple t : ident :=
           | [ x := _ |- _] => x end
   end.
 
-  (* assume goal is call_setup1 ... -> semax *)
-Ltac2 get_fpre_sep ():=
-  let setup := Fresh.in_goal @SETUP in
-  intro setup;
-  destruct setup as [_  [sub _]];
-  lazy_match! (Constr.type &sub) with 
-  | funspec_sub _ (mk_funspec _ _ _ _ ?fpre _) =>
-  match! fpre with λne _ : ?arg_type, _ =>
-  let arg_type := eval cbn in $arg_type in
-  let (arg_evar, evar_ids) := evar_tuple arg_type in
-  let arg_evar_name := Fresh.in_goal @arg_evar in
-  epose $arg_evar as $arg_evar_name;
-  let fpre := constr:($fpre $arg_evar) in
-  let fpre := eval cbn in $fpre in
-  let fpre_sep_name := Fresh.in_goal @fpre_sep in
-  lazy_match! fpre with | context [SEPx ?fpre_sep] =>
-    pose $fpre_sep as $fpre_sep_name
-  end;
-  Std.subst evar_ids;
-  clear sub;
-  (fpre_sep_name, arg_evar_name)
-  end end
-.
-
 (* name of function (an AST.ident), a list of spec subsume relations to try  *)
 Ltac2 Type vstep_specs_type := (constr * constr) list.
 Ltac2 mutable vstep_specs : unit -> vstep_specs_type  := fun _ => [].
@@ -455,27 +431,95 @@ Ltac2 get_body_of_localdef (name:ident) : constr :=
           constr:(tt) (* dead code; to make typechecker happy *))
   end.
 
+Ltac2 print_syntax_kind (c:constr) :=
+  printf "The constr %t has kind: " c;
+  match Constr.Unsafe.kind c with
+  | Constr.Unsafe.Constant _ _ => printf "Constant"
+  | Constr.Unsafe.Var _ => printf "Var"
+  | Constr.Unsafe.App _ _ => printf "App"
+  | Constr.Unsafe.Lambda _ _ => printf "Lambda"
+  | Constr.Unsafe.Prod _ _ => printf "Prod"
+  | Constr.Unsafe.LetIn _ _ _ => printf "LetIn"
+  | Constr.Unsafe.Cast _ _ _ => printf "Cast"
+  | Constr.Unsafe.Evar _ _ => printf "Evar"
+  | Constr.Unsafe.Case _ _ _ _ _ => printf "Case"
+  | Constr.Unsafe.Fix _ _ _ _ => printf "Fix"
+  | Constr.Unsafe.CoFix _ _ _ => printf "CoFix"
+  | Constr.Unsafe.Proj _ _ _ => printf "Proj"
+  | Constr.Unsafe.Array _ _ _ _ => printf "Array"
+  | Constr.Unsafe.Float _  => printf "Float"
+  | Constr.Unsafe.Uint63 _ => printf "Uint63"
+  | Constr.Unsafe.Constructor _ _ => printf "Constructor"
+  | Constr.Unsafe.Ind _ _ => printf "Ind"
+  | Constr.Unsafe.Sort _ => printf "Sort"
+  | Constr.Unsafe.Meta _ => printf "Meta"
+  | Constr.Unsafe.Rel _ => printf "Rel"
+  end.
+
+
+
+  Ltac2 mutable get_fpre_sep (sub:constr) (fun_ident:constr) :=
+    let delta := match! goal with
+                | [|-semax _ ?delta _ _ _] => delta end in
+    let sp_name := lazy_match! sub with
+      | funspec_sub_refl_dep =>  
+        let maybe_sp_name := eval hnf in (PTree.get $fun_ident (glob_specs $delta)) in
+        lazy_match! maybe_sp_name with
+        | Some ?sp_name => sp_name
+        | _ => Control.throw (Invalid_argument (Some (Message.of_string 
+                "The function does not have a default spec!"))) end
+      | _ => lazy_match! (Constr.type sub) with | funspec_sub _ ?sp_name => sp_name end end
+    in
+    let sp_name := eval hnf in $sp_name in
+    (* print_syntax_kind sp_name; *)
+    let sp := match (Constr.Unsafe.kind sp_name) with
+              | Constr.Unsafe.Constant sp_def _ => let sp_ref :=  Std.ConstRef sp_def in eval unfold $sp_ref in $sp_name
+              | _ => sp_name
+              end in
+    lazy_match! sp with
+    | (mk_funspec _ _ _ _ ?fpre _) =>
+    (* apply semax_extract_affine_sep > [apply _|]; *)
+    match! fpre with λne _ : ?arg_type, _ =>
+    let arg_type := eval cbn in $arg_type in
+    let (arg_evar, evar_ids) := evar_tuple arg_type in
+    let arg_evar_name := Fresh.in_goal @arg_evar in
+    epose $arg_evar as $arg_evar_name;
+    let fpre := constr:($fpre $arg_evar) in
+    let fpre := eval cbn in $fpre in
+    let fpre_sep_name := Fresh.in_goal @fpre_sep in
+    lazy_match! fpre with | context [SEPx ?fpre_sep] =>
+      pose $fpre_sep as $fpre_sep_name
+    end;
+    Std.subst evar_ids;
+    clear sub;
+    (fpre_sep_name, arg_evar_name)
+    end end 
+  .
+
+
+
 Ltac2 vstep_call () :=
 ltac1:(vstep_call_preprocess);
-let specs := match! goal with 
-              | [ |- context [Scall _ (Evar ?ff _)  _]] => get_specs_for ff end
-in
-let rec try_specs sps :=
+let fun_ident := match! goal with 
+              | [ |- context [Scall _ (Evar ?fun_ident _)  _]] => fun_ident end in
+let specs := get_specs_for fun_ident in
+let rec try_specs sps fun_ident : unit :=
   match sps with
   | sp :: sps' => Control.plus (fun () => printf "In vstep_call: try applying spec %t" sp; 
-                                          ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp);
-                                            let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in
+                                          (* ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp); *)
+                                            let (fpre_sep_name, arg_evar_name) := get_fpre_sep sp fun_ident in
+                                            printf "2";
                                             ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
                                             (* have to pass body of arg_evar_name, otherwise forward_call sometimes fails to unfold it *)
                                             let arg_evar_body:constr := get_body_of_localdef arg_evar_name in
-                                            ltac1:(spec args |- forward_call spec args) (Ltac1.of_constr sp) (Ltac1.of_constr arg_evar_body))
-                                (fun _ => printf "In vstep_call: applying %t failed" sp; try_specs sps') 
+                                            ltac1:(spec args |- forward_call spec args) (Ltac1.of_constr sp) (Ltac1.of_constr arg_evar_body);
+                                            clear fpre_sep_name arg_evar_name)
+                                (fun _ => printf "In vstep_call: applying %t failed" sp; try_specs sps' fun_ident) 
   | _ => () (* TODO explicitly fail here when all possible specs are tried? *)
   end 
-in try_specs specs.
+in try_specs specs fun_ident.
 
 (** tactics for cleanup after anything that runs iStep *)
-
 Local Ltac2 Notation "red_flags" s(strategy) := s.
 Ltac2 cbv_flags : Std.red_flags := (red_flags beta match fix cofix zeta delta).
 (* TODO in newer versions of Coq, change to Ltac2.Ltac1.of_int/to_int *)

@@ -142,7 +142,7 @@ Proof.
   iDestruct (own_valid_2 with "a f") as %H%@excl_auth_agree; done.
 Qed.
 
-Lemma ghost_var_incr : forall g1 g2 x y n (left : bool), ghost_auth g1 x ∗ ghost_auth g2 y ∗ ghost_frag (if left then g1 else g2) n ⊢
+(* Lemma ghost_var_incr : forall g1 g2 x y n (left : bool), ghost_auth g1 x ∗ ghost_auth g2 y ∗ ghost_frag (if left then g1 else g2) n ⊢
   |==> ⌜(if left then x else y) = n⌝ ∧ ghost_auth (if left then g1 else g2) (n+1)%nat ∗ ghost_frag (if left then g1 else g2) (n+1)%nat ∗
        ghost_auth (if left then g2 else g1) (if left then y else x).
 Proof.
@@ -155,7 +155,7 @@ Proof.
     iDestruct (ghost_var_inj with "[$a $f]") as %->.
     iMod (own_update_2 with "a f") as "($ & $)"; last done.
     apply @excl_auth_update.
-Qed.
+Qed. *)
 
 
 Global Instance unfold_cinv_hint g1 g2 _c (gv:globals):
@@ -225,19 +225,23 @@ destruct left.
   iFrame. iSteps.
 Qed.
 
-
 Ltac2 Set vstep_specs as old_vstep_specs :=
-  fun _ => (constr:(_release), constr:(release_simple))::
+  fun _ => 
+           (constr:(_makelock), constr:(funspec_sub_refl_dep))::
+           (constr:(_freelock), constr:(funspec_sub_refl_dep))::
+           (constr:(_release), constr:(release_self))::
+           (constr:(_release), constr:(release_simple2))::
            (constr:(_acquire), constr:(funspec_sub_refl_dep))::
+           (constr:(_spawn), constr:(funspec_sub_refl_dep))::
            (old_vstep_specs ()).
 
-Set Default Proof Mode "Ltac2".
 
+Set Default Proof Mode "Ltac2".
 Lemma body_incr: semax_body Vprog Gprog f_incr incr_spec.
 Proof.
   vstep ().
   vstep ().
-  vstep (). 
+  vstep ().
   vstep (). (** unfolds cptr_lock_inv, get _c._lock↦_ *)
   vstep ().
   vstep ().
@@ -254,24 +258,6 @@ Qed.
 
 Ltac2 Set vstep_specs as old_vstep_specs :=
   fun _ => (constr:(_incr), constr:(funspec_sub_refl_dep))::
-           (constr:(_release), constr:(release_self))::
-           (old_vstep_specs ()).
-
-
-(* Lemma body_thread_func : semax_body Vprog Gprog f_thread_func thread_func_spec.
-Proof.
-  vsteps ().
-Qed. *)
-
-(** Claim: biabduction in VST, more automation while not modifying floyd or diaframe 
-           modularize/reorgan proof, pull proofs out of body_xxx, explicit about interactions with invariants
-           only add simple automation (namely diaframe), does not make difficulty go away *)
-
-Ltac2 Set vstep_specs as old_vstep_specs :=
-  fun _ => 
-           (constr:(_makelock), constr:(funspec_sub_refl_dep))::
-           (constr:(_freelock), constr:(funspec_sub_refl_dep))::
-           (constr:(_spawn), constr:(release_self))::
            (old_vstep_specs ()).
 
 
@@ -290,169 +276,27 @@ Proof.
   ltac1:(iMod (own_alloc (●E n ⋅ ◯E n : excl_authR natO)); [apply excl_auth_valid|iSteps]).
 Qed.
 
-  Context {LI : lock_impl}.
-
-  Notation InvType := Mpred.
 Set Default Proof Mode "Classic".
-Program Definition release_spec_simple2 :=
-    TYPE (ProdType (ConstType _) InvType)
-    WITH sh : _, h : _, R : _
-    PRE [ tptr t_lock ]
-       PROP (ExclusiveProp R)
-       PARAMS (ptr_of h)
-       SEP (lock_inv sh h R; R)
-    POST [ tvoid ]
-       PROP ()
-       LOCAL ()
-       SEP (lock_inv sh h R).
-  Next Obligation.
-  Admitted.
-  Next Obligation.
-  Admitted.
-
-  Lemma release_simple2 : funspec_sub lock_specs.release_spec release_spec_simple2.
-  Proof.
-    Admitted.
-
-Ltac2 Set vstep_specs as old_vstep_specs :=
-  fun _ => 
-           (constr:(_release), constr:(release_simple2))::
-           (old_vstep_specs ()).
-  
-  
 (* Set Default Proof Mode "Ltac2". *)
 Lemma body_main:  semax_body Vprog Gprog f_compute2 compute2_spec.
 Proof.
-  start_function. forward.
-
-
-
-  Ltac2 print_syntax_kind (c:constr) :=
-  printf "The constr %t has kind: " c;
-  match Constr.Unsafe.kind c with
-  | Constr.Unsafe.Constant _ _ => printf "Constant"
-  | Constr.Unsafe.Var _ => printf "Var"
-  | Constr.Unsafe.App _ _ => printf "App"
-  | Constr.Unsafe.Lambda _ _ => printf "Lambda"
-  | Constr.Unsafe.Prod _ _ => printf "Prod"
-  | Constr.Unsafe.LetIn _ _ _ => printf "LetIn"
-  | Constr.Unsafe.Cast _ _ _ => printf "Cast"
-  | Constr.Unsafe.Evar _ _ => printf "Evar"
-  | Constr.Unsafe.Case _ _ _ _ _ => printf "Case"
-  | Constr.Unsafe.Fix _ _ _ _ => printf "Fix"
-  | Constr.Unsafe.CoFix _ _ _ => printf "CoFix"
-  | Constr.Unsafe.Proj _ _ _ => printf "Proj"
-  | Constr.Unsafe.Array _ _ _ _ => printf "Array"
-  | Constr.Unsafe.Float _  => printf "Float"
-  | Constr.Unsafe.Uint63 _ => printf "Uint63"
-  | Constr.Unsafe.Constructor _ _ => printf "Constructor"
-  | Constr.Unsafe.Ind _ _ => printf "Ind"
-  | Constr.Unsafe.Sort _ => printf "Sort"
-  | Constr.Unsafe.Meta _ => printf "Meta"
-  | Constr.Unsafe.Rel _ => printf "Rel"
-  end.
-
-
-  Ltac2 get_fpre_sep2 (sub:constr) :=
-    lazy_match! (Constr.type sub) with
-    |  funspec_sub _ ?sp_pre =>
-    (* print_syntax_kind sp_pre; *)
-    let sp := match (Constr.Unsafe.kind sp_pre) with
-              | Constr.Unsafe.Constant sp_def _ => let sp_ref :=  Std.ConstRef sp_def in eval unfold $sp_ref in $sp_pre
-              | _ => sp_pre
-              end in
-    lazy_match! sp with
-    | (mk_funspec _ _ _ _ ?fpre _) =>
-    (* apply semax_extract_affine_sep > [apply _|]; *)
-    match! fpre with λne _ : ?arg_type, _ =>
-    let arg_type := eval cbn in $arg_type in
-    let (arg_evar, evar_ids) := evar_tuple arg_type in
-    let arg_evar_name := Fresh.in_goal @arg_evar in
-    epose $arg_evar as $arg_evar_name;
-    let fpre := constr:($fpre $arg_evar) in
-    let fpre := eval cbn in $fpre in
-    let fpre_sep_name := Fresh.in_goal @fpre_sep in
-    lazy_match! fpre with | context [SEPx ?fpre_sep] =>
-      pose $fpre_sep as $fpre_sep_name
-    end;
-    Std.subst evar_ids;
-    clear sub;
-    (fpre_sep_name, arg_evar_name)
-    end end end
-  .
-
-
-  Ltac2 vstep_call2 () :=
-ltac1:(vstep_call_preprocess);
-let specs := match! goal with 
-              | [ |- context [Scall _ (Evar ?ff _)  _]] => get_specs_for ff end
-in
-let rec try_specs sps :=
-  match sps with
-  | sp :: sps' => Control.plus (fun () => printf "In vstep_call: try applying spec %t" sp; 
-                                          (* ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp); *)
-                                            let (fpre_sep_name, arg_evar_name) := get_fpre_sep2 sp in
-                                            printf "2";
-                                            ltac1:(fpre_sep |- change_pre_sep_with fpre_sep) (Ltac1.of_constr (Control.hyp fpre_sep_name));
-                                            (* have to pass body of arg_evar_name, otherwise forward_call sometimes fails to unfold it *)
-                                            let arg_evar_body:constr := get_body_of_localdef arg_evar_name in
-                                            ltac1:(spec args |- forward_call spec args) (Ltac1.of_constr sp) (Ltac1.of_constr arg_evar_body);
-                                            clear fpre_sep_name, arg_evar_name; ())
-                                (fun _ => printf "In vstep_call: applying %t failed" sp; try_specs sps') 
-  | _ => () (* TODO explicitly fail here when all possible specs are tried? *)
-  end 
-in try_specs specs.
-
-
-ltac2:(vstep ()).
-
-Intros lock. (* FIXME this takes 3 seconds *)
   ltac2:(vstep ()).
   ltac2:(vstep ()).
   ltac2:(vstep ()).
-(* ltac2:(get_fpre_sep2 constr:(release_simple2)). *)
-
-eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep0);
-[
-cbn;
-iSteps;
-(* into_fold_right_sepcons_Γs;
-repeat (Combine (fold_right_sepcon _) (fold_right_sepcon _));
-iStopProof; rewrite -fupd_intro;
-match goal with
-    | |- emp ⊢ fold_right_sepcon _ => rewrite emp_fold_right_sepcon_nil
-    | _ => idtac
-end;    
-f_equal *)
-idtac
-| simpl app].
-  ltac2:(vstep_call2 ()).
-
-
-  vstep ().
-  vstep ().
-  vstep ().
-  ltac1:(Intros lock).
-  vstep ().
-  vstep ().
-
-
-  (* FIXME don't have to actually prove call setup, just get the sep part? *)
-  let sp := constr:(release_simple2) in
-  ltac1:(f_spec |- prove_call_setup1 f_spec) (Ltac1.of_constr sp).
-  let (fpre_sep_name, arg_evar_name) := get_fpre_sep () in ().
-  
-  vstep ().
-
-  rename a into gv.
+  Intros lock. (* FIXME this takes 3 seconds *)
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
   set (ctr := gv _c).
-  forward.
   ghost_alloc (fun g => own g (●E O ⋅ ◯E O : excl_authR natO)).
   { apply excl_auth_valid. }
   Intro g1.
   ghost_alloc (fun g => own g (●E O ⋅ ◯E O : excl_authR natO)).
   { apply excl_auth_valid. }
   Intro g2.
+   Existentails.
+  instantiate (1:= fun _ => cptr_lock_inv g1 g2 (gv _c)).
+
   sep_apply (library.create_mem_mgr gv).
   forward_call (gv, fun _ : lock_handle => cptr_lock_inv g1 g2 ctr).
   Intros lock.
