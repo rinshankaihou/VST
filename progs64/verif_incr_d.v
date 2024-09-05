@@ -263,7 +263,7 @@ Ltac2 Set vstep_specs as old_vstep_specs :=
 
 Global Instance ghost_split_hint g (n:nat):
   HINT own g (●E n ⋅ ◯E n : excl_authR natO) ✱ [-; emp] ⊫ 
-    [id]; own g (●E n : excl_authR natO) ✱ [own g (◯E n : excl_authR natO)].
+    [id]; ghost_auth g n ✱ [ghost_frag g n].
 Proof.
   ltac1:(rewrite own_op; iSteps).
 Qed.
@@ -282,11 +282,8 @@ Lemma body_main:  semax_body Vprog Gprog f_compute2 compute2_spec.
 Proof.
   ltac2:(vstep ()).
   ltac2:(vstep ()).
-  ltac2:(vstep ()).
-  Intros lock. (* FIXME this takes 3 seconds *)
-  ltac2:(vstep ()).
-  ltac2:(vstep ()).
-  ltac2:(vstep ()).
+
+  (* create resources for cptr_lock_inv *)
   set (ctr := gv _c).
   ghost_alloc (fun g => own g (●E O ⋅ ◯E O : excl_authR natO)).
   { apply excl_auth_valid. }
@@ -294,19 +291,37 @@ Proof.
   ghost_alloc (fun g => own g (●E O ⋅ ◯E O : excl_authR natO)).
   { apply excl_auth_valid. }
   Intro g2.
-   Existentails.
-  instantiate (1:= fun _ => cptr_lock_inv g1 g2 (gv _c)).
+
 
   sep_apply (library.create_mem_mgr gv).
   forward_call (gv, fun _ : lock_handle => cptr_lock_inv g1 g2 ctr).
   Intros lock.
-  forward.
-  forward.
-  forward_call release_simple (1%Qp, lock, cptr_lock_inv g1 g2 ctr).
-  { lock_props.
-    rewrite !own_op /cptr_lock_inv /ghost_auth.
-    Exists O O O.
-    unfold_data_at (data_at _ _ _ _); entailer!. }
+  
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
+
+
+  forward_call release_simple2 (1%Qp, lock, cptr_lock_inv g1 g2 ctr).
+  { unfold_data_at (data_at _ _ _ _).
+    repeat iStep.
+    
+  Global Instance fold_cinv_hint2 z x y g1 g2 _c (gv:globals):
+HINT ε₀ ✱ [-; (field_at Ews t_counter (DOT _ctr) (Vint (Int.repr z)) (gv _c)) ∗
+             ghost_auth g1 x ∗ ghost_auth g2 y ∗ <affine> ⌜(z=x+y)%nat⌝]
+  ⊫ [id]; cptr_lock_inv g1 g2 (gv _c) ✱ [ bi_emp ].
+Proof.
+  unfold cptr_lock_inv. cbn. iStep. rewrite bi.sep_emp.
+  iExists (x+y). iSteps. iExists x, y. iSteps.
+Qed.
+iSteps.
+
+into_fold_right_sepcons_Γs;
+repeat (Combine (fold_right_sepcon _) (fold_right_sepcon _)).
+iStopProof. unfold Frame. f_equal.
+  }
+
+
+
   (* need to split off shares for the locks here *)
   destruct split_Ews as (sh1 & sh2 & ? & ? & Hsh).
   forward_call (gv, fun lockt => thread_lock_inv sh2 (1/2)%Qp lock g1 g2 ctr lockt).
