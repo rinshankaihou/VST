@@ -10,6 +10,16 @@ Require Import iris.algebra.numbers.
 Require Import VST.zlist.sublist.
 Require Import VST.progs64.incrN.
 
+From diaframe Require Import defs.
+From diaframe Require Import proofmode_base tactics.
+From VST.vstep Require Import vstep vst_hints.
+
+Import LiftNotation.
+
+Unset Universe Polymorphism.
+
+Set Nested Proofs Allowed.
+
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
@@ -136,8 +146,22 @@ Proof.
   apply bi.equiv_entails_2; cancel.
 Qed.
 
+Ltac2 Set vstep_specs as old_vstep_specs :=
+  fun _ => 
+           (constr:(_makelock), constr:(makelock_strong))::
+           (constr:(_freelock), constr:(funspec_sub_refl_dep))::
+           (constr:(_release), constr:(release_self))::
+           (* (constr:(_release), constr:(release_simple2)):: *)
+           (constr:(_acquire), constr:(funspec_sub_refl_dep))::
+           (constr:(_spawn), constr:(funspec_sub_refl_dep))::
+           (old_vstep_specs ()).
+
+
 Lemma body_init_ctr: semax_body Vprog Gprog f_init_ctr init_ctr_spec.
 Proof.
+  ltac2:(vsteps ()).
+  
+  
   start_function.
   forward.
   ghost_alloc (ghost_both 1 O O).

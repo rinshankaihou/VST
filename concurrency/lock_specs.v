@@ -20,7 +20,7 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
 
   (* R should be able to take the lock_handle as an argument, with subspecs for plain and selflock *)
   Program Definition makelock_spec :=
-    TYPE (ProdType (ConstType globals) (DiscreteFunType lock_handle InvType)) WITH gv: _, R : _
+    TYPE (ProdType (ConstType globals) (DiscreteFunType lock_handle InvType)) WITH gv: _, R : lock_handle -> mpred
     PRE [ ]
        PROP ()
        PARAMS () GLOBALS (gv)
@@ -38,6 +38,43 @@ Class lock_impl := { t_lock : type; lock_handle : Type; ptr_of : lock_handle -> 
     intros ? (?, ?) (?, ?) ([=] & HR) ?; simpl in *; subst.
     by repeat f_equiv.
   Qed.
+  
+  Program Definition makelock_strong_spec :=
+    TYPE (ProdType (ConstType globals) (DiscreteFunType lock_handle InvType)) WITH gv: _, R : lock_handle -> mpred
+    PRE [ ]
+       PROP ()
+       PARAMS () GLOBALS (gv)
+       SEP (mem_mgr gv)
+    POST [ tptr t_lock ] ∃ h,
+       PROP ()
+       RETURN (ptr_of h)
+       SEP (mem_mgr gv; ∀ R, lock_inv 1 h (R h)).
+  Next Obligation.
+  Proof.
+    intros ? (?, ?) (?, ?) ([=] & HR) ?; simpl in *; subst; done.
+  Qed.
+  Next Obligation.
+  Proof.
+    intros ? (?, ?) (?, ?) ([=] & HR) ?; simpl in *; subst.
+    by repeat f_equiv.
+  Qed.
+
+  Lemma makelock_strong : funspec_sub makelock_spec makelock_strong_spec.
+  Proof.
+    unfold funspec_sub; simpl.
+    split; first done; intros (h, R) ?; Intros.
+    iIntros "(? & ? & H) !>"; iExists (h, R), emp.
+    iSplit; first done.
+    (* iSplit; last by iPureIntro; entailer!.
+    repeat (iSplit; first done).
+    rewrite /SEPx /= /LOCALx /argsassert2assert /=; monPred.unseal.
+    repeat (iSplit; first done).
+    iDestruct "H" as "(? & $ & HR & $ & _)".
+    repeat (iSplit; last done).
+    iApply (bi.affinely_mono with "HR").
+    iIntros "HR (? & ? & ?)"; iApply ("HR" with "[$]").
+  Qed. *)
+Admitted.
 
   Program Definition freelock_spec :=
     TYPE (ProdType (ProdType (ConstType _) InvType) Mpred)
