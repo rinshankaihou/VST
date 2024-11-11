@@ -7,13 +7,48 @@ From diaframe Require Export spec_notation.
 From diaframe Require Import proofmode_base.
 From diaframe.lib Require Import iris_hints.
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
-From Ltac2 Require Import Int Option Ltac1 Ltac2 Printf.
+From Ltac2 Require Import Int Option Ltac1 Ltac2 Printf List.
 From VST.vstep Require Import lock_spec_automation.
 
 Import LiftNotation.
 
 Set Default Proof Mode "Classic".
 
+
+
+
+(* iStep with VST tactics, in an ad-hoc way *)
+Ltac2 fire_tac (is_pat : unit -> constr) (tac: Ltac1.t -> unit) :=
+  match is_pat () with
+  | t =>
+    tac (Ltac1.of_constr t);
+    ltac1:(iStopProof; iSteps)
+  end.
+
+Ltac unfold_data_at_tac :=
+  unfold_data_at (data_at _ _ _ _).
+
+Ltac2 is_split_data_at () : constr  :=
+  match! goal with
+  | [ |- environments.envs_entails ?hyps ?g ] =>
+    match! hyps with 
+      | context [data_at ?sh ?ty ?v ?l1] =>
+        match! g with
+        | context [field_at _ _ _ _ ?l2 ] =>
+          Std.unify l1 l2;
+          constr:($l1)
+        end
+    end
+  end.
+
+(* ad-hoc step *)
+Ltac2 aSteps () : unit :=
+  ltac1:(iSteps);
+  (* if iStep gets stuck, help it progress with adhoc_biadb *) 
+  Notations.repeat (fire_tac is_split_data_at
+                   ltac1:(l |- unfold_data_at (data_at _ _ _ l));
+          ltac1:((* to split any introduced bi_sep *) iStopProof; iSteps)).
+                        
 Definition wp_def {OK_ty : Type} {Σ : gFunctors} {VSTGS0 : VSTGS OK_ty Σ} {Espec} {cs:compspecs} (E:coPset) (Delta: tycontext) (c: statement) (Q: ret_assert): assert :=
   ∃ P: assert, ⌜@semax OK_ty Σ VSTGS0 Espec cs E Delta P c Q⌝ ∧ P.
 Definition wp_aux : seal (@wp_def). by eexists. Qed.
@@ -306,7 +341,7 @@ Ltac2 vstep_forward_abd_pre () :=
   if is_Sset cmd then pose_Sset_pre cmd g 
   else ();
   (* solve asserted precondition *)
-  ltac1:(iSteps);
+  aSteps ();
   (* restore goal shape to semax *)
   ltac1:(monPred_at_wp_to_semax);
   ltac1:(rho |- clear dependent rho) (Ltac1.of_ident (Option.get (Ident.of_string "rho")))
@@ -351,7 +386,7 @@ Ltac change_pre_sep_with fpre_sep :=
 eapply (semax_change_pre_for_forward_call _ _ _ _ _ fpre_sep);
 [
 cbn;
-iSteps;
+ltac2:(aSteps ());
 into_fold_right_sepcons_Γs;
 repeat (Combine (fold_right_sepcon _) (fold_right_sepcon _));
 iStopProof; rewrite -fupd_intro;

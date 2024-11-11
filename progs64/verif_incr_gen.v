@@ -12,7 +12,7 @@ Require Import VST.progs64.incrN.
 
 From diaframe Require Import defs.
 From diaframe Require Import proofmode_base tactics.
-From VST.vstep Require Import vstep vst_hints.
+From VST.vstep Require Import vstep.
 
 Import LiftNotation.
 
@@ -146,22 +146,117 @@ Proof.
   apply bi.equiv_entails_2; cancel.
 Qed.
 
-Ltac2 Set vstep_specs as old_vstep_specs :=
-  fun _ => 
-           (constr:(_makelock), constr:(makelock_strong))::
-           (constr:(_freelock), constr:(funspec_sub_refl_dep))::
-           (constr:(_release), constr:(release_self))::
-           (* (constr:(_release), constr:(release_simple2)):: *)
-           (constr:(_acquire), constr:(funspec_sub_refl_dep))::
-           (constr:(_spawn), constr:(funspec_sub_refl_dep))::
-           (old_vstep_specs ()).
+
+Class TypeSizePositive c_type gfs :=
+  type_size_positive : (0 < sizeof (nested_field_type c_type gfs))%Z.
+Hint Extern 4 (TypeSizePositive _ _) => rewrite /TypeSizePositive //; lia : typeclass_instances.
+
+Global Instance field_at_exclusive c_type gfs v1 v2 i:
+TypeSizePositive c_type gfs ->
+MergableConsume (field_at Ews c_type gfs v1 i) true
+  (λ p Pin Pout,
+    TCAnd (TCEq Pin $ field_at Ews c_type gfs v2 i) $
+           TCEq Pout (False:mpred)).
+Proof.
+  intros.
+  rewrite /MergableConsume => p Pin Pout [-> ->].
+  rewrite bi.intuitionistically_if_elim field_at_conflict //=.
+  auto.
+Qed.
+
+
+
+(* Global Definition split_struct_2_fields (cs:compspecs) c_def sh ct l v1 v2 vs i f1 f2 sh2 be ed :
+  TCEq (PTree.get i cs.(cenv_cs)) (Some c_def) ->
+  TCEq (co_members c_def) [f1; f2] ->
+    (∃ v' : reptype ct,
+    ∃ v1': reptype (nested_field_type ct (DOT name_member f1)),
+    ∃ v2': reptype (nested_field_type ct (DOT name_member f2)),
+    JMeq (v1, v2) v' ->
+    JMeq v1 v1' ->
+    JMeq v2 v2' -> 
+(HINT data_at sh ct v' l ✱ [-; emp]
+      ⊫ [id]; field_at sh ct (DOT (name_member f1)) v1' l ✱
+    [spacer sh2 be ed vs ∗ field_at sh ct (DOT (name_member f2)) v2' l] )%I )%type. *)
+
+    (* (reptype (nested_field_type t gfs)) *)
+
+
+
+
+Class TCJMeq {A:Type} (a:A)  {B:Type} (b:B) := tcjmeq : @JMeq A a B b.
+Example test_TCJMeq: TCJMeq (reptype (nested_field_type t_counter (DOT _ctr))) val.
+Proof. Fail tc_solve. Abort.
+Hint Extern 10 (TCJMeq _ _) => unfold TCJMeq; apply JMeq_refl : typeclass_instances.
+Example test_TCJMeq: TCJMeq (reptype (nested_field_type t_counter (DOT _ctr))) val.
+Proof. tc_solve. Qed.
+
+Inductive TC_lia (P:Prop) : Prop :=  | tceq_lia  : P -> TC_lia P.
+Existing Class TC_lia.
+Global Hint Mode TC_lia + : typeclass_instances.
+Hint Extern 10 (TC_lia _) => constructor; lia : typeclass_instances.
+Example test_TC_lia: forall z:nat, TC_lia (0 <= Z.of_nat z)%Z.
+Proof. intros. tc_solve. Qed.
+
+Lemma eq_TCEq {A} (x y : A) : x = y -> TCEq x y.
+Proof. intros ->. apply _. Qed.
+Global Instance TCEq_find_z (z:Z) (n:nat) :
+  TCEq n (Z.to_nat z) ->
+  TC_lia (0 <= z)%Z ->
+  TCEq (Z.of_nat n) z%Z.
+Proof. intros -> H. inversion H. apply eq_TCEq. lia. Qed.
+
+Global Instance TCJMeq_refl {A} (v:A): @TCJMeq A v A v.
+Proof. tc_solve. Qed.
+Global Instance TCJMeq_refl_vint (z1 z2:Z): TCEq z1 z2 -> TCJMeq (vint z1) (vint z2).
+Proof. intros ->. tc_solve. Qed.
+    
+Global Instance field_at_unify_val sh t gfs (v1 v2: reptype (nested_field_type t gfs)) (v1' v2': val) l:
+  TCJMeq v1 v1' ->
+  TCEq v1' v2' ->
+  TCJMeq v2 v2' ->
+  HINT field_at sh t gfs v1 l ✱ [-; emp]
+  ⊫ [id]; field_at sh t gfs v2 l ✱ [ emp ].
+Proof. intros H1 -> H2. unfold TCJMeq in *. iSteps. 
+       pose proof (JMeq_eq (JMeq_trans H1 (JMeq_sym H2))) as ->.
+       iSteps.
+Qed.
+
+
+(* compute S by running (pushing everything except P to RHS;
+                      freeze RHS;
+                      run progress tac that is supposed to make progress on P,
+                      LHS is P'; (so tac proves P⊢P')
+                      check if (∃ R, P' ⊢ Q ∗ R) is solvable, if it is,
+                      can solve `BiAbd P _ Q _`
+                      ) *)
+
+(* Class CertBiAbd {prop : bi} {TTl TTr : tele@{bi.Quant}} p 
+    P (Q : tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTr prop)
+      (M : prop → prop) 
+    (R : tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTl prop) 
+    (S : TTl -t> (tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTr prop)) 
+      :=
+    cert_bi_abd :  (
+    ∀.. ml : TTl, □?p P ∗ tele_app R ml ⊢ 
+              M (∃.. mr : TTr, tele_app Q mr ∗ tele_app (tele_app S ml) mr)).
+
+Global Hint Mode CertBiAbd + - ! - ! ! - - - : typeclass_instances. 
+
+Hint Extern (@BiAbd prop TTl TTr p P Q M R S) =>
+assert (H: ∃ R S, P ∗ R ⊢ Q ∗ S)
+Check RHS contains Q;
+rewrite with goal
+    
+FindRS prop TTl TTr p P Q M R S
+CertBiAbd prop TTl TTr p P Q M R S-> 
+@BiAbd prop TTl TTr p P Q M R S
+ *)
+
 
 
 Lemma body_init_ctr: semax_body Vprog Gprog f_init_ctr init_ctr_spec.
 Proof.
-  ltac2:(vsteps ()).
-  
-  
   start_function.
   forward.
   ghost_alloc (ghost_both 1 O O).
@@ -172,16 +267,40 @@ Proof.
   forward.
   forward.
   forward_call release_simple (1%Qp, h, cptr_lock_inv g (gv _c)).
-  { lock_props.
-    unfold cptr_lock_inv.
-    rewrite /ghost_both own_op.
-    unfold_data_at (data_at _ _ _ _).
-    unfold ghost_ref; Exists O; entailer!. }
-  unfold ctr_handle, ghost_part; Exists h g; entailer!.
+  {
+    iStep.
+    iSplitL.
+    - iSplitR.
+      + iModIntro.  iSteps.
+      +
+        ltac2:(aSteps ()).
+
+        unfold ghost_both, ghost_ref.
+
+        (* TODO replicate the ghost algebras in  *)
+          Fail iStep.
+
 Qed.
 
+
+
+Require Import Coq.Program.Equality.
 Lemma body_dest_ctr: semax_body Vprog Gprog f_dest_ctr dest_ctr_spec.
 Proof.
+  ltac2:(vstep ()).
+  ltac2:(vstep ()).
+  entailer.
+  iSteps.
+  
+  
+  Search is_pointer_or_null.
+  apply isptr_is_pointer_or_null. 
+  
+  unfold isptr. destruct h. subst.
+  destruct p.  simpl. unfold ptr_of.  simp simpl. done. (left is_pointer_or_null_dec) auto.
+  unfold ctr_handle. Intros.
+  ltac2:(vsteps ()).
+  
   start_function.
   unfold ctr_handle; Intros.
   forward.
