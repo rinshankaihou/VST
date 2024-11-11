@@ -8,6 +8,7 @@ From diaframe Require Import proofmode_base.
 From diaframe.lib Require Import iris_hints.
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
 From Ltac2 Require Import Int Option Ltac1 Ltac2 Printf.
+From VST.vstep Require Import lock_spec_automation.
 
 Import LiftNotation.
 
@@ -389,9 +390,7 @@ Ltac2 rec subst_tuple t : ident :=
           | [ x := _ |- _] => x end
   end.
 
-(* name of function (an AST.ident), a list of spec subsume relations to try  *)
-Ltac2 Type vstep_specs_type := (constr * constr) list.
-Ltac2 mutable vstep_specs : unit -> vstep_specs_type  := fun _ => [].
+
 
 Ltac2 rec get_specs_for_aux (f_id: constr) (specs: vstep_specs_type) :=
     match specs with

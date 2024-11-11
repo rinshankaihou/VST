@@ -208,6 +208,21 @@ Section PROOFS.
     { iExists true; iFrame; done. }
     iFrame; done.
   Qed.
+  
+  Lemma make_lock_inv_1' : forall v N, 
+    atomic_int_at Ews (vint 1) v ⊢
+      ∀ R, |={⊤}=> (∃ h, <affine> ⌜ptr_of h = v /\ name_of h = N⌝ ∗ lock_inv 1 h (R h)).
+    Proof.
+      intros.
+      iIntros "a".
+      iDestruct (atomic_int_isptr with "a") as %Ha.
+      iMod cinv_alloc_strong as (g) "(_ & Hg & Hi)"; first apply pred_infinite_True.
+      iIntros (h).
+      iExists (v, N, g); unfold lock_inv; simpl; iFrame.
+      iMod ("Hi" $! (inv_for_lock v (h (v, N, g))) with "[-]").
+      { iExists true; iFrame; done. }
+      iModIntro; iSplit. done. iSplit; done.
+    Qed.
 
   Lemma make_lock_inv_0_self : forall v N R sh1 sh2, sh1 ⋅ sh2 = 1%Qp ->
     (atomic_int_at Ews (vint 0) v ∗ R) ⊢ |={⊤}=> (∃ h, ⌜ptr_of h = v /\ name_of h = N⌝ ∧ lock_inv sh1 h (R ∗ self_part sh2 h)).
@@ -595,7 +610,7 @@ Section PROOFS.
     - unfold PROPx, PARAMSx, GLOBALSx, LOCALx, SEPx, argsassert2assert; simpl; monPred.unseal.
       iDestruct "H" as "(% & % & _ & H)".
       do 4 (iSplit; auto).
-      iDestruct "H" as "(H5 & H2 & H3 & _)".
+      iDestruct "H" as "(H2 & H5 & H3 & _)".
       unfold lock_inv; simpl; unfold atomic_lock_inv; destruct h as ((v, i), g).
       iDestruct "H2" as "(% & #H & H2)".
       unfold atomic_shift. iAuIntro. unfold atomic_acc; simpl.
