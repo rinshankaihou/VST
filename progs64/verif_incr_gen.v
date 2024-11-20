@@ -1,10 +1,10 @@
 (* Inspired by:
    Subjective Auxiliary State for Coarse-Grained Concurrency, Ley-Wild and Nanevski, POPL 2013. *)
 
-Require Import VST.concurrency.conclib.
-Require Import VST.concurrency.lock_specs.
-Require Import VST.atomics.SC_atomics.
-Require Import VST.atomics.verif_lock.
+(* Require Import VST.concurrency.conclib. *)
+(* Require Import VST.concurrency.lock_specs. *)
+(* Require Import VST.atomics.SC_atomics. *)
+(* Require Import VST.atomics.verif_lock. *)
 Require Import iris_ora.algebra.frac_auth.
 Require Import iris.algebra.numbers.
 Require Import VST.zlist.sublist.
@@ -12,8 +12,9 @@ Require Import VST.progs64.incrN.
 
 From diaframe Require Import defs.
 From diaframe Require Import proofmode_base tactics.
-From VST.vstep Require Import vstep.
+From VST.vstep Require Import vstep ora_hints vst_hints.
 
+Require Import VST.atomics.verif_lock_atomic.
 Import LiftNotation.
 
 Unset Universe Polymorphism.
@@ -26,7 +27,7 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 Section proofs.
 
 Context `{!VSTGS unit Σ, !cinvG Σ, !atomic_int_impl (Tstruct _atom_int noattr), !inG Σ (frac_authR natR)}.
-#[local] Instance concurrent_ext_spec : ext_spec _ := concurrent_ext_spec _ (ext_link_prog prog).
+(* #[local] Instance concurrent_ext_spec : ext_spec _ := concurrent_ext_spec _ (ext_link_prog prog). *)
 
 Definition spawn_spec := DECLARE _spawn spawn_spec.
 
@@ -222,43 +223,28 @@ Proof. intros H1 -> H2. unfold TCJMeq in *. iSteps.
        iSteps.
 Qed.
 
-
-(* compute S by running (pushing everything except P to RHS;
-                      freeze RHS;
-                      run progress tac that is supposed to make progress on P,
-                      LHS is P'; (so tac proves P⊢P')
-                      check if (∃ R, P' ⊢ Q ∗ R) is solvable, if it is,
-                      can solve `BiAbd P _ Q _`
-                      ) *)
-
-(* Class CertBiAbd {prop : bi} {TTl TTr : tele@{bi.Quant}} p 
-    P (Q : tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTr prop)
-      (M : prop → prop) 
-    (R : tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTl prop) 
-    (S : TTl -t> (tele_fun@{bi.Quant bi.Logic diaframe_telefun} TTr prop)) 
-      :=
-    cert_bi_abd :  (
-    ∀.. ml : TTl, □?p P ∗ tele_app R ml ⊢ 
-              M (∃.. mr : TTr, tele_app Q mr ∗ tele_app (tele_app S ml) mr)).
-
-Global Hint Mode CertBiAbd + - ! - ! ! - - - : typeclass_instances. 
-
-Hint Extern (@BiAbd prop TTl TTr p P Q M R S) =>
-assert (H: ∃ R S, P ∗ R ⊢ Q ∗ S)
-Check RHS contains Q;
-rewrite with goal
-    
-FindRS prop TTl TTr p P Q M R S
-CertBiAbd prop TTl TTr p P Q M R S-> 
-@BiAbd prop TTl TTr p P Q M R S
- *)
-
-
+ Ltac2 Set vstep_specs as old_vstep_specs :=
+  fun _ => 
+           (constr:(_makelock), constr:(funspec_sub_refl_dep))::
+           (constr:(_release), constr:(funspec_sub_refl_dep))::
+           (constr:(_release), constr:(release_inv_deferred))::[]
+           (* (constr:(_release), constr:(release_simple2)):: *)
+           (* (constr:(_acquire), constr:(funspec_sub_refl_dep)):: *)
+           (* (constr:(_spawn), constr:(funspec_sub_refl_dep)):: *)
+           (* (old_vstep_specs ()) *)
+           .
 
 Lemma body_init_ctr: semax_body Vprog Gprog f_init_ctr init_ctr_spec.
 Proof.
-  start_function.
-  forward.
+
+  ltac2:(vsteps ()).
+  repeat EExists.
+ entailer.
+ ltac2:(aSteps ()).
+
+  
+
+  forward_call  (x).
   ghost_alloc (ghost_both 1 O O).
   { by apply frac_auth_valid. }
   Intros g.
@@ -274,11 +260,6 @@ Proof.
       + iModIntro.  iSteps.
       +
         ltac2:(aSteps ()).
-
-        unfold ghost_both, ghost_ref.
-
-        (* TODO replicate the ghost algebras in  *)
-          Fail iStep.
 
 Qed.
 

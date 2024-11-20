@@ -8,7 +8,7 @@ From diaframe Require Import proofmode_base.
 From diaframe.lib Require Import iris_hints.
 From iris.proofmode Require Import base coq_tactics reduction tactics string_ident.
 From Ltac2 Require Import Int Option Ltac1 Ltac2 Printf List.
-From VST.vstep Require Import lock_spec_automation.
+From VST.vstep Require Import (* lock_spec_automation*) vst_hints.
 
 Import LiftNotation.
 
@@ -613,9 +613,9 @@ Ltac extract_nth_affine_pure_in_SEP depth :=
 
 
 (* throws exception if there is no affine pure prop in SEP *)
-Ltac2 extract_affine_pures_in_SEP () :=
+Ltac2 extract_affine_pures_in_SEP () : unit :=
   unfold _ProtectPure;
-  repeat
+  Notations.repeat
   (let _ (* make it typecheck *) := (Option.map (fun depth => let depth:constr := ltac2_int_to_gallina_int depth in
                   ltac1:(depth |- extract_nth_affine_pure_in_SEP depth) (of_constr (depth)))
                 (find_depth_of_affine_in_SEP ())) in
@@ -648,12 +648,13 @@ Ltac2 is_semax_body () :=
   end.
   
 (** main tactics *)
-Ltac2 vstep () :=
+Ltac2 vstep () : unit :=
   (if is_entail () then vstep_entail ()
   else if is_call () then vstep_call ()
   else if is_semax_body () then ltac1:(start_function)
   else vstep_forward ())
-  ; vstep_normalize ()
+  ; vstep_normalize ();
+  () 
 .
 
-Ltac2 vsteps () := repeat (vstep ()).
+Ltac2 vsteps () := Notations.repeat (vstep ()).

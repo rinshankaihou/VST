@@ -334,6 +334,9 @@ endif
 # ##### refinedVST Flags #####
 EXTFLAGS:=$(EXTFLAGS) -Q refinedVST/lithium VST.lithium -Q refinedVST/typing VST.typing
 
+# ##### diaframe Flags #####
+EXTFLAGS:=$(EXTFLAGS) -Q diaframe/diaframe diaframe -Q diaframe/diaframe_heap_lang diaframe.heap_lang -Q diaframe/supplements/diaframe_heap_lang_examples diaframe.heap_lang.examples
+
 # ##### Flag summary #####
 
 COQFLAGS=$(foreach d, $(VSTDIRS), $(if $(wildcard $(d)), -Q $(d) VST.$(d))) $(foreach d, $(OTHERDIRS), $(if $(wildcard $(d)), -Q $(d) $(d))) $(EXTFLAGS) $(SHIM) # -Q ../stdpp/theories stdpp -Q ../iris/iris iris -Q ../InteractionTrees/theories ITree -Q ../paco/src Paco -Q ../coq-ext-lib/theories ExtLib -Q ../fcf/src/fcf FCF
@@ -900,6 +903,9 @@ ifneq ($(wildcard fcf/src/FCF),)
 endif
 ifneq ($(wildcard paco/src),)
 	$(COQDEP) -Q paco/src Paco paco/src/*.v >>.depend
+endif
+ifneq ($(wildcard diaframe/diaframe),)
+	$(COQDEP) -Q diaframe/diaframe diaframe -Q diaframe/diaframe_heap_lang diaframe.heap_lang -Q diaframe/supplements/diaframe_heap_lang_examples diaframe.heap_lang.examples diaframe/diaframe/*.v diaframe/diaframe/*/*.v diaframe/diaframe/*/*/*.v >>.depend
 endif
 	wc .depend
 
