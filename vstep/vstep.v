@@ -389,12 +389,12 @@ cbn;
 ltac2:(aSteps ());
 into_fold_right_sepcons_Γs;
 repeat (Combine (fold_right_sepcon _) (fold_right_sepcon _));
-iStopProof; rewrite -fupd_intro;
+iStopProof; rewrite -[RHS in _ ⊢ RHS]fupd_intro;
 match goal with
     | |- emp ⊢ fold_right_sepcon _ => rewrite emp_fold_right_sepcon_nil
     | _ => idtac
 end;    
-f_equal
+reflexivity
 | simpl app].
 
 
@@ -491,7 +491,6 @@ Ltac2 print_syntax_kind (c:constr) :=
   end.
 
 
-
   Ltac2 mutable get_fpre_sep (sub:constr) (fun_ident:constr) :=
     let delta := match! goal with
                 | [|-semax _ ?delta _ _ _] => delta end in
@@ -530,7 +529,495 @@ Ltac2 print_syntax_kind (c:constr) :=
     end end 
   .
 
+Section SemaxCallFupdInPost.
+  Context `{!VSTGS OK_ty Σ} {OK_spec: ext_spec OK_ty} {CS: compspecs}.
+  
+  Lemma SEP_entails P Q R R':
+  (SEPx R ⊢@{assert} SEPx R') ->
+  PROPx P (LOCALx Q (SEPx R))
+      ⊢ PROPx P (LOCALx Q (SEPx R')).
+  Proof. 
+    go_lowerx. Admitted.
 
+  Lemma semax_call_id00_wow_fupd:
+    forall {E} {Qtemp Qvar a GV Delta P Q R R'
+      fs argsig retty cc} {A: TypeTree} {Ef: dtfr (MaskTT A)} {Pre: dtfr (ArgsTT A)} {Post: dtfr (AssertTT A)}
+      {witness}
+      {Frame: list mpred}
+      {bl: list expr}
+      {Ppre: list Prop} {Rpre: list mpred} {GV' gv args}
+      {vl : list val}
+      (SETUP: call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty cc A Ef Pre Post bl vl
+         witness Frame Ppre Rpre GV' gv args)
+                (Post2: assert)
+                (B: Type)
+                (Ppost: B -> list Prop)
+                (Rpost: B -> list mpred)
+      (RETrueY: retty = Tvoid)
+      (POST1: assert_of (Post witness) ⊣⊢ (∃ vret:B, PROPx (Ppost vret) (LOCALx nil (SEPx (Rpost vret)))))
+      (POST2: Post2 ⊣⊢ ∃ vret:B, PROPx (P ++ Ppost vret) (LOCALx Q
+                (SEPx (Rpost vret) ++ Frame)))
+      (PPRE: fold_right_and True Ppre),
+      semax E Delta (PROPx P (LOCALx Q (SEPx R')))
+       (Scall None a bl)
+       (normal_ret_assert Post2).
+  Proof.
+    intros.
+    destruct SETUP as [[PTREE [Hsub [SPEC_ [ATY [TC0 [TC1 MSUBST]]]]]]
+                              [HR' [HE [PRE1 [PTREE' [CHECKTEMP [CHECKG FRAME]]]]]]].
+    apply SPEC_. clear SPEC_.
+    eapply semax_pre_setup2; try eassumption.
+    clear CHECKTEMP.
+    remember (tc_expr Delta a ∧ tc_exprlist Delta argsig bl) as TChecks.
+    apply semax_extract_prop; intros.
+    apply semax_extract_prop; intros.
+    eapply semax_mask_mono; first done.
+    eapply semax_pre_post', (semax_call0 Delta fs A Ef Pre Post
+                witness argsig retty cc a bl P Q Frame Hsub).
+    * subst TChecks. rewrite -semax_call_aux55 //.
+      iIntros "(? & H)"; iSplit; auto.
+      iSplit.
+      { iDestruct "H" as "((_ & $ & _) & _)". }
+      iSplit.
+      { iDestruct "H" as "((_ & _ & $) & _)". }
+      rewrite bi.and_elim_l comm //.
+    * subst.
+      clear  TC1 PRE1 PPRE.
+      rewrite POST2.
+      go_lowerx.
+      eapply monPred_in_equiv in POST1.
+      simpl in POST1.
+      rewrite POST1; clear POST1.
+      unfold PROPx, LOCALx, SEPx, local, lift1; unfold_lift. monPred.unseal. normalize.
+      Exists x.
+      rewrite fold_right_and_app_low.
+      rewrite fold_right_sepcon_app.
+      normalize.
+      iIntros "[? $]". iStopProof.
+      induction (Rpost x); simpl; auto.
+      rewrite IHl.
+      iIntros "[? $]". done.
+    * assumption.
+  Qed.
+
+ 
+
+  Lemma semax_call_id1_wow_fupd:
+    forall {E} {Qtemp Qvar GV a Delta P Q R R'
+   fs argsig retty cc} {A: TypeTree} {Ef} {Pre Post}
+   {witness}
+   {Frame: list mpred}
+   {bl: list expr}
+   {Ppre: list Prop} {Rpre: list mpred} {GV' gv args}
+   {vl : list val}
+   (SETUP: call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty cc A Ef Pre Post bl vl
+      witness Frame Ppre Rpre GV' gv args)
+   ret (Post2: assert)  (Qnew: list localdef)
+    (B: Type) (Ppost: B -> list Prop) (F: B -> val) (Rpost: B -> list mpred)
+   (TYret: typeof_temp Delta ret = Some retty)
+   (OKretty: check_retty retty)
+   (POST1: assert_of (Post witness) ⊣⊢ ∃ vret:B, PROPx (Ppost vret)
+                              (LOCALx (temp ret_temp (F vret) :: nil)
+                              (SEPx (Rpost vret))))
+   (DELETE: remove_localdef_temp ret Q = Qnew)
+   (H0: Post2 ⊣⊢ ∃ vret:B, PROPx (P++ Ppost vret) (LOCALx (temp ret (F vret) :: Qnew)
+            (SEPx ((map (λ P, |={⊤}=> P) $ Rpost vret) ++ Frame))))
+   (PPRE: fold_right_and True Ppre),
+   semax E Delta (PROPx P (LOCALx Q (SEPx R')))
+    (Scall (Some ret) a bl)
+    (normal_ret_assert Post2).
+  Proof.
+    intros.
+    destruct SETUP as [[PTREE [Hsub [SPEC_ [ATY [TC0 [TC1 MSUBST ]]]]]]
+                        [HR' [HE [PRE1 [PTREE' [CHECKTEMP [CHECKG FRAME]]]]]]].
+    apply SPEC_. clear SPEC_.
+    eapply semax_pre_setup2; try eassumption.
+    remember (tc_expr Delta a ∧ tc_exprlist Delta argsig bl) as TChecks.
+    apply semax_extract_prop; intros.
+    apply semax_extract_prop; intros.
+    eapply semax_mask_mono; first done.
+    eapply semax_pre_post', (semax_call1 Delta fs A Ef Pre Post
+                witness ret argsig retty cc a bl P Q Frame Hsub);
+      [ |
+      | assumption
+      | clear - OKretty; destruct retty; inv OKretty; apply I
+      | hnf; clear - TYret; unfold typeof_temp in TYret;
+        destruct ((temp_types Delta) !! ret)%maps; inv TYret; auto
+      ].
+    * subst TChecks. rewrite -semax_call_aux55 //.
+      iIntros "(? & H)"; iSplit; auto; iSplit.
+      { iDestruct "H" as "((_ & $ & _) & _)". }
+      iSplit.
+      { iDestruct "H" as "((_ & _ & $) & _)". }
+      rewrite bi.and_elim_l comm //.
+    * subst.
+      clear  TC1 PRE1 PPRE.
+
+      rewrite H0.
+      go_lowerx.
+      eapply monPred_in_equiv in POST1.
+      simpl in POST1.
+      rewrite POST1; clear POST1.
+      unfold ifvoid.
+      unfold PROPx, LOCALx, SEPx, local, lift1; unfold_lift. monPred.unseal.
+      unfold_lift. normalize.
+      Exists x.
+      rewrite fold_right_and_app_low.
+      rewrite fold_right_sepcon_app.
+      normalize.
+      iIntros "[? $]". iStopProof.
+      induction (Rpost x); simpl; auto.
+      rewrite IHl.
+      iIntros "[? $]". done.
+  Qed.
+
+  Lemma semax_call_id1_x_wow_fupd:
+  forall {E} {Qtemp Qvar GV a Delta P Q R R'
+    fs argsig retty' cc} {A: TypeTree} {Ef} {Pre Post}
+    {witness}
+    {Frame: list mpred}
+    {bl: list expr}
+    {Ppre: list Prop} {Rpre: list mpred} {GV' gv args}
+    {vl : list val}
+    (SETUP: call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty' cc A Ef Pre Post bl vl
+        witness Frame Ppre Rpre GV' gv args)
+    retty ret ret'
+              (Post2: assert)
+              (Qnew: list localdef)
+              (B: Type)
+              (Ppost: B -> list Prop)
+              (F: B -> val)
+              (Rpost: B -> list mpred)
+    (TYret: typeof_temp Delta ret = Some retty)
+    (RETinit: ((temp_types Delta) !! ret')%maps = Some retty')
+    (OKretty: check_retty retty)
+    (OKretty': check_retty retty')
+    (NEUTRAL: is_neutral_cast retty' retty = true)
+    (NEret: ret <> ret')
+    (POST1: assert_of (Post witness) ⊣⊢ ∃ vret:B, PROPx (Ppost vret)
+                                (LOCALx (temp ret_temp (F vret) :: nil)
+                                (SEPx (Rpost vret))))
+    (DELETE: remove_localdef_temp ret Q = Qnew)
+    (DELETE' : remove_localdef_temp ret' Q = Q)
+    (HPOST2: Post2 ⊣⊢ ∃ vret:B, PROPx (P++ Ppost vret)
+                    (LOCALx (temp ret (F vret) :: Qnew)
+                      (SEPx ((map (λ P, |={⊤}=> P) $ Rpost vret) ++ Frame))))
+    (PPRE: fold_right_and True Ppre),
+    semax E Delta (PROPx P (LOCALx Q (SEPx R')))
+    (Ssequence (Scall (Some ret') a bl)
+        (Sset ret (Ecast (Etempvar ret' retty') retty)))
+      (normal_ret_assert Post2).
+  Proof.
+    intros.
+    eapply semax_seq'.
+    eapply semax_call_id1_wow; try eassumption; auto.
+    unfold typeof_temp; rewrite RETinit; reflexivity.
+    apply extract_exists_pre; intro vret.
+    eapply semax_pre_post';
+      [ | | apply semax_set_forward].
+    + instantiate (1 := (PROPx (P ++ Ppost vret)
+        (LOCALx (temp ret' (F vret) :: Qnew) (SEPx (Rpost vret ++ Frame))))).
+      iIntros "(#? & H) !>"; iSplit; [|iSplit].
+      - rewrite /tc_expr /typecheck_expr.
+        rewrite RETinit.
+        replace ((is_neutral_cast retty' retty' || same_base_type retty' retty')%bool)
+          with true
+          by (clear- OKretty'; destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; unfold is_neutral_cast; rewrite ?eqb_type_refl; reflexivity).
+        rewrite denote_tc_assert_andp.
+        iSplit; last by iApply (neutral_isCastResultType with "H").
+        iApply PQR_denote_tc_initialized; eauto.
+      - unfold tc_temp_id, typecheck_temp_id.
+        unfold typeof_temp in TYret.
+        destruct ((temp_types Delta) !! ret)%maps; inversion TYret; clear TYret; try subst t.
+        rewrite !denote_tc_assert_andp /=.
+        rewrite denote_tc_assert_bool.
+        assert (is_neutral_cast (implicit_deref retty) retty = true).
+        {
+          destruct retty as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; try reflexivity;
+          destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction;
+          try solve [inv NEUTRAL].
+          unfold implicit_deref, is_neutral_cast. rewrite eqb_type_refl; reflexivity.
+        }
+        iSplit; first done.
+        iApply (neutral_isCastResultType with "H"); auto.
+      - rewrite <- !insert_local.
+        iDestruct "H" as "(? & H)"; iSplit; first done.
+        subst Qnew; by iApply derives_remove_localdef_PQR.
+    + intros.
+      rewrite HPOST2.
+      Exists vret.
+      iIntros "(#? & % & #? & H)".
+      iAssert (local (subst ret (`old) (locald_denote (temp ret' (F vret)))) ∧
+        assert_of (subst ret (`old) (PROPx (P ++ Ppost vret)
+                  (LOCALx (Qnew) (SEPx (Rpost vret ++ Frame)))))) with "[-]" as "H".
+      { rewrite !subst_PROP_LOCAL_SEP; simpl.
+        iDestruct "H" as "($ & #H & $)".
+        autorewrite with subst.
+        rewrite !local_lift2_and.
+        iDestruct "H" as "(($ & $) & $)". }
+      rewrite -insert_local.
+      iSplit; [|subst Qnew; rewrite subst_remove_localdef_PQR bi.and_elim_r //].
+      iDestruct "H" as "(? & _)".
+      iStopProof.
+      split => rho; monPred.unseal; rewrite monPred_at_intuitionistically.
+      rewrite /= /lift1; unfold_lift.
+      iIntros "((% & %) & %)"; iPureIntro.
+      unfold subst in *.
+      destruct H1; split; auto.
+      super_unfold_lift.
+      rewrite eval_id_other // in H0, H1.
+      assert (tc_val retty' (eval_id ret' rho))
+        by (eapply tc_eval'_id_i; try eassumption; congruence).
+      assert (H7 := expr2.neutral_cast_lemma); unfold eval_cast in H7.
+      rewrite -> H7 in H0 by auto; congruence.
+  Admitted.
+  
+  Lemma semax_call_id1_y_wow_fupd:
+    forall {E} {Qtemp Qvar GV a Delta P Q R R'
+      fs argsig retty' cc} {A: TypeTree} {Ef} {Pre: dtfr (ArgsTT A)} {Post: dtfr (AssertTT A)}
+      {witness}
+      {Frame: list mpred}
+      {bl: list expr}
+      {Ppre: list Prop} {Rpre: list mpred}
+      {GV' gv args}
+      {vl : list val}
+      (SETUP: call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty' cc A Ef Pre Post bl vl
+        witness Frame Ppre Rpre GV' gv args)
+      ret ret' (retty: type)
+                (Post2: assert)
+                (Qnew: list localdef)
+                (B: Type)
+                (Ppost: B -> list Prop)
+                (F: B -> val)
+                (Rpost: B -> list mpred)
+      (TYret: typeof_temp Delta ret = Some retty)
+      (RETinit: ((temp_types Delta) !! ret')%maps = Some retty')
+      (OKretty: check_retty retty)
+      (OKretty': check_retty retty')
+      (NEUTRAL: is_neutral_cast retty' retty = true)
+      (NEret: ret <> ret')
+      (POST1: assert_of (Post witness) ⊣⊢ ∃ vret:B, PROPx (Ppost vret)
+                                (LOCALx (temp ret_temp (F vret) :: nil)
+                                (SEPx (Rpost vret))))
+      (DELETE: remove_localdef_temp ret Q = Qnew)
+      (DELETE' : remove_localdef_temp ret' Q = Q)
+      (HPOST2: Post2 ⊣⊢ ∃ vret:B, PROPx (P++ Ppost vret)
+                      (LOCALx (temp ret (F vret) :: Qnew)
+                      (SEPx ((map (λ P, |={⊤}=> P) $ Rpost vret) ++ Frame))))
+      (PPRE: fold_right_and True Ppre),
+      semax E Delta (PROPx P (LOCALx Q (SEPx R')))
+      (Ssequence (Scall (Some ret') a bl)
+        (Sset ret (Etempvar ret' retty')))
+      (normal_ret_assert Post2).
+  Proof.
+    intros.
+    eapply semax_seq'.
+    eapply semax_call_id1_wow; try eassumption; auto;
+      unfold typeof_temp; rewrite RETinit; reflexivity.
+    apply extract_exists_pre; intro vret.
+    eapply semax_pre_post';
+      [ | | apply semax_set_forward].
+    + instantiate (1 := (PROPx (P ++ Ppost vret)
+        (LOCALx (temp ret' (F vret) :: Qnew) (SEPx (Rpost vret ++ Frame))))).
+      iIntros "(#? & H) !>"; iSplit; [|iSplit].
+      - rewrite /tc_expr /typecheck_expr.
+        rewrite RETinit.
+        replace ((is_neutral_cast retty' retty' || same_base_type retty' retty')%bool)
+          with true
+          by (clear- OKretty'; destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; unfold is_neutral_cast; rewrite ?eqb_type_refl; reflexivity).
+        iApply PQR_denote_tc_initialized; eauto.
+      - unfold tc_temp_id, typecheck_temp_id.
+        unfold typeof_temp in TYret.
+        destruct ((temp_types Delta) !! ret)%maps; inversion TYret; clear TYret; try subst t.
+        rewrite !denote_tc_assert_andp /=.
+        rewrite denote_tc_assert_bool.
+        assert (is_neutral_cast (implicit_deref retty') retty = true).
+        {
+          replace (implicit_deref retty') with retty'
+            by (destruct retty' as [ | [ | | |] [| ]| [|] | [ | ] |  | | | | ]; try contradiction; reflexivity).
+          auto.
+        }
+        iSplit; first done.
+        iApply (neutral_isCastResultType with "H"); auto.
+      - rewrite <- !insert_local.
+        iDestruct "H" as "(? & H)"; iSplit; first done.
+        subst Qnew; by iApply derives_remove_localdef_PQR.
+    + intros. rewrite HPOST2.
+      iIntros "(#? & % & #? & H)".
+      iExists vret.
+      iAssert (local (subst ret (`old) (locald_denote (temp ret' (F vret)))) ∧
+        assert_of (subst ret (`old) (PROPx (P ++ Ppost vret)
+                    (LOCALx (Qnew) (SEPx (Rpost vret ++ Frame)))))) with "[-]" as "H".
+      { rewrite !subst_PROP_LOCAL_SEP; simpl.
+        iDestruct "H" as "($ & #H & $)".
+        autorewrite with subst.
+        rewrite !local_lift2_and.
+        iDestruct "H" as "(($ & $) & $)". }
+      rewrite -insert_local.
+      iSplit; [|subst Qnew; rewrite subst_remove_localdef_PQR bi.and_elim_r //].
+      2: {
+        iApply (SEP_entails with "H").
+        admit.
+      }
+      iDestruct "H" as "(? & _)".
+      iStopProof.
+      split => rho; monPred.unseal; rewrite monPred_at_intuitionistically.
+      rewrite /= /lift1; unfold_lift.
+      iIntros "((% & %) & %)"; iPureIntro.
+      unfold subst in *.
+      destruct H1; split; auto.
+      super_unfold_lift.
+      rewrite eval_id_other // in H0, H1.
+      congruence.
+  Admitted.
+
+  
+  Lemma semax_call_id01_wow_fupd:
+    forall {E} {Qtemp Qvar GV a Delta P Q R R'
+    fs argsig retty cc} {A: TypeTree} {Ef} {Pre Post}
+    {witness}
+    {Frame: list mpred}
+    {bl: list expr}
+    {Ppre: list Prop} {Rpre: list mpred} {GV' gv args}
+    {vl : list val}
+    (SETUP: call_setup2 E Qtemp Qvar GV a Delta P Q R R' fs argsig retty cc A Ef Pre Post bl vl
+       witness Frame Ppre Rpre GV' gv args)
+              (Post2: assert)
+              (B: Type)
+              (Ppost: B -> list Prop)
+              (F: B -> val)
+              (Rpost: B -> list mpred)
+    (_: check_retty retty)
+          (* this hypothesis is not needed for soundness, just for selectivity *)
+    (POST1: assert_of (Post witness) ⊣⊢ ∃ vret:B, PROPx (Ppost vret)
+                               (LOCALx (temp ret_temp (F vret) :: nil)
+                               (SEPx (Rpost vret))))
+    (POST2: Post2 ⊣⊢ ∃ vret:B, PROPx (P++ Ppost vret) (LOCALx Q
+              (SEPx ((map (λ P, |={⊤}=> P) $ Rpost vret) ++ Frame))))
+    (PPRE: fold_right_and True Ppre),
+    semax E Delta (PROPx P (LOCALx Q (SEPx R')))
+     (Scall None a bl)
+     (normal_ret_assert $ |={⊤}=> Post2).
+  Proof.
+   intros.
+   destruct SETUP as [[PTREE [Hsub [SPEC_ [ATY [TC0 [TC1 MSUBST ]]]]]]
+                        [HR' [HE [PRE1 [PTREE' [CHECKTEMP [CHECKG FRAME]]]]]]].
+   apply SPEC_. clear SPEC_.
+   eapply semax_pre_setup2; try eassumption.
+   remember (tc_expr Delta a ∧ tc_exprlist Delta argsig bl) as TChecks.
+   apply semax_extract_prop; intros.
+   apply semax_extract_prop; intros.
+   eapply semax_mask_mono; first done.
+   eapply semax_pre_post', semax_call0 with (fs:=fs)(cc:=cc)(A:= A)(x:=witness) (P:=P)(Q:=Q)(R := Frame);
+      try eassumption.
+   * subst TChecks. rewrite -semax_call_aux55 //.
+     iIntros "(? & H)"; iSplit; auto; iSplit.
+     { iDestruct "H" as "((_ & $ & _) & _)". }
+     iSplit.
+     { iDestruct "H" as "((_ & _ & $) & _)". }
+     rewrite bi.and_elim_l comm //.
+   * subst.
+     clear CHECKTEMP TC1 PRE1 PPRE.
+     match goal with |- context [ifvoid retty ?A ?B] =>
+           replace (ifvoid retty A B) with B
+           by (destruct retty; try contradiction; auto)
+     end.
+     iIntros "(_ & ?)".
+     iModIntro. iStopProof.
+     go_lowerx; normalize.
+     eapply monPred_in_equiv in POST1.
+     simpl in POST1.
+     rewrite POST1 POST2; clear POST1 POST2.
+     unfold PROPx, LOCALx, SEPx, local, lift1; unfold_lift. monPred.unseal.
+     Intros a0; Exists a0.
+     rewrite fold_right_and_app_low.
+     rewrite fold_right_sepcon_app.
+     normalize.
+     iIntros "[? $]". iStopProof.
+     induction (Rpost a0); simpl; auto.
+     rewrite IHl.
+     iIntros "[? $]". done.
+  Qed.
+
+End SemaxCallFupdInPost.
+
+Ltac  forward_call_id1_wow ::=
+let H := fresh in intro H;
+eapply (semax_call_id1_wow_fupd H);
+ clear H;
+ lazymatch goal with Frame := _ : list mpred |- _ => try clear Frame end;
+ [check_result_type
+ |apply Logic.I
+ | match_postcondition
+ | prove_delete_temp
+ | unify_postcondition_exps
+ | prove_PROP_preconditions
+ ].
+
+Ltac forward_call_id1_x_wow ::=
+let H := fresh in intro H;
+eapply (semax_call_id1_x_wow_fupd H); 
+ clear H;
+ lazymatch goal with Frame := _ : list mpred |- _ => try clear Frame end;
+ [ check_result_type | check_result_type
+ | apply Coq.Init.Logic.I | apply Coq.Init.Logic.I | reflexivity
+ | (clear; let H := fresh in intro H; inversion H)
+ | match_postcondition
+ | prove_delete_temp
+ | prove_delete_temp
+ | unify_postcondition_exps
+ | prove_PROP_preconditions
+ ].
+
+Ltac forward_call_id1_y_wow ::=
+let H := fresh in intro H;
+eapply (semax_call_id1_y_wow_fupd H); 
+ clear H;
+ lazymatch goal with Frame := _ : list mpred |- _ => try clear Frame end;
+ [ check_result_type | check_result_type
+ | apply Coq.Init.Logic.I | apply Coq.Init.Logic.I | reflexivity
+ | (clear; let H := fresh in intro H; inversion H)
+ | match_postcondition
+ | prove_delete_temp
+ | prove_delete_temp
+ | unify_postcondition_exps
+ | prove_PROP_preconditions
+ ].
+
+Ltac forward_call_id01_wow ::=
+let H := fresh in intro H;
+eapply (semax_call_id01_wow_fupd H);
+ clear H;
+ lazymatch goal with Frame := _ : list mpred |- _ => try clear Frame end;
+ [ apply Coq.Init.Logic.I 
+ | match_postcondition
+ | unify_postcondition_exps
+ | prove_PROP_preconditions
+ ].
+
+
+Ltac forward_call_id00_wow  ::=
+let H := fresh in intro H;
+eapply (semax_call_id00_wow_fupd H);
+ clear H;
+ lazymatch goal with Frame := _ : list mpred |- _ => try clear Frame end;
+ [ check_result_type 
+ | fix_up_simplified_postcondition;
+    cbv beta iota zeta; rewrite ?assert_of_at; unfold_post;
+    constructor; let rho := fresh "rho" in intro rho; cbn [monPred_at assert_of ofe_mor_car];
+    repeat rewrite exp_uncurry;
+    repeat rewrite monPred_at_exist;
+
+    first [ apply bi.exist_proper | try rewrite no_post_exists0 monPred_at_exist; apply bi.exist_proper];
+
+    intros ?vret; generalize rho; rewrite -local_assert;
+    apply PROP_LOCAL_SEP_ext'; [reflexivity | | reflexivity];
+    (reflexivity || fail "The funspec of the function has a POSTcondition
+that is ill-formed.  The LOCALS part of the postcondition
+should be empty, but it is not")
+ | unify_postcondition_exps
+ | prove_PROP_preconditions
+ ].
 
 Ltac2 vstep_call () :=
 ltac1:(vstep_call_preprocess);

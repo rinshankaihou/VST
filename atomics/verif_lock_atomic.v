@@ -178,6 +178,7 @@ Section PROOFS.
      that conflicts with the "one spec in Gprog" approach. *)
 
   Definition name_of (h : lock_handle) := let '(v, i, g) := h in i.
+  Definition gname_of (h : lock_handle) := let '(v, i, g) := h in g.
 
   (* caller can request the lock's namespace *)
   Program Definition makelock_spec_inv :=

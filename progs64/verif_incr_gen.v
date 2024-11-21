@@ -54,9 +54,9 @@ Definition init_ctr_spec :=
     ∃ h : lock_handle, ∃ g : gname,
          PROP ()
          LOCAL ()
-         SEP (library.mem_mgr gv;
-              field_at Ews t_counter [StructField _lock] (ptr_of h) (gv _c); spacer Ews 4 8 (gv _c);
-              ctr_handle 1 h g (gv _c) O).
+         SEP (library.mem_mgr gv; ctr_handle 1 h g (gv _c) O;
+              field_at Ews t_counter [StructField _lock] (ptr_of h) (gv _c); spacer Ews 4 8 (gv _c)
+              ).
 
 Definition dest_ctr_spec :=
  DECLARE _dest_ctr
@@ -239,9 +239,10 @@ Proof.
 
   ltac2:(vsteps ()).
   repeat EExists.
- entailer.
- ltac2:(aSteps ()).
-
+  entailer.
+  ltac2:(aSteps ()).
+  iStopProof. iStep as "a b c d".
+ 
   
 
   forward_call  (x).

@@ -23,7 +23,7 @@ Section DVST_LOCK_SPECS.
        SEP (
         ∀ R : mpred,
         ∀ N,
-        R ={⊤}=∗ ∃ h : lock_handle, ⌜ptr_of h = p /\ name_of h = N⌝ ∧ lock_inv 1 h R).
+        R ={⊤}=∗ ∃ g : gname, lock_inv 1 (p, N, g) R).
 
   Lemma release_inv_deferred' : funspec_sub release_spec_nonatomic release_inv_spec_deferred.
   Proof.
@@ -45,7 +45,11 @@ Section DVST_LOCK_SPECS.
       repeat iSplit; auto.
       iIntros (R N) "R".
       iPoseProof (make_lock_inv_0 with "[-]") as "H". { iAccu. }
-      done.
+       iMod "H". iModIntro.
+       iDestruct "H" as (h) "[[% %] H]".
+       destruct h as ((?&?)&?).
+       unfold ptr_of in H1. simpl in H1, H2.
+       iExists g. subst. done.
   Qed.
 
   Lemma release_inv_deferred : funspec_sub ( release_spec.2) release_inv_spec_deferred.
