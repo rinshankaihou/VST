@@ -21,7 +21,7 @@ I failed to pin RefinedC's gitlab repository, but installing it from source work
 git clone https://gitlab.mpi-sws.org/iris/refinedc.git refinedc
 cd refinedc
 git branch pin_refinedc ea6be6de
-opam pin add refinedc . -y
+ 
 ```
 
 ## Running the frontend
