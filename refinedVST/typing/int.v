@@ -308,7 +308,6 @@ Section programs.
     rep_lia.
   Qed.
 
-  (** Ke: TODO this rule should have a different triggering condition *)
   (* Lemma type_val_int_u32 (n:Integers.int) T :
     typed_value (Vint n) T :-
       exhale (<affine> ⌜(Int.unsigned n) ∈ tuint⌝);
@@ -898,11 +897,10 @@ Section programs.
   econstructor; auto.
 Qed.
 
-(* Ke: the equivalent to Caesium's CastOp is Clight's Ecast, so use typed_val_expr *)
   Lemma type_Ecast_same_val ge f e it2 T:
     typed_val_expr ge f e (λ v ty,
         <affine>⌜typeof e = it2⌝ ∗
-        ∀ m (* Ke: for now only handle cases where m is irrelevant *),
+        ∀ m ,
         <affine>⌜Some v = Cop.sem_cast v (typeof e) it2 m⌝ ∗
         T v ty)
     ⊢ typed_val_expr ge f (Ecast e it2) T.

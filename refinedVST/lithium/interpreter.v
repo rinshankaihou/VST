@@ -1048,7 +1048,6 @@ Ltac liAnd :=
     notypeclasses refine (tac_big_andM_empty _ _)
   end.
 
-(* TODO Ke: is not valid anymore because logic is linear? maybe to a weaker version where spatial context is empty? *)
 (* 
 (** ** [liPersistent] *)
 Section coq_tactics.

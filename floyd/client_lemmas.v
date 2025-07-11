@@ -1797,7 +1797,6 @@ Ltac hoist_later_left :=
      in strip1_later P cP
   end.
 
-(* Willam proposed that this versions of assert_PROP replace the ones in canon.v. *)
 Tactic Notation "assert_PROP" constr(A) :=
   first [eapply (assert_later_PROP' A); [|hoist_later_left; apply derives_refl|] | apply (assert_PROP' A)]; [ | intro ].
 

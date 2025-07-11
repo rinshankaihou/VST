@@ -7,7 +7,6 @@ From VST.typing Require Import function.
 Section spec.
   Context `{!typeG Σ} `{!globalG Σ}.
 
-  (* Ke: don't mind this one *)
   (* Specifications for function [__builtin_ffsll]. *)
   Definition type_of___builtin_ffsll :=
     fn(∀ x : Z; (x @ (int (u64))); True)

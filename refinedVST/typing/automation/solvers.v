@@ -1,6 +1,5 @@
 From lithium Require Import hooks.
 From refinedc.typing Require Import type.
-(* Ke: TODO this one needs rework *)
 Ltac unfold_aligned_to :=
   unfold aligned_to in *;
   try rewrite ->caesium_config.enforce_alignment_value in *;

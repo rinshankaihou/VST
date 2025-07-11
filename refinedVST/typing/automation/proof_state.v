@@ -5,7 +5,6 @@ From VST.typing Require Import type globals.
 
 
 
-(** Ke: use empty location_info for now; I guess it is for error messages like `proof failed in file x line y` *)
 Definition location_info : Type := Empty_set.
 
 (** * Markers for keeping track of the proof state *)

@@ -337,7 +337,6 @@ Section judgements.
   ot of value [v] of type [ty] to the expression [e]. [atomic] says
   whether the write is an atomic write. The typing rule for [typed_write]
   typechecks [e] and then dispatches to [typed_write_end]. *)
- (* Ke: maybe v should be `reptype ot`? *)
 
   Definition typed_write f (atomic : bool) (e : expr) (ot : Ctypes.type) (v : val) (ty : type) (T : assert) : assert :=
     let E := if atomic then ∅ else ⊤ in
@@ -345,7 +344,6 @@ Section judgements.
         (∀ (l:address), (⎡v ◁ᵥₐₗ|ot| ty⎤ ={⊤, E}=∗
                 <affine> ⌜(valinject ot v) `has_layout_val` ot⌝ ∗
                  ⎡ l ↦_|ot| ⎤ ∗
-                (* Ke : maybe we need later afterall because write is only done a write statement after? *)
                 ▷(⎡ l ↦|ot| (valinject ot v) ⎤ ={E, ⊤}=∗ T))
               -∗ Φ l) -∗
        wp_lvalue ge ⊤ f e Φ)%I.
@@ -1416,10 +1414,6 @@ Section typing.
 
 *)
 
-  (* Ke: possible way to handle cast: dispatch type checking rules to 
-     type_Ecast, and only cover cases where it doesn't need memory.
-     similar to lithium.theories.typing.int, have one rule for each 
-     concrete (t1, t2) in (Ecast t1 t2) *)
   Lemma type_assign Espec ge f e1 e2 T:
     <affine> ⌜type_is_by_value (typeof e1) = true⌝ ∗
     typed_val_expr ge f (Ecast e2 (typeof e1)) (λ v ty,
@@ -2075,8 +2069,6 @@ Qed.
   (* for expr `e:=v` => eval_expr e = l ∧ typed l v  *)
   (* typed_lvalue e (typed_write_end ...)   *)
 
-  (* Ke: a simple version of type_write that treat typed_place as just typed_val_expr. 
-         Not so sure about what's inside typed_val_expr outside of typed_write_end. *)
   Lemma type_write_simple ge f β1 (a : bool) ty T e v ot:
     (typed_lvalue ge f β1 e (λ l β2 ty1,
       typed_write_end a ⊤ ot v ty l β2 ty1 (λ ty3:type, ⎡l ◁ₗ{β1} ty3⎤ -∗ T)))%I
