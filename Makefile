@@ -813,7 +813,8 @@ CASCOMPCERT_IMPORTED_TARGETS = \
   concurrency/common/clight_val_casted.vo \
   concurrency/comp_correct/CUAST.vo \
   concurrency/comp_correct/ClightLang.vo \
-  concurrency/comp_correct/cfrontend/FCop.vo
+  concurrency/comp_correct/cfrontend/FCop.vo \
+  concurrency/comp_correct/cfrontend/Clight_local.vo
 CASCOMPCERT_IMPORTED_VO = \
   $(addprefix cascompcert/,$(CASCOMPCERT_IMPORTED_TARGETS))
 

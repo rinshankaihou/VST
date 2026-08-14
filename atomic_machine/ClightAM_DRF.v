@@ -1,11 +1,11 @@
-(** Finite-execution correspondence from the Clight atomic machine to
-    CASCompCert's global semantics.
+(** Forward-simulation interface from the Clight atomic machine to a local
+    semantics for the translated program.
 
-    [match_config] below is a direct relation on [CAM_config] and
-    [ProgConfig].  It compares memories and every thread stack when the
-    target atomic bit is clear.  While the bit is set, it keeps the wrapper
-    and suspended atomic client-frame shape but forgets their selected-core
-    correspondence. *)
+    The source transition is indexed by the thread which takes the step and
+    exposes its memory-event trace.  The target interface below is indexed by
+    the same thread.  Its configuration relation compares only memories and
+    threads: atomic-marker phases and linearization points belong to the
+    simulation diagram, not to the state relation. *)
 
 Require Import compcert.common.AST.
 Require Import compcert.common.Builtins.
@@ -13,17 +13,14 @@ Require Import compcert.common.Events.
 Require Import compcert.common.Globalenvs.
 Require Import compcert.common.Memory.
 Require Import compcert.lib.Integers.
+Require Import compcert.lib.Coqlib.
+Require compcert.lib.Maps.
 Require Import compcert.concurrency.common.Footprint.
-Require Import compcert.concurrency.common.FMemPerm.
-Require Import compcert.concurrency.common.GlobDefs.
-Require Import compcert.concurrency.common.GlobSemantics.
 Require Import compcert.concurrency.common.GAST.
-Require Import compcert.concurrency.common.InteractionSemantics.
+From compcert.concurrency.comp_correct.cfrontend Require Import Clight_local.
 
 From Stdlib Require Import List.
-From Stdlib Require Import Eqdep.
 From Stdlib Require Import Strings.String.
-From mathcomp.boot Require Import fintype.
 Require Import stdpp.gmap.
 Require Import VST.veric.val_lemmas.
 
@@ -32,21 +29,15 @@ Require Import atomic_machine.clight_atomic_specs.
 Require Import atomic_machine.clight_at_mach.
 Require Import atomic_machine.clight_atomic_source_decode.
 Require Import atomic_machine.clight_atomic_source_restriction.
-Require Import atomic_machine.clight_is2_markers.
 Require Import atomic_machine.clight_atomic_wrappers.
 Require Import atomic_machine.clight_atomic_client_init.
-Require Import atomic_machine.clight_atomic_target.
-Require Import atomic_machine.clight_atomic_global_steps.
-Require Import atomic_machine.clight_atomic_global_calls.
-Require Import atomic_machine.clight_atomic_initialized_calls.
 
 Import Address Values.
 Import ListNotations.
 
 Module Wrappers := ClightAtomicWrappers.
 Module ClientInit := ClightAtomicClientInit.
-Module InitializedCalls := ClightAtomicInitializedCalls.
-Module GlobalSteps := ClightAtomicGlobalSteps.
+Module LocalClight := Clight_local.
 
 Lemma clight_val_defined_as_target_boolean v :
   clight_val_defined v ->
@@ -84,11 +75,191 @@ Section CAMSteps.
 Context (ge : Clight.genv).
 Implicit Types (sc : CAM_config ge).
 
-Definition CAM_step sc1 sc2 : Prop :=
+Local Notation CAM_Running :=
+  (@Running address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language ge)).
+Local Notation CAM_StuckState :=
+  (@StuckState address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language ge)).
+
+Definition CAM_trace : Type := list (@mem_ev address).
+
+Definition CAM_read_trace (l : address) (ly : memory_chunk) : CAM_trace :=
+  map (fun l => @Read address l) (layout_to_locs l ly).
+
+Definition CAM_write_trace (l : address) (ly : memory_chunk) : CAM_trace :=
+  map (fun l => @Write address l) (layout_to_locs l ly).
+
+(** A labeled presentation of the unchanged atomic-machine rules.  Atomic
+    reads and writes expose their byte-granular access at the source level;
+    a successful CAS exposes its read followed by its write.  A commit is
+    silent because the events were exposed by [CAM_core_try]. *)
+Inductive CAM_step : nat -> CAM_config ge -> CAM_trace -> CAM_config ge -> Prop :=
+| CAM_core_try : forall
+    (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (T : CAM_trace)
+    (score' : Clight_core.CC_core) (sm' : mem) (mu' : CAM_rw_map)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hstep : ev_step_with_mem_ev (Clight_evsem.CLC_evsem ge)
+      score sm T score' sm')
+    (Hreserve : rsv T mu = Some mu'),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) T
+      (Build_CAM_config ge (<[i := CAM_Running score' T]> stp) sm' mu')
+| CAM_core_commit : forall
+    (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (T : CAM_trace) (mu' : CAM_rw_map)
+    (Hget : stp !! i = Some (CAM_Running score T))
+    (Hne : T <> [])
+    (Hcommit : fin T mu = Some mu'),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) []
+      (Build_CAM_config ge (<[i := CAM_Running score []]> stp) sm mu')
+| CAM_sc_read : forall
+    (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (ly : memory_chunk) (l : address)
+    (v : val) (K : option val -> Clight_core.CC_core)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hext : clight_at_external score = Some (ALoad ly l, K))
+    (Hmu : readable mu (layout_to_locs l ly))
+    (Hload : load sm l ly = Some v)
+    (Hdefined : clight_val_defined v),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) (CAM_read_trace l ly)
+      (Build_CAM_config ge
+        (<[i := CAM_Running (K (Some v)) []]> stp) sm mu)
+| CAM_sc_write : forall
+    (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (ly : memory_chunk) (l : address)
+    (v : val) (sm' : mem) (K : option val -> Clight_core.CC_core)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hext : clight_at_external score = Some (AStore ly l v, K))
+    (Hmu : writable mu (layout_to_locs l ly))
+    (Hstore : store sm l ly v = Some sm')
+    (Hdefined : clight_val_defined v),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) (CAM_write_trace l ly)
+      (Build_CAM_config ge (<[i := CAM_Running (K None) []]> stp) sm' mu)
+| CAM_sc_cas_success :
+    forall (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (ly : memory_chunk) (l : address)
+    (expected new current : val) (sm' : mem)
+    (K : option val -> Clight_core.CC_core)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hext : clight_at_external score =
+      Some (ACAS ly l expected new, K))
+    (Hmu : writable mu (layout_to_locs l ly))
+    (Hload : load sm l ly = Some current)
+    (Hdefined_current : clight_val_defined current)
+    (Heq : clight_ValEq score sm current expected)
+    (Hstore : store sm l ly new = Some sm')
+    (Hdefined_new : clight_val_defined new),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu)
+      (CAM_read_trace l ly ++ CAM_write_trace l ly)
+      (Build_CAM_config ge
+        (<[i := CAM_Running (K (Some Vtrue)) []]> stp) sm' mu)
+| CAM_sc_cas_failure :
+    forall (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (ly : memory_chunk) (l : address)
+    (expected new current : val) (K : option val -> Clight_core.CC_core)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hext : clight_at_external score =
+      Some (ACAS ly l expected new, K))
+    (Hmu : readable mu (layout_to_locs l ly))
+    (Hload : load sm l ly = Some current)
+    (Hdefined_current : clight_val_defined current)
+    (Hneq : clight_ValNEq score sm current expected),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) (CAM_read_trace l ly)
+      (Build_CAM_config ge
+        (<[i := CAM_Running (K (Some Vfalse)) []]> stp) sm mu)
+| CAM_sc_cas_stuck :
+    forall (stp : CAM_tpool ge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (ly : memory_chunk) (l : address)
+    (expected new current : val) (K : option val -> Clight_core.CC_core)
+    (Hget : stp !! i = Some (CAM_Running score []))
+    (Hext : clight_at_external score =
+      Some (ACAS ly l expected new, K))
+    (Hload : load sm l ly = Some current)
+    (Hdefined_current : clight_val_defined current)
+    (Heq : clight_ValEq score sm current expected)
+    (Hnot_writable : ~ writable mu (layout_to_locs l ly)),
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) (CAM_read_trace l ly)
+      (Build_CAM_config ge (<[i := CAM_StuckState]> stp) sm mu).
+
+Lemma CAM_step_is_atomic_machine_step i sc1 T sc2 :
+  CAM_step i sc1 T sc2 ->
   @at_step address val _ _ mem memory_chunk clight_mem_mixin
     (Clight_language ge)
     (CAM_threads sc1) (CAM_memory sc1) (CAM_rw sc1)
     (CAM_threads sc2) (CAM_memory sc2) (CAM_rw sc2).
+Proof.
+  intros Hstep; destruct Hstep.
+  - eapply Core_Try; eauto.
+  - eapply Core_Commit; eauto.
+  - eapply SC_Read; eauto.
+  - eapply SC_Write; eauto.
+  - eapply (@SC_Cas_Suc address val _ _ mem memory_chunk
+      clight_mem_mixin (Clight_language ge)); eauto.
+  - eapply (@SC_Cas_Fail address val _ _ mem memory_chunk
+      clight_mem_mixin (Clight_language ge)); eauto.
+  - eapply SC_Cas_Stuck; eauto.
+Qed.
+
+(** Conversely, every rule of the underlying atomic machine has a thread
+    index and the constructor-canonical memory-event label exposed by
+    [CAM_step]. *)
+Lemma atomic_machine_step_has_CAM_label
+    stp sm mu stp' sm' mu' :
+  @at_step address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language ge) stp sm mu stp' sm' mu' ->
+  exists i T,
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) T
+      (Build_CAM_config ge stp' sm' mu').
+Proof.
+  intros Hstep. inversion Hstep; subst.
+  - exists i, T. eapply CAM_core_try; eauto.
+  - exists i, []. eapply CAM_core_commit; eauto.
+  - match goal with
+    | Hext : ?lhs = Some (ALoad ?ly ?addr, ?K) |- _ =>
+        exists i, (CAM_read_trace addr ly); eapply CAM_sc_read; eauto
+    end.
+  - match goal with
+    | Hext : ?lhs = Some (AStore ?ly ?addr ?v, ?K) |- _ =>
+        exists i, (CAM_write_trace addr ly); eapply CAM_sc_write; eauto
+    end.
+  - match goal with
+    | Hext : ?lhs = Some (ACAS ?ly ?addr ?expected ?new, ?K) |- _ =>
+        exists i, (CAM_read_trace addr ly ++ CAM_write_trace addr ly);
+        eapply CAM_sc_cas_success; eauto
+    end.
+  - match goal with
+    | Hext : ?lhs = Some (ACAS ?ly ?addr ?expected ?new, ?K) |- _ =>
+        exists i, (CAM_read_trace addr ly);
+        eapply CAM_sc_cas_failure; eauto
+    end.
+  - match goal with
+    | Hext : ?lhs = Some (ACAS ?ly ?addr ?expected ?new, ?K) |- _ =>
+        exists i, (CAM_read_trace addr ly);
+        eapply CAM_sc_cas_stuck; eauto
+    end.
+Qed.
+
+Corollary CAM_step_iff_atomic_machine_step stp sm mu stp' sm' mu' :
+  (exists i T,
+    CAM_step i
+      (Build_CAM_config ge stp sm mu) T
+      (Build_CAM_config ge stp' sm' mu')) <->
+  @at_step address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language ge) stp sm mu stp' sm' mu'.
+Proof.
+  split.
+  - intros (i & T & Hstep). now apply CAM_step_is_atomic_machine_step in Hstep.
+  - apply atomic_machine_step_has_CAM_label.
+Qed.
 
 End CAMSteps.
 
@@ -132,35 +303,6 @@ Inductive CAM_supported_atomic_call : Clight_core.CC_core -> Prop :=
         [Vptr b ofs; Vint n] k)
 | CAM_supported_CAS_call b ofs expected new k :
     CAM_supported_atomic_call
-      (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-        [Vptr b ofs; Vint expected; Vint new] k).
-
-(** Direct pre/post compatibility for the source core while the corresponding
-    target client call is suspended under its wrapper.  The wrapper's active
-    core is intentionally not equated with either endpoint. *)
-Inductive CAM_atomic_phase_matches :
-    Clight_core.CC_core -> Clight_core.CC_core -> Prop :=
-| CAM_atomic_phase_before c :
-    CAM_supported_atomic_call c ->
-    CAM_atomic_phase_matches c c
-| CAM_atomic_phase_load_after b ofs v k :
-    CAM_atomic_phase_matches
-      (Clight_core.Returnstate v k)
-      (Clight_core.Callstate Wrappers.client_atomic_load_external
-        [Vptr b ofs] k)
-| CAM_atomic_phase_store_after b ofs n k :
-    CAM_atomic_phase_matches
-      (Clight_core.Returnstate Vundef k)
-      (Clight_core.Callstate Wrappers.client_atomic_store_external
-        [Vptr b ofs; Vint n] k)
-| CAM_atomic_phase_CAS_success_after b ofs expected new k :
-    CAM_atomic_phase_matches
-      (Clight_core.Returnstate Vtrue k)
-      (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-        [Vptr b ofs; Vint expected; Vint new] k)
-| CAM_atomic_phase_CAS_failure_after b ofs expected new k :
-    CAM_atomic_phase_matches
-      (Clight_core.Returnstate Vfalse k)
       (Clight_core.Callstate Wrappers.client_atomic_CAS_external
         [Vptr b ofs; Vint expected; Vint new] k).
 
@@ -321,9 +463,9 @@ End CAMSourceTermination.
     canonical atomic call shapes now follow directly from the decoder, while
     definedness of transferred values is enforced by [CAM_step] itself.
     Every transition is the unchanged [CAM_step], and the reflexive endpoint
-    requires every thread to have terminated.  Direct client marker calls
-    require a separate program restriction; assignment syntax alone neither
-    admits nor excludes them. *)
+    requires every thread to have terminated.  The program restriction below
+    separately excludes marker references, inline builtins, and non-atomic
+    external definitions. *)
 Section CAMExecutions.
 
 Context (ge : Clight.genv).
@@ -339,7 +481,8 @@ Inductive CAM_execution :
 | CAM_exec_step sc1 sc2 sc3
     (Hnot_stuck : CAM_no_explicit_stuck sc1)
     (Hsyntax : CAM_assign_loc_value_syntax sc1)
-    (Hstep : CAM_step ge sc1 sc2)
+    (i : nat) (T : CAM_trace)
+    (Hstep : CAM_step ge i sc1 T sc2)
     (Hexec : CAM_execution sc2 sc3) :
     CAM_execution sc1 sc3.
 
@@ -381,15 +524,275 @@ Qed.
 
 End CAMExecutions.
 
-(** ** The concrete CAM/GlobSemantics configuration relation *)
+(** ** The marker-free local target program [P'] *)
 
-(** Target thread identifiers start at [1], whereas CAM identifiers start at
-    [0].  The linked target has one client unit, so ordinal [0] is the client
-    and ordinal [1] is the appended wrapper. *)
-Definition CAM_tid (i : nat) : tid := Pos.of_succ_nat i.
+(** Markers are needed only by the global heterogeneous semantics.  In the
+    local target, the simulation cases below require one source atomic
+    transition to follow a same-thread path through a wrapper and single out
+    its linearization step.  Removing markers keeps [P'] in ordinary Clight
+    and, importantly, adds no target-only global blocks. *)
+Definition CAM_local_atomic_load_function : Clight.function := {|
+  Clight.fn_return := Wrappers.tint;
+  Clight.fn_callconv := cc_default;
+  Clight.fn_params := [(Wrappers.target_temp, Wrappers.atomic_pointer_type)];
+  Clight.fn_vars := [];
+  Clight.fn_temps := [(Wrappers.old_temp, Wrappers.tint)];
+  Clight.fn_body :=
+    Clight.Ssequence
+      (Clight.Sset Wrappers.old_temp Wrappers.target_lvalue)
+      (Clight.Sreturn (Some Wrappers.old_expr))
+|}.
 
-(** Source and target use the same shape of core states but different datatypes. *)
-Definition s2t_core
+(** The global wrapper returns a dummy [int] to cross a module boundary.
+    A local internal call must instead have the client's actual [void]
+    function type, so this version returns [Vundef] through [Sreturn None]. *)
+Definition CAM_local_atomic_store_function : Clight.function := {|
+  Clight.fn_return := Wrappers.tvoid;
+  Clight.fn_callconv := cc_default;
+  Clight.fn_params :=
+    [(Wrappers.target_temp, Wrappers.atomic_pointer_type);
+     (Wrappers.new_temp, Wrappers.tint)];
+  Clight.fn_vars := [];
+  Clight.fn_temps := [];
+  Clight.fn_body :=
+    Clight.Ssequence
+      (Clight.Sassign Wrappers.target_lvalue Wrappers.new_expr)
+      (Clight.Sreturn None)
+|}.
+
+Definition CAM_local_atomic_CAS_function : Clight.function := {|
+  Clight.fn_return := Wrappers.tint;
+  Clight.fn_callconv := cc_default;
+  Clight.fn_params :=
+    [(Wrappers.target_temp, Wrappers.atomic_pointer_type);
+     (Wrappers.expected_temp, Wrappers.tint);
+     (Wrappers.new_temp, Wrappers.tint)];
+  Clight.fn_vars := [];
+  Clight.fn_temps :=
+    [(Wrappers.old_temp, Wrappers.tint);
+     (Wrappers.result_temp, Wrappers.tint)];
+  Clight.fn_body :=
+    Clight.Ssequence
+      (Clight.Sset Wrappers.old_temp Wrappers.target_lvalue)
+      (Clight.Ssequence
+        (Clight.Sifthenelse
+          (Clight.Ebinop Cop.Oeq Wrappers.old_expr
+            Wrappers.expected_expr Wrappers.tint)
+          (Clight.Ssequence
+            (Clight.Sassign Wrappers.target_lvalue Wrappers.new_expr)
+            (Clight.Sset Wrappers.result_temp
+              (Clight.Econst_int Int.one Wrappers.tint)))
+          (Clight.Sset Wrappers.result_temp
+            (Clight.Econst_int Int.zero Wrappers.tint)))
+        (Clight.Sreturn (Some Wrappers.result_expr)))
+|}.
+
+Definition CAM_replace_atomic_globdef
+    (ids : Wrappers.wrapper_ids) (id : ident)
+    (gd : globdef Clight.fundef Ctypes.type) :
+    globdef Clight.fundef Ctypes.type :=
+  if peq id (Wrappers.atomic_load_id ids) then
+    Gfun (Ctypes.Internal CAM_local_atomic_load_function)
+  else if peq id (Wrappers.atomic_store_id ids) then
+    Gfun (Ctypes.Internal CAM_local_atomic_store_function)
+  else if peq id (Wrappers.atomic_CAS_id ids) then
+    Gfun (Ctypes.Internal CAM_local_atomic_CAS_function)
+  else gd.
+
+Definition CAM_replace_atomic_definition
+    (ids : Wrappers.wrapper_ids)
+    (d : ident * globdef Clight.fundef Ctypes.type) :=
+  let '(id, gd) := d in (id, CAM_replace_atomic_globdef ids id gd).
+
+(** [P'] changes only the fundefs at the three existing atomic identifiers.
+    Definition order and cardinality are unchanged, so this translation does
+    not itself shift the global blocks or the initial [nextblock]. *)
+Definition CAM_local_translated_program
+    (P : ClightLang.clight_comp_unit)
+    (ids : Wrappers.wrapper_ids) : ClightLang.clight_comp_unit :=
+  {| ClightLang.cu_defs :=
+       map (CAM_replace_atomic_definition ids) (ClightLang.cu_defs P);
+     ClightLang.cu_public := ClightLang.cu_public P;
+     ClightLang.cu_types := ClightLang.cu_types P;
+     ClightLang.cu_comp_env := ClightLang.cu_comp_env P;
+     ClightLang.cu_comp_env_eq := ClightLang.cu_comp_env_eq P |}.
+
+Lemma CAM_local_atomic_load_type :
+  Clight.type_of_fundef (Ctypes.Internal CAM_local_atomic_load_function) =
+  Clight.type_of_fundef Wrappers.client_atomic_load_external.
+Proof. reflexivity. Qed.
+
+Lemma CAM_local_atomic_store_type :
+  Clight.type_of_fundef (Ctypes.Internal CAM_local_atomic_store_function) =
+  Clight.type_of_fundef Wrappers.client_atomic_store_external.
+Proof. reflexivity. Qed.
+
+Lemma CAM_local_atomic_CAS_type :
+  Clight.type_of_fundef (Ctypes.Internal CAM_local_atomic_CAS_function) =
+  Clight.type_of_fundef Wrappers.client_atomic_CAS_external.
+Proof. reflexivity. Qed.
+
+Lemma CAM_replace_atomic_definition_fst ids d :
+  fst (CAM_replace_atomic_definition ids d) = fst d.
+Proof. destruct d; reflexivity. Qed.
+
+Lemma CAM_local_translation_def_ids P ids :
+  map fst (ClightLang.cu_defs (CAM_local_translated_program P ids)) =
+  map fst (ClightLang.cu_defs P).
+Proof.
+  change
+    (map fst
+      (map (CAM_replace_atomic_definition ids) (ClightLang.cu_defs P)) =
+     map fst (ClightLang.cu_defs P)).
+  rewrite map_map.
+  apply map_ext. intros d. apply CAM_replace_atomic_definition_fst.
+Qed.
+
+Lemma CAM_local_translation_defs_length P ids :
+  length (ClightLang.cu_defs (CAM_local_translated_program P ids)) =
+  length (ClightLang.cu_defs P).
+Proof. cbn [CAM_local_translated_program]. apply length_map. Qed.
+
+Lemma CAM_local_translation_public P ids :
+  ClightLang.cu_public (CAM_local_translated_program P ids) =
+  ClightLang.cu_public P.
+Proof. reflexivity. Qed.
+
+Lemma CAM_local_translation_norepet P ids :
+  list_norepet (map fst (ClightLang.cu_defs P)) ->
+  list_norepet
+    (map fst (ClightLang.cu_defs (CAM_local_translated_program P ids))).
+Proof. rewrite CAM_local_translation_def_ids. auto. Qed.
+
+(** ** Source-program restrictions *)
+
+Definition CAM_external_avoids_markers (ef : external_function) : Prop :=
+  match ef with
+  | EF_builtin name _ =>
+      name <> "ent_atom"%string /\ name <> "ext_atom"%string
+  | _ => True
+  end.
+
+Fixpoint CAM_expr_avoids_markers (a : Clight.expr) : Prop :=
+  match a with
+  | Clight.Evar id _ => id <> GAST.ent_atom /\ id <> GAST.ext_atom
+  | Clight.Ederef a _ | Clight.Eaddrof a _ | Clight.Eunop _ a _ |
+    Clight.Ecast a _ | Clight.Efield a _ _ => CAM_expr_avoids_markers a
+  | Clight.Ebinop _ a1 a2 _ =>
+      CAM_expr_avoids_markers a1 /\ CAM_expr_avoids_markers a2
+  | _ => True
+  end.
+
+Fixpoint CAM_exprlist_avoids_markers (al : list Clight.expr) : Prop :=
+  match al with
+  | [] => True
+  | a :: rest =>
+      CAM_expr_avoids_markers a /\ CAM_exprlist_avoids_markers rest
+  end.
+
+Fixpoint CAM_statement_avoids_markers (s : Clight.statement) : Prop :=
+  match s with
+  | Clight.Sskip | Clight.Sbreak | Clight.Scontinue | Clight.Sgoto _ => True
+  | Clight.Sassign a1 a2 =>
+      CAM_expr_avoids_markers a1 /\ CAM_expr_avoids_markers a2
+  | Clight.Sset _ a => CAM_expr_avoids_markers a
+  | Clight.Scall _ fn args =>
+      CAM_expr_avoids_markers fn /\ CAM_exprlist_avoids_markers args
+  (** CASCompCert's local Clight relation deliberately has no inline-builtin
+      rule.  Such statements are therefore excluded from the source
+      fragment, including (but not limited to) the two atomic markers. *)
+  | Clight.Sbuiltin _ _ _ _ => False
+  | Clight.Ssequence s1 s2 | Clight.Sloop s1 s2 =>
+      CAM_statement_avoids_markers s1 /\
+      CAM_statement_avoids_markers s2
+  | Clight.Sifthenelse a s1 s2 =>
+      CAM_expr_avoids_markers a /\
+      CAM_statement_avoids_markers s1 /\
+      CAM_statement_avoids_markers s2
+  | Clight.Sreturn oa =>
+      match oa with None => True | Some a => CAM_expr_avoids_markers a end
+  | Clight.Sswitch a ls =>
+      CAM_expr_avoids_markers a /\
+      CAM_labeled_statements_avoid_markers ls
+  | Clight.Slabel _ s => CAM_statement_avoids_markers s
+  end
+with CAM_labeled_statements_avoid_markers
+    (ls : Clight.labeled_statements) : Prop :=
+  match ls with
+  | Clight.LSnil => True
+  | Clight.LScons _ s rest =>
+      CAM_statement_avoids_markers s /\
+      CAM_labeled_statements_avoid_markers rest
+  end.
+
+Definition CAM_definition_avoids_markers
+    (d : ident * globdef Clight.fundef Ctypes.type) : Prop :=
+  let '(id, gd) := d in
+  id <> GAST.ent_atom /\ id <> GAST.ext_atom /\
+  gd <> Gfun Wrappers.ent_atom_external /\
+  gd <> Gfun Wrappers.ext_atom_external /\
+  match gd with
+  | Gfun (Ctypes.Internal f) =>
+      CAM_statement_avoids_markers (Clight.fn_body f)
+  | Gfun (Ctypes.External ef _ _ _) =>
+      CAM_external_avoids_markers ef
+  | _ => True
+  end.
+
+Definition CAM_program_avoids_markers
+    (P : ClightLang.clight_comp_unit) : Prop :=
+  Forall CAM_definition_avoids_markers (ClightLang.cu_defs P).
+
+Definition CAM_source_fragment (P : ClightLang.clight_comp_unit) : Prop :=
+  clight_comp_unit_assign_loc_value_only P /\
+  CAM_program_avoids_markers P.
+
+(** A bare local Clight step stops at external functions.  The three atomic
+    declarations are handled by the atomic-machine rules and are replaced by
+    internal wrappers in [P']; every other source function must be internal. *)
+Definition CAM_definition_external_is_atomic
+    (ids : Wrappers.wrapper_ids)
+    (d : ident * globdef Clight.fundef Ctypes.type) : Prop :=
+  let '(id, gd) := d in
+  match gd with
+  | Gfun (Ctypes.External _ _ _ _) =>
+      id = Wrappers.atomic_load_id ids \/
+      id = Wrappers.atomic_store_id ids \/
+      id = Wrappers.atomic_CAS_id ids
+  | _ => True
+  end.
+
+Definition CAM_program_only_atomic_externals
+    (ids : Wrappers.wrapper_ids)
+    (P : ClightLang.clight_comp_unit) : Prop :=
+  Forall (CAM_definition_external_is_atomic ids)
+    (ClightLang.cu_defs P).
+
+Definition CAM_source_program_initialized
+    (P : ClightLang.clight_comp_unit) (sge : Clight.genv) : Prop :=
+  exists raw_sge, LocalClight.init_genv P raw_sge sge.
+
+Definition CAM_local_program_initialized
+    (P' : ClightLang.clight_comp_unit) (tge : Clight.genv) : Prop :=
+  exists raw_tge, LocalClight.init_genv P' raw_tge tge.
+
+(** Ordered traces below use the same concrete block identifiers on both
+    sides.  Since [P'] preserves the order and number of definitions, the
+    canonical local initializers can be chosen with the same symbol blocks
+    and allocation base.  We record that choice explicitly rather than
+    pretending that the diagram is parametric in an arbitrary block
+    renaming. *)
+Definition CAM_program_blocks_aligned
+    (sge tge : Clight.genv) : Prop :=
+  (forall id,
+    Genv.find_symbol (Clight.genv_genv sge) id =
+    Genv.find_symbol (Clight.genv_genv tge) id) /\
+  Genv.genv_next (Clight.genv_genv sge) =
+  Genv.genv_next (Clight.genv_genv tge).
+
+(** The two Clight developments share statements, continuations,
+    environments, and memories, but expose distinct core datatypes. *)
+Definition CAM_core_to_local
     (score : Clight_core.CC_core) : ClightLang.core :=
   match score with
   | Clight_core.State f s k e le =>
@@ -400,1219 +803,676 @@ Definition s2t_core
       ClightLang.Core_Returnstate v k
   end.
 
-(** Identity-block correspondence between a CompCert source memory and a
-    CASCompCert global memory.  The permission types are distinct, hence the
-    explicit conversions in the access-map clause.  In mixed-language
-    relations below, [s]-prefixed binders name source components and
-    [t]-prefixed binders name target components. *)
-Record CAM_memory_match (sm : mem) (tm : GMemory.gmem) : Prop := {
-  CAM_memory_contents_match :
-    Mem.mem_contents sm = GMemory.GMem.mem_contents tm;
-  CAM_memory_access_match :
-    forall b ofs k,
-      Maps.PMap.get b (GMemory.GMem.mem_access tm) ofs
-        (perm_kind_convert k) =
-      option_map permission_convert
-        (Maps.PMap.get b (Mem.mem_access sm) ofs k);
-  CAM_memory_valid_match :
-    forall b, Mem.valid_block sm b <-> GMemory.GMem.valid_block tm b
+Definition CAM_local_core_to_event
+    (tcore : ClightLang.core) : Clight_core.CC_core :=
+  match tcore with
+  | ClightLang.Core_State f s k e le =>
+      Clight_core.State f s k e le
+  | ClightLang.Core_Callstate fd args k =>
+      Clight_core.Callstate fd args k
+  | ClightLang.Core_Returnstate v k =>
+      Clight_core.Returnstate v k
+  end.
+
+Lemma CAM_core_local_roundtrip score :
+  CAM_local_core_to_event (CAM_core_to_local score) = score.
+Proof. destruct score; reflexivity. Qed.
+
+Lemma CAM_local_core_roundtrip tcore :
+  CAM_core_to_local (CAM_local_core_to_event tcore) = tcore.
+Proof. destruct tcore; reflexivity. Qed.
+
+(** ** Concrete same-thread local Clight machine *)
+
+Record CAM_local_config : Type := {
+  CAM_target_threads : gmap nat ClightLang.core;
+  CAM_target_memory : mem
 }.
 
-Section CAMConfigurationRelation.
+(** This is a concurrent lifting of CASCompCert's actual local Clight step.
+    It pairs the footprint step with an event-semantics derivation having the
+    same core and memory endpoints, thereby retaining the ordered trace
+    needed by the atomic machine.  The index is operational: only [ttp !! i]
+    is replaced, and there is no scheduler field or atomic bit which the
+    relation could accidentally constrain. *)
+Inductive CAM_local_step (tge : Clight.genv) (i : nat) :
+    CAM_local_config -> CAM_trace -> CAM_local_config -> Prop :=
+| CAM_local_core_step : forall
+    (ttp : gmap nat ClightLang.core) (tm : mem)
+    (tcore : ClightLang.core) (T : CAM_trace)
+    (fp : FP.t) (tcore' : ClightLang.core) (tm' : mem)
+    (Hget : ttp !! i = Some tcore)
+    (Hlocal : LocalClight.step2 tge tcore tm fp tcore' tm')
+    (Hevents : ev_step_with_mem_ev (Clight_evsem.CLC_evsem tge)
+      (CAM_local_core_to_event tcore) tm T
+      (CAM_local_core_to_event tcore') tm'),
+    CAM_local_step tge i
+      (Build_CAM_local_config ttp tm) T
+      (Build_CAM_local_config (<[i := tcore']> ttp) tm').
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (sc : CAM_config ge) (tc : @ProgConfig GE).
+Lemma CAM_local_step_is_local tge i tc T tc' :
+  CAM_local_step tge i tc T tc' ->
+  exists ttp tm tcore fp tcore' tm',
+    tc = Build_CAM_local_config ttp tm /\
+    tc' = Build_CAM_local_config (<[i := tcore']> ttp) tm' /\
+    ttp !! i = Some tcore /\
+    LocalClight.step2 tge tcore tm fp tcore' tm'.
+Proof.
+  intros Hstep. inversion Hstep; subst.
+  do 6 eexists. repeat split; eauto.
+Qed.
 
-  Local Definition source_running
-      (score : Clight_core.CC_core) (T : list (@mem_ev address)) :=
-    @Running address val _ _ mem memory_chunk clight_mem_mixin
-      (Clight_language ge) score T.
+Lemma CAM_local_step_other_thread tge i tc T tc' other :
+  CAM_local_step tge i tc T tc' ->
+  other <> i ->
+  CAM_target_threads tc' !! other = CAM_target_threads tc !! other.
+Proof.
+  intros Hstep Hne. inversion Hstep; subst; cbn.
+  apply lookup_insert_ne. congruence.
+Qed.
 
-  (** A client frame is concrete: it is module zero, that module is the
-      checked-in [Clight_IS_2], and its dependent core is the structural
-      export of the CAM core. *)
-  Inductive CAM_client_frame_matches
-      (score : Clight_core.CC_core) : @Core.t GE -> Prop :=
-  | CAM_client_frame_intro
-      (client_ix : 'I_(GlobEnv.M GE))
-      (raw_ge : Genv.t ClightLang.Clight_IS_2.(F)
-                       ClightLang.Clight_IS_2.(V))
-      (client_ge : Clight.genv)
-      (Hix : nat_of_ord client_ix = 0)
-      (Hmodule : GlobEnv.modules GE client_ix =
-        ModSem.Build_t ClightLang.Clight_IS_2 raw_ge client_ge)
-      sg F :
-      CAM_client_frame_matches score
-        (Core.Build_t client_ix
-          (ClightAtomicGlobalCalls.runtime_core client_ix
-            ClightLang.Clight_IS_2 raw_ge client_ge Hmodule
-            (s2t_core score)) sg F).
+(** Same-thread reflexive-transitive and nonempty closures, following the
+    trace-concatenating shape of [Smallstep.star] and [Smallstep.plus]. *)
+Inductive CAM_local_star_at (tge : Clight.genv) (i : nat) :
+    CAM_local_config -> CAM_trace -> CAM_local_config -> Prop :=
+| CAM_local_star_refl tc : CAM_local_star_at tge i tc [] tc
+| CAM_local_star_step tc1 T1 tc2 T2 tc3
+    (Hstep : CAM_local_step tge i tc1 T1 tc2)
+    (Hstar : CAM_local_star_at tge i tc2 T2 tc3) :
+    CAM_local_star_at tge i tc1 (T1 ++ T2) tc3.
 
-  Definition CAM_wrapper_frame (tframe : @Core.t GE) : Prop :=
-    nat_of_ord (Core.i tframe) = 1 /\
-    ModSem.lang (GlobEnv.modules GE (Core.i tframe)) =
-      Clight_IS_2_with_markers.
+Definition CAM_local_plus_at (tge : Clight.genv) (i : nat)
+    (tc1 : CAM_local_config) (T : CAM_trace)
+    (tc3 : CAM_local_config) : Prop :=
+  exists tc2 T1 T2,
+    CAM_local_step tge i tc1 T1 tc2 /\
+    CAM_local_star_at tge i tc2 T2 tc3 /\
+    T = T1 ++ T2.
 
-  (** Pending CAM events and the reservation map are source ghost state.
-      Erasing the event list here is what makes [Core_Commit] target
-      stuttering.  A halted source core may match either its final singleton
-      frame or the empty stack after a target [Halt] step. *)
-  Definition CAM_stack_matches
-      (sst : @tstate address val _ _ mem memory_chunk clight_mem_mixin
-              (Clight_language ge))
-      (tcs : @CallStack.t GE) : Prop :=
-    match sst with
-    | Running score _ =>
-        (exists tframe,
-          CAM_client_frame_matches score tframe /\ tcs = [tframe]) \/
-        (ClightLang.halted (s2t_core score) <> None /\ tcs = [])
-    | StuckState => False
-    end.
+Lemma CAM_local_plus_one tge i tc T tc' :
+  CAM_local_step tge i tc T tc' ->
+  CAM_local_plus_at tge i tc T tc'.
+Proof.
+  intros Hstep. exists tc', T, [].
+  split; [exact Hstep |]. split; [constructor |].
+  now rewrite app_nil_r.
+Qed.
 
-  Definition CAM_option_stack_matches
-      (sost : option
-        (@tstate address val _ _ mem memory_chunk clight_mem_mixin
-          (Clight_language ge)))
-      (tocs : option (@CallStack.t GE)) : Prop :=
-    match sost, tocs with
-    | Some sst, Some tcs => CAM_stack_matches sst tcs
-    | None, None => True
-    | _, _ => False
-    end.
+Lemma CAM_local_star_trans tge i tc1 T1 tc2 T2 tc3 :
+  CAM_local_star_at tge i tc1 T1 tc2 ->
+  CAM_local_star_at tge i tc2 T2 tc3 ->
+  CAM_local_star_at tge i tc1 (T1 ++ T2) tc3.
+Proof.
+  intros Hstar1 Hstar2. induction Hstar1.
+  - exact Hstar2.
+  - rewrite <- app_assoc. econstructor; eauto.
+Qed.
 
-  Definition CAM_pool_matches
-      (stp : CAM_tpool ge) (ttp : @ThreadPool.t GE) : Prop :=
-    (forall i,
-      CAM_option_stack_matches (stp !! i)
-        (ThreadPool.get_cs ttp (CAM_tid i))) /\
-    (forall i,
-      (exists sst, stp !! i = Some sst) <->
-      ThreadPool.valid_tid ttp (CAM_tid i)).
+Lemma CAM_local_star_step_star_plus tge i
+    tc Tpre tc_before Tlin tc_after Tpost tc' :
+  CAM_local_star_at tge i tc Tpre tc_before ->
+  CAM_local_step tge i tc_before Tlin tc_after ->
+  CAM_local_star_at tge i tc_after Tpost tc' ->
+  CAM_local_plus_at tge i tc (Tpre ++ Tlin ++ Tpost) tc'.
+Proof.
+  intros Hpre Hlin Hpost.
+  destruct Hpre as [tc0 | tc0 T1 tc2 T2 tc_before Hfirst Hrest].
+  - simpl. exists tc_after, Tlin, Tpost. auto.
+  - exists tc2, T1, (T2 ++ Tlin ++ Tpost).
+    split; [exact Hfirst |]. split.
+    + eapply CAM_local_star_trans; [exact Hrest |].
+      econstructor; [exact Hlin | exact Hpost].
+    + symmetry. apply app_assoc.
+Qed.
 
-  Definition CAM_current_thread_in_pool
-      (stp : CAM_tpool ge) tc : Prop :=
-    exists i sst, stp !! i = Some sst /\ cur_tid tc = CAM_tid i.
+(** ** Concrete linearization steps *)
 
-  Record CAM_uncrit_match sc tc : Prop := {
-    CAM_uncrit_bit : atom_bit tc = O;
-    CAM_uncrit_memory : CAM_memory_match (CAM_memory sc) (gm tc);
-    CAM_uncrit_pool :
-      CAM_pool_matches (CAM_threads sc) (thread_pool tc);
-    CAM_uncrit_current :
-      CAM_current_thread_in_pool (CAM_threads sc) tc
-  }.
+Inductive CAM_linearization_kind : Type :=
+| CAM_lin_load (l : address) (v : val)
+| CAM_lin_store (l : address) (v : val)
+| CAM_lin_CAS_success
+    (l : address) (expected new current : val)
+| CAM_lin_CAS_failure
+    (l : address) (expected new current : val).
 
-  (** An atomic source step at [i], with the selected thread and exact post
-      configuration in the proposition itself.  Merely observing that some
-      thread is parked at an atomic call would be insufficient: a different
-      thread could be taking the actual [CAM_step]. *)
-  Inductive CAM_atomic_step_at (i : nat) :
-      CAM_config ge -> CAM_config ge -> Prop :=
-  | CAM_atomic_read tp m mu c ly l v K :
-      tp !! i = Some (source_running c []) ->
-      clight_at_external c = Some (ALoad ly l, K) ->
-      readable mu (layout_to_locs l ly) ->
-      load m l ly = Some v ->
-      clight_val_defined v ->
-      CAM_atomic_step_at i
-        {| CAM_threads := tp; CAM_memory := m; CAM_rw := mu |}
-        {| CAM_threads := <[i := source_running (K (Some v)) []]> tp;
-           CAM_memory := m; CAM_rw := mu |}
-  | CAM_atomic_write tp m mu c ly l v m' K :
-      tp !! i = Some (source_running c []) ->
-      clight_at_external c = Some (AStore ly l v, K) ->
-      writable mu (layout_to_locs l ly) ->
-      store m l ly v = Some m' ->
-      clight_val_defined v ->
-      CAM_atomic_step_at i
-        {| CAM_threads := tp; CAM_memory := m; CAM_rw := mu |}
-        {| CAM_threads := <[i := source_running (K None) []]> tp;
-           CAM_memory := m'; CAM_rw := mu |}
-  | CAM_atomic_CAS_success tp m mu c ly l expected new current m' K :
-      tp !! i = Some (source_running c []) ->
-      clight_at_external c = Some (ACAS ly l expected new, K) ->
-      writable mu (layout_to_locs l ly) ->
-      load m l ly = Some current ->
-      clight_val_defined current ->
-      clight_ValEq c m current expected ->
-      store m l ly new = Some m' ->
-      clight_val_defined new ->
-      CAM_atomic_step_at i
-        {| CAM_threads := tp; CAM_memory := m; CAM_rw := mu |}
-        {| CAM_threads := <[i := source_running (K (Some Vtrue)) []]> tp;
-           CAM_memory := m'; CAM_rw := mu |}
-  | CAM_atomic_CAS_failure tp m mu c ly l expected new current K :
-      tp !! i = Some (source_running c []) ->
-      clight_at_external c = Some (ACAS ly l expected new, K) ->
-      readable mu (layout_to_locs l ly) ->
-      load m l ly = Some current ->
-      clight_val_defined current ->
-      clight_ValNEq c m current expected ->
-      CAM_atomic_step_at i
-        {| CAM_threads := tp; CAM_memory := m; CAM_rw := mu |}
-        {| CAM_threads := <[i := source_running (K (Some Vfalse)) []]> tp;
-           CAM_memory := m; CAM_rw := mu |}.
+(** The redex identifies the actual read or store statement in the local
+    wrapper.  In particular, successful CAS linearizes at its assignment,
+    not at entry to the wrapper or at an atomic-bit transition. *)
+Inductive CAM_linearization_redex :
+    CAM_linearization_kind -> ClightLang.core -> Prop :=
+| CAM_load_redex : forall b ofs v k e le,
+    Maps.PTree.get Wrappers.target_temp le = Some (Vptr b ofs) ->
+    CAM_linearization_redex
+      (CAM_lin_load (b, Ptrofs.unsigned ofs) v)
+      (ClightLang.Core_State CAM_local_atomic_load_function
+        (Clight.Sset Wrappers.old_temp Wrappers.target_lvalue) k e le)
+| CAM_store_redex : forall b ofs v k e le,
+    Maps.PTree.get Wrappers.target_temp le = Some (Vptr b ofs) ->
+    Maps.PTree.get Wrappers.new_temp le = Some v ->
+    CAM_linearization_redex
+      (CAM_lin_store (b, Ptrofs.unsigned ofs) v)
+      (ClightLang.Core_State CAM_local_atomic_store_function
+        (Clight.Sassign Wrappers.target_lvalue Wrappers.new_expr) k e le)
+| CAM_CAS_success_redex : forall b ofs expected new current k e le,
+    Maps.PTree.get Wrappers.target_temp le = Some (Vptr b ofs) ->
+    Maps.PTree.get Wrappers.expected_temp le = Some expected ->
+    Maps.PTree.get Wrappers.new_temp le = Some new ->
+    Maps.PTree.get Wrappers.old_temp le = Some current ->
+    CAM_linearization_redex
+      (CAM_lin_CAS_success (b, Ptrofs.unsigned ofs)
+        expected new current)
+      (ClightLang.Core_State CAM_local_atomic_CAS_function
+        (Clight.Sassign Wrappers.target_lvalue Wrappers.new_expr) k e le)
+| CAM_CAS_failure_redex : forall b ofs expected new current k e le,
+    Maps.PTree.get Wrappers.target_temp le = Some (Vptr b ofs) ->
+    Maps.PTree.get Wrappers.expected_temp le = Some expected ->
+    Maps.PTree.get Wrappers.new_temp le = Some new ->
+    CAM_linearization_redex
+      (CAM_lin_CAS_failure (b, Ptrofs.unsigned ofs)
+        expected new current)
+      (ClightLang.Core_State CAM_local_atomic_CAS_function
+        (Clight.Sset Wrappers.old_temp Wrappers.target_lvalue) k e le).
 
-  Definition CAM_pool_matches_except
-      (stp : CAM_tpool ge) (ttp : @ThreadPool.t GE)
-      (selected : nat) : Prop :=
-    (forall i, i <> selected ->
-      CAM_option_stack_matches (stp !! i)
-        (ThreadPool.get_cs ttp (CAM_tid i))) /\
-    (forall i,
-      (exists sst, stp !! i = Some sst) <->
-      ThreadPool.valid_tid ttp (CAM_tid i)).
+Definition CAM_linearization_memory
+    (kind : CAM_linearization_kind) (tm tm' : mem) : Prop :=
+  match kind with
+  | CAM_lin_load l v => load tm l Mint32 = Some v /\ tm' = tm
+  | CAM_lin_store l v => store tm l Mint32 v = Some tm'
+  | CAM_lin_CAS_success l _ new _ => store tm l Mint32 new = Some tm'
+  | CAM_lin_CAS_failure l _ _ current =>
+      load tm l Mint32 = Some current /\ tm' = tm
+  end.
 
-  (** During a target critical section, the selected source core need not
-      equal the client core suspended below the wrapper: the source can be
-      placed on either side of the atomic linearization point.  The relation
-      still requires an actual marker-enabled wrapper over a canonical atomic
-      client call, and relates every nonselected thread exactly. *)
-  Record CAM_crit_match sc tc : Prop := {
-    CAM_crit_bit : atom_bit tc = I;
-    CAM_crit_memory : CAM_memory_match (CAM_memory sc) (gm tc);
-    CAM_crit_selected : exists selected score
-        twrapper_frame tclient_frame tcore,
-      CAM_threads sc !! selected =
-        Some (source_running score []) /\
-      cur_tid tc = CAM_tid selected /\
-      CAM_pool_matches_except (CAM_threads sc)
-        (thread_pool tc) selected /\
-      CAM_wrapper_frame twrapper_frame /\
-      CAM_supported_atomic_call tcore /\
-      CAM_atomic_phase_matches score tcore /\
-      CAM_client_frame_matches tcore tclient_frame /\
-      ThreadPool.get_cs (thread_pool tc) (CAM_tid selected) =
-        Some [twrapper_frame; tclient_frame]
-  }.
+Inductive CAM_local_linearization (tge : Clight.genv)
+    (kind : CAM_linearization_kind) (i : nat) :
+    CAM_local_config -> CAM_trace -> CAM_local_config -> Prop :=
+| CAM_local_linearization_intro : forall
+    (ttp : gmap nat ClightLang.core) (tm : mem)
+    (tcore : ClightLang.core) (T : CAM_trace) (fp : FP.t)
+    (tcore' : ClightLang.core) (tm' : mem)
+    (Hget : ttp !! i = Some tcore)
+    (Hredex : CAM_linearization_redex kind tcore)
+    (Hlocal : LocalClight.step2 tge tcore tm fp tcore' tm')
+    (Hevents : ev_step_with_mem_ev (Clight_evsem.CLC_evsem tge)
+      (CAM_local_core_to_event tcore) tm T
+      (CAM_local_core_to_event tcore') tm')
+    (Hmemory : CAM_linearization_memory kind tm tm'),
+    CAM_local_linearization tge kind i
+      (Build_CAM_local_config ttp tm) T
+      (Build_CAM_local_config (<[i := tcore']> ttp) tm').
 
-  (** This is only a relation between configurations: it contains no target
-      path, source transition, or future endpoint.  No theorem below claims
-      that every intermediate state in its returned target star satisfies the
-      crit constructor. *)
-  Inductive match_config : CAM_config ge -> @ProgConfig GE -> Prop :=
-  | CAM_match_uncrit sc tc :
-      CAM_uncrit_match sc tc ->
-      match_config sc tc
-  | CAM_match_crit sc tc :
-      CAM_crit_match sc tc ->
-      match_config sc tc.
+Lemma CAM_local_linearization_step tge kind i tc T tc' :
+  CAM_local_linearization tge kind i tc T tc' ->
+  CAM_local_step tge i tc T tc'.
+Proof. intros Hlin; inversion Hlin; subst; econstructor; eauto. Qed.
 
-End CAMConfigurationRelation.
+(** A target atomic path is split immediately around its concrete local
+    linearization step.  These boundary memories are simulation obligations,
+    never alternate constructors of the state-matching relation. *)
+Inductive CAM_linearization_path {J : Type}
+    (tge : Clight.genv)
+    (memory_match : J -> mem -> mem -> Prop)
+    (kind : CAM_linearization_kind) (i : nat)
+    (j_before j_after : J) (sm_before sm_after : mem) :
+    CAM_local_config -> CAM_trace -> CAM_local_config -> Prop :=
+| CAM_linearization_path_intro :
+    forall tc tc_before tc_after tc' Tpre Tlin Tpost,
+      CAM_local_star_at tge i tc Tpre tc_before ->
+      memory_match j_before sm_before (CAM_target_memory tc_before) ->
+      CAM_local_linearization tge kind i tc_before Tlin tc_after ->
+      memory_match j_after sm_after (CAM_target_memory tc_after) ->
+      CAM_local_star_at tge i tc_after Tpost tc' ->
+      CAM_linearization_path tge memory_match kind i
+        j_before j_after sm_before sm_after
+        tc (Tpre ++ Tlin ++ Tpost) tc'.
 
-Lemma CAM_tid_injective i j : CAM_tid i = CAM_tid j -> i = j.
-Proof. apply SuccNat2Pos.inj. Qed.
+Lemma CAM_linearization_path_plus {J : Type}
+    (tge : Clight.genv) (memory_match : J -> mem -> mem -> Prop)
+    kind i j j' sm sm' tc T tc' :
+  CAM_linearization_path tge memory_match kind i
+    j j' sm sm' tc T tc' ->
+  CAM_local_plus_at tge i tc T tc'.
+Proof.
+  intros Hpath. inversion Hpath; subst.
+  eapply CAM_local_star_step_star_plus; eauto.
+  eapply CAM_local_linearization_step; eauto.
+Qed.
 
-Lemma CAM_supported_atomic_call_not_halted c :
-  CAM_supported_atomic_call c ->
-  ClightLang.halted (s2t_core c) = None.
-Proof. intros Hcall; inversion Hcall; reflexivity. Qed.
+(** ** The single bit-independent configuration relation *)
 
-Section CAMUncritLemmas.
+Definition CAM_source_thread_state (sge : Clight.genv) : Type :=
+  @tstate address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language sge).
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (sc : CAM_config ge) (tc : @ProgConfig GE).
+Definition CAM_running {sge : Clight.genv}
+    (score : Clight_core.CC_core) (pending : CAM_trace) :
+    CAM_source_thread_state sge :=
+  @Running address val _ _ mem memory_chunk clight_mem_mixin
+    (Clight_language sge) score pending.
 
-  Local Definition CAM_q_running
-      (score : Clight_core.CC_core) (T : list (@mem_ev address)) :=
-    @Running address val _ _ mem memory_chunk clight_mem_mixin
-      (Clight_language ge) score T.
+Inductive CAM_option_thread_match
+    {sge : Clight.genv} {J : Type}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop) (j : J) :
+    option (CAM_source_thread_state sge) ->
+    option ClightLang.core -> Prop :=
+| CAM_thread_absent : CAM_option_thread_match core_match j None None
+| CAM_thread_running : forall score pending tcore,
+    core_match j score tcore ->
+    CAM_option_thread_match core_match j
+      (Some (CAM_running score pending)) (Some tcore).
 
-  Lemma CAM_uncrit_atomic_frame sc tc i score :
-    CAM_uncrit_match sc tc ->
-    CAM_threads sc !! i = Some (CAM_q_running score []) ->
-    CAM_supported_atomic_call score ->
-    exists (client_ix : 'I_(GlobEnv.M GE))
-           (raw_ge : Genv.t Clight.fundef Ctypes.type)
-           (client_ge : Clight.genv)
-           (Hmodule : GlobEnv.modules GE client_ix =
-             ModSem.Build_t ClightLang.Clight_IS_2 raw_ge client_ge) sg F,
-      nat_of_ord client_ix = 0 /\
-      ThreadPool.get_cs (thread_pool tc) (CAM_tid i) =
-        Some
-          [Core.Build_t client_ix
-            (ClightAtomicGlobalCalls.runtime_core client_ix
-              ClightLang.Clight_IS_2 raw_ge client_ge
-              Hmodule
-              (s2t_core score)) sg F].
-  Proof.
-    intros Hq Hget Hsupported.
-    destruct Hq as [Hbit Hmemory [Hstacks Hdomain] Hcurrent].
-    specialize (Hstacks i).
-    rewrite Hget in Hstacks.
-    destruct (ThreadPool.get_cs (thread_pool tc) (CAM_tid i)) as [tcs|]
-      eqn:Htcs; simpl in Hstacks; try contradiction.
-    destruct Hstacks as [(tframe & Hframe & ->) | [Hhalt ->]].
-    - inversion Hframe; subst tframe.
-      exists client_ix, raw_ge, client_ge, Hmodule, sg, F.
-      split; [assumption | reflexivity].
-    - rewrite (CAM_supported_atomic_call_not_halted _ Hsupported) in Hhalt.
-      contradiction.
-  Qed.
-
-  Lemma CAM_thread_with_frame_not_halted
-      (ttp : @ThreadPool.t GE) t tframe
-      (Htcs : ThreadPool.get_cs ttp t = Some [tframe]) :
-    ~ ThreadPool.halted ttp t.
-  Proof.
-    intros Hhalt. inversion Hhalt; subst.
-    rewrite Htcs in H. inversion H. subst cs.
-    discriminate.
-  Qed.
-
-  Lemma CAM_atomic_pool_after
-      (stp : CAM_tpool ge) (ttp ttp' : @ThreadPool.t GE)
-      i score score' tframe'
-      (Hpool : CAM_pool_matches stp ttp)
-      (Hget : stp !! i = Some (CAM_q_running score []))
-      (Hframe' : CAM_client_frame_matches score' tframe')
-      (Hselected : ThreadPool.get_cs ttp' (CAM_tid i) =
-        Some [tframe'])
-      (Hother : forall other, other <> CAM_tid i ->
-        ThreadPool.get_cs ttp' other =
-          ThreadPool.get_cs ttp other)
-      (Hnext : ThreadPool.next_tid ttp' =
-        ThreadPool.next_tid ttp) :
-    CAM_pool_matches (<[i := CAM_q_running score' []]> stp) ttp'.
-  Proof.
-    destruct Hpool as [Hstacks Hdomain]. split.
-    - intros j. destruct (Nat.eq_dec j i) as [-> | Hji].
-      + assert (Hlookup :
-          (<[i := CAM_q_running score' []]> stp) !! i =
-            Some (CAM_q_running score' [])).
-        { apply (lookup_insert_eq (K := nat) (M := gmap nat)). }
-        rewrite Hlookup.
-        rewrite Hselected. simpl.
-        left. exists tframe'. auto.
-      + assert (Hlookup :
-          (<[i := CAM_q_running score' []]> stp) !! j = stp !! j).
-        { apply (lookup_insert_ne (K := nat) (M := gmap nat)). congruence. }
-        rewrite Hlookup.
-        rewrite Hother.
-        * apply Hstacks.
-        * intros Htid. apply CAM_tid_injective in Htid. contradiction.
-    - intros j. unfold ThreadPool.valid_tid. rewrite Hnext.
-      destruct (Nat.eq_dec j i) as [-> | Hji].
-      + split; intros _.
-        * apply (proj1 (Hdomain i)).
-          exists (CAM_q_running score []). exact Hget.
-        * exists (CAM_q_running score' []).
-          apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-      + assert (Hlookup :
-          (<[i := CAM_q_running score' []]> stp) !! j = stp !! j).
-        { apply (lookup_insert_ne (K := nat) (M := gmap nat)). congruence. }
-        rewrite Hlookup.
-        apply Hdomain.
-  Qed.
-
-  Lemma CAM_pool_after_commit
-      (stp : CAM_tpool ge) (ttp : @ThreadPool.t GE)
-      i score T
-      (Hpool : CAM_pool_matches stp ttp)
-      (Hget : stp !! i = Some (CAM_q_running score T)) :
-    CAM_pool_matches (<[i := CAM_q_running score []]> stp) ttp.
-  Proof.
-    destruct Hpool as [Hstacks Hdomain]. split.
-    - intros j. destruct (Nat.eq_dec j i) as [-> | Hji].
-      + assert (Hlookup :
-          (<[i := CAM_q_running score []]> stp) !! i =
-            Some (CAM_q_running score [])).
-        { apply (lookup_insert_eq (K := nat) (M := gmap nat)). }
-        rewrite Hlookup.
-        specialize (Hstacks i). rewrite Hget in Hstacks.
-        exact Hstacks.
-      + assert (Hlookup :
-          (<[i := CAM_q_running score []]> stp) !! j = stp !! j).
-        { apply (lookup_insert_ne (K := nat) (M := gmap nat)). congruence. }
-        rewrite Hlookup. apply Hstacks.
-    - intros j. destruct (Nat.eq_dec j i) as [-> | Hji].
-      + split; intros _.
-        * apply (proj1 (Hdomain i)).
-          exists (CAM_q_running score T). exact Hget.
-        * exists (CAM_q_running score []).
-          apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-      + assert (Hlookup :
-          (<[i := CAM_q_running score []]> stp) !! j = stp !! j).
-        { apply (lookup_insert_ne (K := nat) (M := gmap nat)). congruence. }
-        rewrite Hlookup. apply Hdomain.
-  Qed.
-
-  Lemma CAM_current_after_commit
-      (stp : CAM_tpool ge) tc i score T
-      (Hcurrent : CAM_current_thread_in_pool stp tc)
-      (Hget : stp !! i = Some (CAM_q_running score T)) :
-    CAM_current_thread_in_pool (<[i := CAM_q_running score []]> stp) tc.
-  Proof.
-    destruct Hcurrent as (j & sst & Hj & Hcur).
-    destruct (Nat.eq_dec j i) as [-> | Hji].
-    - exists i, (CAM_q_running score []). split.
-      + apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-      + exact Hcur.
-    - exists j, sst. split; [| exact Hcur].
-      assert (Hlookup :
-        (<[i := CAM_q_running score []]> stp) !! j = stp !! j).
-      { apply (lookup_insert_ne (K := nat) (M := gmap nat)). congruence. }
-      rewrite Hlookup. exact Hj.
-  Qed.
-
-End CAMUncritLemmas.
-
-(** ** The two remaining representation bridges
-
-    The wrapper proofs execute over a freelist-indexed [FMemory.Mem.mem],
-    whereas CAM executes over CompCert [Mem.mem].  This record says only how
-    loads and stores at an identity-related atomic address are transported.
-    It does not postulate any target execution or impose a value-shape
-    restriction.  Definedness is now a premise of the atomic-machine rules,
-    and a taken CAS branch obtains its integer shape from the declaration-
-    typed comparison. *)
-
-Record CAM_atomic_memory_view {GE : GlobEnv.t}
-    (sm : mem) (tc : @ProgConfig GE) (i : nat) : Type := {
-  CAM_view_fmemory : FMemory.Mem.mem;
-  CAM_view_embed :
-    FMemory.embed (gm tc)
-      (FLists.get_fl (GlobEnv.freelists GE)
-        (FLists.get_tfid (GlobEnv.freelists GE) (CAM_tid i)
-          (ThreadPool.next_fmap (thread_pool tc) (CAM_tid i))))
-      CAM_view_fmemory;
-  CAM_view_load : forall b ofs v,
-    Mem.loadv Mint32 sm (Vptr b ofs) = Some v ->
-    FMemory.Mem.loadv Mint32 CAM_view_fmemory (Vptr b ofs) = Some v;
-  CAM_view_store : forall b ofs v sm',
-    Mem.storev Mint32 sm (Vptr b ofs) v = Some sm' ->
-    exists tfm',
-      FMemory.Mem.storev Mint32 CAM_view_fmemory (Vptr b ofs) v =
-        Some tfm' /\
-      FMemory.embed (FMemory.strip tfm')
-        (FLists.get_fl (GlobEnv.freelists GE)
-          (FLists.get_tfid (GlobEnv.freelists GE) (CAM_tid i)
-            (ThreadPool.next_fmap (thread_pool tc) (CAM_tid i)))) tfm' /\
-      CAM_memory_match sm' (FMemory.strip tfm')
+(** Pending source events and the reservation map are ghost state.  No target
+    atomic bit exists here, and no critical/uncritical cases occur. *)
+Record CAM_match_state {J : Type} {sge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (j : J) (sc : CAM_config sge) (tc : CAM_local_config) : Prop := {
+  CAM_match_memory :
+    memory_match j (CAM_memory sc) (CAM_target_memory tc);
+  CAM_match_threads : forall i,
+    CAM_option_thread_match core_match j (CAM_threads sc !! i)
+      (CAM_target_threads tc !! i)
 }.
 
-Definition CAM_atomic_memory_views
-    {ge : Clight.genv} {GE : GlobEnv.t}
-    (sc : CAM_config ge) (tc : @ProgConfig GE) : Type :=
-  forall i score,
-    CAM_threads sc !! i =
-      Some (@Running address val _ _ mem memory_chunk clight_mem_mixin
-        (Clight_language ge) score []) ->
-    CAM_supported_atomic_call score ->
-    CAM_atomic_memory_view (CAM_memory sc) tc i.
-
-(** The view provider is restricted to target configurations reachable from
-    the initialized configuration.  This avoids demanding fresh-freelist
-    embeddings for arbitrary records that happen to satisfy the extensional
-    configuration relation but violate target runtime invariants. *)
-Definition CAM_atomic_memory_views_from
-    {ge : Clight.genv} {GE : GlobEnv.t}
-    (tc_initial : @ProgConfig GE) : Type :=
-  forall (sc : CAM_config ge) (tc : @ProgConfig GE) labels fp,
-    ETrace.star (@glob_step GE) tc_initial labels fp tc ->
-    CAM_uncrit_match sc tc ->
-    CAM_atomic_memory_views sc tc.
-
-(** [Core_Try] is precisely the missing VST-Clight/CAS-Clight semantic
-    interoperability lemma.  Atomic calls and [Core_Commit] are deliberately
-    absent: the former are proved using the translated wrappers below, and
-    the latter is target stuttering because pending events and [CAM_rw] are
-    erased by the relation. *)
-Inductive CAM_core_try_step (ge : Clight.genv) :
-    CAM_config ge -> CAM_config ge -> Prop :=
-| CAM_core_try_intro : forall tp m mu i c T c' m' mu',
-    tp !! i =
-      Some (@Running address val _ _ mem memory_chunk clight_mem_mixin
-        (Clight_language ge) c []) ->
-    ev_step_with_mem_ev (Clight_evsem.CLC_evsem ge) c m T c' m' ->
-    rsv T mu = Some mu' ->
-    CAM_core_try_step ge
-      {| CAM_threads := tp; CAM_memory := m; CAM_rw := mu |}
-      {| CAM_threads := <[i :=
-           @Running address val _ _ mem memory_chunk clight_mem_mixin
-             (Clight_language ge) c' T]> tp;
-         CAM_memory := m'; CAM_rw := mu' |}.
-
-Definition CAM_core_try_refinement_at
-    {ge : Clight.genv} {GE : GlobEnv.t}
-    (sc1 : CAM_config ge) (tc : @ProgConfig GE) : Prop :=
-  forall (sc2 : CAM_config ge),
-    CAM_core_try_step ge sc1 sc2 ->
-    CAM_assign_loc_value_syntax sc1 ->
-    CAM_uncrit_match sc1 tc ->
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match sc2 tc'.
-
-(** Reachability- and program-indexed form of the ordinary-step bridge.  It
-    is required only at target configurations reachable from the initialized
-    [tc_initial], and its source [ge] is initialized from the same client [P]
-    that is linked into the target. *)
-Definition CAM_core_try_refinements_for_from
-    (P : ClightLang.clight_comp_unit)
-    (ge : Clight.genv) (GE : GlobEnv.t)
-    (tc_initial : @ProgConfig GE) : Prop :=
-  forall raw_ge,
-    ClightLang.init_genv P raw_ge ge ->
-    forall (sc : CAM_config ge) (tc : @ProgConfig GE) labels fp,
-      ETrace.star (@glob_step GE) tc_initial labels fp tc ->
-      CAM_core_try_refinement_at sc tc.
-
-Lemma CAM_core_commit_stutters
-    {ge : Clight.genv} {GE : GlobEnv.t}
-    stp sm mu i score T mu' (tc : @ProgConfig GE)
-    (Hget : stp !! i =
-      Some (@Running address val _ _ mem memory_chunk clight_mem_mixin
-        (Clight_language ge) score T))
-    (Hq : CAM_uncrit_match
-      {| CAM_threads := stp; CAM_memory := sm; CAM_rw := mu |} tc) :
-  exists labels fp,
-    ETrace.star (@glob_step GE) tc labels fp tc /\
-    CAM_uncrit_match
-      {| CAM_threads := <[i :=
-           @Running address val _ _ mem memory_chunk clight_mem_mixin
-             (Clight_language ge) score []]> stp;
-         CAM_memory := sm; CAM_rw := mu' |} tc.
+Lemma CAM_match_state_commit {J : Type} {sge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    j stp sm mu i score pending mu' tc :
+  stp !! i = Some (CAM_running score pending) ->
+  CAM_match_state core_match memory_match j
+    (Build_CAM_config sge stp sm mu) tc ->
+  CAM_match_state core_match memory_match j
+    (Build_CAM_config sge (<[i := CAM_running score []]> stp) sm mu') tc.
 Proof.
-  exists [], FP.emp. split; [constructor |].
-  destruct Hq as [Hbit Hmemory Hpool Hcurrent].
-  change (CAM_memory_match sm (gm tc)) in Hmemory.
-  change (CAM_pool_matches stp (thread_pool tc)) in Hpool.
-  change (CAM_current_thread_in_pool stp tc) in Hcurrent.
-  refine (@Build_CAM_uncrit_match ge GE
-    {| CAM_threads := <[i :=
-         @Running address val _ _ mem memory_chunk clight_mem_mixin
-           (Clight_language ge) score []]> stp;
-       CAM_memory := sm; CAM_rw := mu' |} tc Hbit Hmemory _ _).
-  - eapply CAM_pool_after_commit; eauto.
-  - eapply CAM_current_after_commit; eauto.
+  intros Hget Hmatch.
+  change (gmap nat (CAM_source_thread_state sge)) in stp.
+  destruct Hmatch as [Hmemory Hthreads].
+  constructor; [exact Hmemory |].
+  intros other.
+  change (CAM_option_thread_match core_match j
+    ((<[i := CAM_running score []]> stp) !! other)
+    (CAM_target_threads tc !! other)).
+  destruct (Nat.eq_dec other i) as [-> | Hne].
+  - specialize (Hthreads i).
+    cbn [CAM_threads] in Hthreads.
+    rewrite Hget in Hthreads. inversion Hthreads; subst.
+    assert (Hlookup :
+      (<[i := CAM_running score []]> stp) !! i =
+        Some (CAM_running score [])) by apply lookup_insert_eq.
+    rewrite Hlookup. constructor; assumption.
+  - assert (Hlookup :
+      (<[i := CAM_running score []]> stp) !! other = stp !! other).
+    { apply lookup_insert_ne. congruence. }
+    rewrite Hlookup. apply Hthreads.
 Qed.
 
-(** ** Trace composition *)
+(** ** Safe source steps and commit stuttering *)
 
-Section CAMTraceComposition.
+Definition CAM_safe_step (sge : Clight.genv) i sc T sc' : Prop :=
+  CAM_step sge i sc T sc' /\
+  CAM_assign_loc_value_syntax sc /\
+  CAM_no_explicit_stuck sc'.
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (tc : @ProgConfig GE).
-
-  Lemma CAM_etrace_star_trans
-      tc1 tc2 tc3
-      labels1 fp1 labels2 fp2 :
-    ETrace.star (@glob_step GE) tc1 labels1 fp1 tc2 ->
-    ETrace.star (@glob_step GE) tc2 labels2 fp2 tc3 ->
-    ETrace.star (@glob_step GE) tc1 (labels1 ++ labels2)
-      (FP.union fp1 fp2) tc3.
-  Proof.
-    intros Hstar1 Hstar2.
-    induction Hstar1.
-    - rewrite FP.emp_union_fp. exact Hstar2.
-    - simpl. rewrite <- FP.fp_union_assoc.
-      econstructor; eauto.
-  Qed.
-
-End CAMTraceComposition.
-
-(** ** The program translation and top-level theorem *)
-
-Definition CAM_translated_program
-    (P : ClightLang.clight_comp_unit)
-    (ids : ClightAtomicWrappers.wrapper_ids)
-    (thread_entries : GAST.entries) :=
-  ClightAtomicTarget.linked_program [P] ids thread_entries.
-
-Definition CAM_source_program_initialized
-    (P : ClightLang.clight_comp_unit) (ge : Clight.genv) : Prop :=
-  exists raw_ge, ClightLang.init_genv P raw_ge ge.
-
-Lemma CAM_translated_program_shape P ids thread_entries :
-  CAM_translated_program P ids thread_entries =
-    ([ClightAtomicTarget.client_unit P;
-      ClightAtomicTarget.wrapper_unit ids], thread_entries).
-Proof. reflexivity. Qed.
-
-Lemma CAM_translated_program_init_GE P ids thread_entries m GE tc t :
-  init_config (CAM_translated_program P ids thread_entries) m GE tc t ->
-  GlobEnv.init (ClightAtomicTarget.linked_units [P] ids) GE.
-Proof. inversion 1; assumption. Qed.
-
-(** Static runtime facts extracted from initialization of [P'] rather than
-    assumed as part of a simulation relation. *)
-Definition CAM_initialized_wrapper
-    (ids : Wrappers.wrapper_ids) (GE : GlobEnv.t) : Prop :=
-  exists (wrapper_ix : 'I_(GlobEnv.M GE))
-         (raw_ge : Genv.t Clight.fundef Ctypes.type)
-         (wrapper_ge : Clight.genv),
-    nat_of_ord wrapper_ix = 1 /\
-    GlobEnv.modules GE wrapper_ix =
-      ModSem.Build_t Clight_IS_2_with_markers raw_ge wrapper_ge /\
-    InteractionSemantics.init_genv Clight_IS_2_with_markers
-      (Wrappers.wrapper_comp_unit ids) raw_ge wrapper_ge /\
-    GlobEnv.get_mod GE (Wrappers.atomic_load_id ids) = Some wrapper_ix /\
-    GlobEnv.get_mod GE (Wrappers.atomic_store_id ids) = Some wrapper_ix /\
-    GlobEnv.get_mod GE (Wrappers.atomic_CAS_id ids) = Some wrapper_ix.
-
-Lemma CAM_initialized_wrapper_of_link
-    P ids GE
-    (Hinit : GlobEnv.init
-      (ClightAtomicTarget.linked_units [P] ids) GE)
-    (Hreserve :
-      ClightAtomicTarget.clients_reserve_wrapper_ids [P] ids)
-    (Hids : Wrappers.wrapper_ids_wf ids) :
-  CAM_initialized_wrapper ids GE.
+Lemma CAM_execution_head_is_safe sge sc sc' final i T :
+  CAM_assign_loc_value_syntax sc ->
+  CAM_step sge i sc T sc' ->
+  CAM_execution sge sc' final ->
+  CAM_safe_step sge i sc T sc'.
 Proof.
-  exact (ClightAtomicTarget.initialized_linked_units_have_owned_wrapper
-    [P] ids GE Hinit Hreserve Hids).
+  intros Hsyntax Hstep Hexec.
+  split; [exact Hstep |]. split; [exact Hsyntax |].
+  eapply CAM_execution_source_no_explicit_stuck_1; eauto.
 Qed.
 
-Lemma CAM_initialized_client_resolution_at
-    P ids GE
-    (Hinit : GlobEnv.init
-      (ClightAtomicTarget.linked_units [P] ids) GE)
-    (Hdecls : ClientInit.client_atomic_declarations ids P)
-    (client_ix : 'I_(GlobEnv.M GE))
-    (raw_ge : Genv.t Clight.fundef Ctypes.type)
-    (client_ge : Clight.genv)
-    (Hix : nat_of_ord client_ix = 0)
-    (Hmodule : GlobEnv.modules GE client_ix =
-      ModSem.Build_t ClightLang.Clight_IS_2 raw_ge client_ge) :
-  ClightLang.invert_symbol_from_string (Clight.genv_genv client_ge)
-      "atomic_load" =
-      Some (Wrappers.atomic_load_id ids) /\
-  ClightLang.invert_symbol_from_string (Clight.genv_genv client_ge)
-      "atomic_store" =
-      Some (Wrappers.atomic_store_id ids) /\
-  ClightLang.invert_symbol_from_string (Clight.genv_genv client_ge)
-      "atomic_CAS" =
-      Some (Wrappers.atomic_CAS_id ids).
+Inductive CAM_commit_transition (sge : Clight.genv) :
+    nat -> CAM_config sge -> CAM_trace -> CAM_config sge -> Prop :=
+| CAM_commit_transition_intro : forall stp sm mu i score pending mu'
+    (Hget : stp !! i = Some (CAM_running score pending))
+    (Hne : pending <> [])
+    (Hcommit : fin pending mu = Some mu'),
+    CAM_commit_transition sge i
+      (Build_CAM_config sge stp sm mu) []
+      (Build_CAM_config sge
+        (<[i := CAM_running score []]> stp) sm mu').
+
+Lemma CAM_commit_transition_is_step sge i sc T sc' :
+  CAM_commit_transition sge i sc T sc' -> CAM_step sge i sc T sc'.
 Proof.
-  destruct (GlobEnv.ge_init
-    (ClightAtomicTarget.linked_units [P] ids) GE Hinit client_ix)
-    as [cui [Hnth Hmod]].
-  change (nth_error (ClightAtomicTarget.linked_units [P] ids)
-    (nat_of_ord client_ix) = Some cui) in Hnth.
-  rewrite Hix,
-    (ClightAtomicTarget.linked_units_client_nth_error
-      [P] ids 0 P eq_refl) in Hnth.
-  inversion Hnth; subst cui; clear Hnth.
-  change (ModSem.init_modsem ClightLang.Clight_IS_2 P
-    (GlobEnv.modules GE client_ix)) in Hmod.
-  rewrite Hmodule in Hmod.
-  inversion Hmod; subst.
-  apply inj_pairT2 in H. apply inj_pairT2 in H1. subst.
-  eapply ClientInit.initialized_client_atomic_resolution; eauto.
+  intros Hcommit.
+  destruct Hcommit as [stp sm mu i score pending mu' Hget Hne Hcommit].
+  eapply CAM_core_commit; eauto.
 Qed.
 
-Section CAMInitializedAtomicEndpoints.
+(** ** Constructor-local simulation obligations *)
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (sc : CAM_config ge) (tc : @ProgConfig GE).
-  Variables P : ClightLang.clight_comp_unit.
-  Variable ids : Wrappers.wrapper_ids.
-  Hypothesis HGEinit : GlobEnv.init
-    (ClightAtomicTarget.linked_units [P] ids) GE.
-  Hypothesis Hids : Wrappers.wrapper_ids_wf ids.
-  Hypothesis Hdecls : ClientInit.client_atomic_declarations ids P.
-  Hypothesis Hwrapper : CAM_initialized_wrapper ids GE.
+Record CAM_local_simulation_cases
+    {J : Type} {sge tge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (index_incr : J -> J -> Prop) : Prop := {
+  CAM_sim_core_try :
+    forall stp sm mu i score T score' sm' mu'
+      (Hget : stp !! i = Some (CAM_running score []))
+      (Hstep : ev_step_with_mem_ev (Clight_evsem.CLC_evsem sge)
+        score sm T score' sm')
+      (Hreserve : rsv T mu = Some mu')
+      (Hsyntax : clight_core_assign_loc_value_syntax sge score)
+      j tc,
+      CAM_match_state core_match memory_match j
+        (Build_CAM_config sge stp sm mu) tc ->
+      exists j' tc',
+        index_incr j j' /\
+        CAM_local_step tge i tc T tc' /\
+        CAM_match_state core_match memory_match j'
+          (Build_CAM_config sge
+            (<[i := CAM_running score' T]> stp) sm' mu') tc';
 
-  Local Definition CAM_endpoint_running
-      (score : Clight_core.CC_core) (T : list (@mem_ev address)) :=
-    @Running address val _ _ mem memory_chunk clight_mem_mixin
-      (Clight_language ge) score T.
-
-  Lemma CAM_initialized_atomic_load_endpoint
-      stp sm mu tc i b ofs v k
-      (Hq : CAM_uncrit_match
-        {| CAM_threads := stp; CAM_memory := sm; CAM_rw := mu |} tc)
-      (Hget : stp !! i = Some
-        (CAM_endpoint_running
-          (Clight_core.Callstate Wrappers.client_atomic_load_external
-            [Vptr b ofs] k) []))
-      (Hload : Mem.load Mint32 sm b (Ptrofs.unsigned ofs) = Some v)
+  CAM_sim_atomic_load :
+    forall stp sm mu i score ly l v K
+      (Hget : stp !! i = Some (CAM_running score []))
+      (Hext : clight_at_external score = Some (ALoad ly l, K))
+      (Hmu : readable mu (layout_to_locs l ly))
+      (Hload : load sm l ly = Some v)
       (Hdefined : clight_val_defined v)
-      (Hview : CAM_atomic_memory_view sm tc i) :
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate v k) []]> stp;
-           CAM_memory := sm; CAM_rw := mu |} tc'.
-  Proof.
-    destruct Hwrapper as
-      (wrapper_ix & wrapper_raw_ge & wrapper_ge & Hwrapper_ix &
-       Hwrapper_module & Hwrapper_init & Hload_owner & Hstore_owner &
-       HCAS_owner).
-    pose proof (CAM_supported_load_call b ofs k) as Hsupported.
-    destruct (CAM_uncrit_atomic_frame _ _ _ _ Hq Hget Hsupported) as
-      (client_ix & caller_raw_ge & caller_ge & Hcaller_module & caller_sg &
-       caller_F & Hclient_ix & Hcs).
-    destruct (CAM_initialized_client_resolution_at P ids GE HGEinit Hdecls
-      client_ix caller_raw_ge caller_ge Hclient_ix Hcaller_module) as
-      (Hload_resolve & Hstore_resolve & HCAS_resolve).
-    destruct Hview as [tfm Hembed Hload_view Hstore_view].
-    assert (Hsource_loadv :
-      Mem.loadv Mint32 sm (Vptr b ofs) = Some v).
-    { exact Hload. }
-    pose proof (Hload_view b ofs v Hsource_loadv) as Hfload.
-    pose proof (clight_val_defined_as_target_boolean v Hdefined)
-      as Htarget_defined.
-    cbn [s2t_core] in Hcs.
-    destruct (InitializedCalls.initialized_atomic_load_global_call_and_return
-      client_ix wrapper_ix caller_raw_ge wrapper_raw_ge caller_ge wrapper_ge
-      Hcaller_module Hwrapper_module ids Hids Hwrapper_init Hload_owner
-      Hload_resolve (gm tc) tfm b ofs v Hfload Htarget_defined
-      (thread_pool tc) (CAM_tid i)
-      caller_F caller_sg [] k Hembed Hcs) as (ttp' & fp & Htau & Hcs').
-    destruct Hq as [Hbit Hmemory Hpool Hcurrent].
-    change (CAM_memory_match sm (gm tc)) in Hmemory.
-    change (CAM_pool_matches stp (thread_pool tc)) in Hpool.
-    assert (Hvalid : ThreadPool.valid_tid (thread_pool tc) (CAM_tid i)).
-    { apply (proj1 (proj2 Hpool i)).
-      exists (CAM_endpoint_running
-        (Clight_core.Callstate Wrappers.client_atomic_load_external
-          [Vptr b ofs] k) []). exact Hget. }
-    assert (Hnot_halted :
-      ~ ThreadPool.halted (thread_pool tc) (CAM_tid i)).
-    { eapply CAM_thread_with_frame_not_halted; exact Hcs. }
-    destruct (GlobalSteps.scheduled_tau_star_with_pool_preservation
-      (thread_pool tc) ttp' (cur_tid tc) (CAM_tid i) (gm tc) (gm tc) fp
-      Hvalid Hnot_halted Htau) as
-      (labels & Hstar & Hother & Hnext & Hfmap).
-    set (return_frame := Core.Build_t client_ix
-      (ClightAtomicGlobalCalls.runtime_core client_ix
-        ClightLang.Clight_IS_2 caller_raw_ge caller_ge Hcaller_module
-        (ClightLang.Core_Returnstate v k)) caller_sg caller_F).
-    assert (Hreturn_frame :
-      CAM_client_frame_matches (Clight_core.Returnstate v k)
-        return_frame).
-    { unfold return_frame. constructor; assumption. }
-    exists (Build_ProgConfig GE ttp' (CAM_tid i) (gm tc) O),
-      (ETrace.sw :: labels), fp.
-    split.
-    - replace tc with
-        (Build_ProgConfig GE (thread_pool tc) (cur_tid tc) (gm tc) O).
-      + exact Hstar.
-      + destruct tc. cbn in *. subst. reflexivity.
-    - refine (@Build_CAM_uncrit_match ge GE
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate v k) []]> stp;
-           CAM_memory := sm; CAM_rw := mu |}
-        (Build_ProgConfig GE ttp' (CAM_tid i) (gm tc) O)
-        eq_refl Hmemory _ _).
-      + eapply CAM_atomic_pool_after; eauto.
-      + exists i, (CAM_endpoint_running
-          (Clight_core.Returnstate v k) []).
-        split.
-        * apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-        * reflexivity.
-  Qed.
+      j tc,
+      CAM_match_state core_match memory_match j
+        (Build_CAM_config sge stp sm mu) tc ->
+      exists j' tc',
+        index_incr j j' /\
+        CAM_linearization_path tge memory_match (CAM_lin_load l v) i
+          j j' sm sm tc (CAM_read_trace l ly) tc' /\
+        CAM_match_state core_match memory_match j'
+          (Build_CAM_config sge
+            (<[i := CAM_running (K (Some v)) []]> stp) sm mu) tc';
 
-  Lemma CAM_initialized_atomic_store_endpoint
-      stp sm sm' mu tc i b ofs n k
-      (Hq : CAM_uncrit_match
-        {| CAM_threads := stp; CAM_memory := sm; CAM_rw := mu |} tc)
-      (Hget : stp !! i = Some
-        (CAM_endpoint_running
-          (Clight_core.Callstate Wrappers.client_atomic_store_external
-            [Vptr b ofs; Vint n] k) []))
-      (Hstore :
-        Mem.store Mint32 sm b (Ptrofs.unsigned ofs) (Vint n) = Some sm')
-      (Hview : CAM_atomic_memory_view sm tc i) :
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vundef k) []]> stp;
-           CAM_memory := sm'; CAM_rw := mu |} tc'.
-  Proof.
-    destruct Hwrapper as
-      (wrapper_ix & wrapper_raw_ge & wrapper_ge & Hwrapper_ix &
-       Hwrapper_module & Hwrapper_init & Hload_owner & Hstore_owner &
-       HCAS_owner).
-    pose proof (CAM_supported_store_call b ofs n k) as Hsupported.
-    destruct (CAM_uncrit_atomic_frame _ _ _ _ Hq Hget Hsupported) as
-      (client_ix & caller_raw_ge & caller_ge & Hcaller_module & caller_sg &
-       caller_F & Hclient_ix & Hcs).
-    destruct (CAM_initialized_client_resolution_at P ids GE HGEinit Hdecls
-      client_ix caller_raw_ge caller_ge Hclient_ix Hcaller_module) as
-      (Hload_resolve & Hstore_resolve & HCAS_resolve).
-    destruct Hview as [tfm Hembed Hload_view Hstore_view].
-    assert (Hsource_storev :
-      Mem.storev Mint32 sm (Vptr b ofs) (Vint n) = Some sm').
-    { exact Hstore. }
-    destruct (Hstore_view b ofs (Vint n) sm' Hsource_storev) as
-      (tfm' & Hfstore & Hembed' & Hmemory').
-    cbn [s2t_core] in Hcs.
-    destruct (InitializedCalls.initialized_atomic_store_global_call_and_return
-      client_ix wrapper_ix caller_raw_ge wrapper_raw_ge caller_ge wrapper_ge
-      Hcaller_module Hwrapper_module ids Hids Hwrapper_init Hstore_owner
-      Hstore_resolve (gm tc) (FMemory.strip tfm') tfm tfm' b ofs n Hfstore
-      (thread_pool tc) (CAM_tid i) caller_F caller_sg [] k Hembed Hembed' Hcs)
-      as (ttp' & fp & Htau & Hcs').
-    destruct Hq as [Hbit Hmemory Hpool Hcurrent].
-    change (CAM_pool_matches stp (thread_pool tc)) in Hpool.
-    assert (Hvalid : ThreadPool.valid_tid (thread_pool tc) (CAM_tid i)).
-    { apply (proj1 (proj2 Hpool i)).
-      exists (CAM_endpoint_running
-        (Clight_core.Callstate Wrappers.client_atomic_store_external
-          [Vptr b ofs; Vint n] k) []). exact Hget. }
-    assert (Hnot_halted :
-      ~ ThreadPool.halted (thread_pool tc) (CAM_tid i)).
-    { eapply CAM_thread_with_frame_not_halted; exact Hcs. }
-    destruct (GlobalSteps.scheduled_tau_star_with_pool_preservation
-      (thread_pool tc) ttp' (cur_tid tc) (CAM_tid i) (gm tc)
-      (FMemory.strip tfm') fp Hvalid Hnot_halted Htau) as
-      (labels & Hstar & Hother & Hnext & Hfmap).
-    set (return_frame := Core.Build_t client_ix
-      (ClightAtomicGlobalCalls.runtime_core client_ix
-        ClightLang.Clight_IS_2 caller_raw_ge caller_ge Hcaller_module
-        (ClightLang.Core_Returnstate Vundef k)) caller_sg caller_F).
-    assert (Hreturn_frame :
-      CAM_client_frame_matches (Clight_core.Returnstate Vundef k)
-        return_frame).
-    { unfold return_frame. constructor; assumption. }
-    exists (Build_ProgConfig GE ttp' (CAM_tid i) (FMemory.strip tfm') O),
-      (ETrace.sw :: labels), fp.
-    split.
-    - replace tc with
-        (Build_ProgConfig GE (thread_pool tc) (cur_tid tc) (gm tc) O).
-      + exact Hstar.
-      + destruct tc. cbn in *. subst. reflexivity.
-    - refine (@Build_CAM_uncrit_match ge GE
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vundef k) []]> stp;
-           CAM_memory := sm'; CAM_rw := mu |}
-        (Build_ProgConfig GE ttp' (CAM_tid i) (FMemory.strip tfm') O)
-        eq_refl Hmemory' _ _).
-      + eapply CAM_atomic_pool_after; eauto.
-      + exists i, (CAM_endpoint_running
-          (Clight_core.Returnstate Vundef k) []).
-        split.
-        * apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-        * reflexivity.
-  Qed.
+  CAM_sim_atomic_store :
+    forall stp sm mu i score ly l v sm' K
+      (Hget : stp !! i = Some (CAM_running score []))
+      (Hext : clight_at_external score = Some (AStore ly l v, K))
+      (Hmu : writable mu (layout_to_locs l ly))
+      (Hstore : store sm l ly v = Some sm')
+      (Hdefined : clight_val_defined v)
+      j tc,
+      CAM_match_state core_match memory_match j
+        (Build_CAM_config sge stp sm mu) tc ->
+      exists j' tc',
+        index_incr j j' /\
+        CAM_linearization_path tge memory_match (CAM_lin_store l v) i
+          j j' sm sm' tc (CAM_write_trace l ly) tc' /\
+        CAM_match_state core_match memory_match j'
+          (Build_CAM_config sge
+            (<[i := CAM_running (K None) []]> stp) sm' mu) tc';
 
-  Lemma CAM_initialized_atomic_CAS_success_endpoint
-      stp sm sm' mu tc i b ofs expected new k
-      (Hq : CAM_uncrit_match
-        {| CAM_threads := stp; CAM_memory := sm; CAM_rw := mu |} tc)
-      (Hget : stp !! i = Some
-        (CAM_endpoint_running
-          (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-            [Vptr b ofs; Vint expected; Vint new] k) []))
-      (Hload :
-        Mem.load Mint32 sm b (Ptrofs.unsigned ofs) = Some (Vint expected))
-      (Hstore :
-        Mem.store Mint32 sm b (Ptrofs.unsigned ofs) (Vint new) = Some sm')
-      (Hview : CAM_atomic_memory_view sm tc i) :
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vtrue k) []]> stp;
-           CAM_memory := sm'; CAM_rw := mu |} tc'.
-  Proof.
-    destruct Hwrapper as
-      (wrapper_ix & wrapper_raw_ge & wrapper_ge & Hwrapper_ix &
-       Hwrapper_module & Hwrapper_init & Hload_owner & Hstore_owner &
-       HCAS_owner).
-    pose proof (CAM_supported_CAS_call b ofs expected new k) as Hsupported.
-    destruct (CAM_uncrit_atomic_frame _ _ _ _ Hq Hget Hsupported) as
-      (client_ix & caller_raw_ge & caller_ge & Hcaller_module & caller_sg &
-       caller_F & Hclient_ix & Hcs).
-    destruct (CAM_initialized_client_resolution_at P ids GE HGEinit Hdecls
-      client_ix caller_raw_ge caller_ge Hclient_ix Hcaller_module) as
-      (Hload_resolve & Hstore_resolve & HCAS_resolve).
-    destruct Hview as [tfm Hembed Hload_view Hstore_view].
-    assert (Hsource_loadv :
-      Mem.loadv Mint32 sm (Vptr b ofs) = Some (Vint expected)).
-    { exact Hload. }
-    pose proof (Hload_view b ofs (Vint expected) Hsource_loadv) as Hfload.
-    assert (Hsource_storev :
-      Mem.storev Mint32 sm (Vptr b ofs) (Vint new) = Some sm').
-    { exact Hstore. }
-    destruct (Hstore_view b ofs (Vint new) sm' Hsource_storev) as
-      (tfm' & Hfstore & Hembed' & Hmemory').
-    cbn [s2t_core] in Hcs.
-    destruct
-      (InitializedCalls.initialized_atomic_CAS_success_global_call_and_return
-        client_ix wrapper_ix caller_raw_ge wrapper_raw_ge caller_ge wrapper_ge
-        Hcaller_module Hwrapper_module ids Hids Hwrapper_init HCAS_owner
-        HCAS_resolve (gm tc) tfm tfm' b ofs expected new Hfload Hfstore
-        (thread_pool tc) (CAM_tid i) caller_F caller_sg [] k Hembed Hcs)
-      as (ttp' & fp & Htau & Hcs').
-    destruct Hq as [Hbit Hmemory Hpool Hcurrent].
-    change (CAM_pool_matches stp (thread_pool tc)) in Hpool.
-    assert (Hvalid : ThreadPool.valid_tid (thread_pool tc) (CAM_tid i)).
-    { apply (proj1 (proj2 Hpool i)).
-      exists (CAM_endpoint_running
-        (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-          [Vptr b ofs; Vint expected; Vint new] k) []). exact Hget. }
-    assert (Hnot_halted :
-      ~ ThreadPool.halted (thread_pool tc) (CAM_tid i)).
-    { eapply CAM_thread_with_frame_not_halted; exact Hcs. }
-    destruct (GlobalSteps.scheduled_tau_star_with_pool_preservation
-      (thread_pool tc) ttp' (cur_tid tc) (CAM_tid i) (gm tc)
-      (FMemory.strip tfm') fp Hvalid Hnot_halted Htau) as
-      (labels & Hstar & Hother & Hnext & Hfmap).
-    set (return_frame := Core.Build_t client_ix
-      (ClightAtomicGlobalCalls.runtime_core client_ix
-        ClightLang.Clight_IS_2 caller_raw_ge caller_ge Hcaller_module
-        (ClightLang.Core_Returnstate Vtrue k)) caller_sg caller_F).
-    assert (Hreturn_frame :
-      CAM_client_frame_matches (Clight_core.Returnstate Vtrue k)
-        return_frame).
-    { unfold return_frame. constructor; assumption. }
-    exists (Build_ProgConfig GE ttp' (CAM_tid i) (FMemory.strip tfm') O),
-      (ETrace.sw :: labels), fp.
-    split.
-    - replace tc with
-        (Build_ProgConfig GE (thread_pool tc) (cur_tid tc) (gm tc) O).
-      + exact Hstar.
-      + destruct tc. cbn in *. subst. reflexivity.
-    - refine (@Build_CAM_uncrit_match ge GE
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vtrue k) []]> stp;
-           CAM_memory := sm'; CAM_rw := mu |}
-        (Build_ProgConfig GE ttp' (CAM_tid i) (FMemory.strip tfm') O)
-        eq_refl Hmemory' _ _).
-      + eapply CAM_atomic_pool_after; eauto.
-      + exists i, (CAM_endpoint_running
-          (Clight_core.Returnstate Vtrue k) []).
-        split.
-        * apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-        * reflexivity.
-  Qed.
+  CAM_sim_atomic_CAS_success :
+    forall stp sm mu i score ly l expected new current sm' K
+      (Hget : stp !! i = Some (CAM_running score []))
+      (Hext : clight_at_external score =
+        Some (ACAS ly l expected new, K))
+      (Hmu : writable mu (layout_to_locs l ly))
+      (Hload : load sm l ly = Some current)
+      (Hdefined_current : clight_val_defined current)
+      (Heq : clight_ValEq score sm current expected)
+      (Hstore : store sm l ly new = Some sm')
+      (Hdefined_new : clight_val_defined new)
+      j tc,
+      CAM_match_state core_match memory_match j
+        (Build_CAM_config sge stp sm mu) tc ->
+      exists j' tc',
+        index_incr j j' /\
+        CAM_linearization_path tge memory_match
+          (CAM_lin_CAS_success l expected new current) i
+          j j' sm sm' tc
+          (CAM_read_trace l ly ++ CAM_write_trace l ly) tc' /\
+        CAM_match_state core_match memory_match j'
+          (Build_CAM_config sge
+            (<[i := CAM_running (K (Some Vtrue)) []]> stp) sm' mu) tc';
 
-  Lemma CAM_initialized_atomic_CAS_failure_endpoint
-      stp sm mu tc i b ofs old expected new k
-      (Hq : CAM_uncrit_match
-        {| CAM_threads := stp; CAM_memory := sm; CAM_rw := mu |} tc)
-      (Hget : stp !! i = Some
-        (CAM_endpoint_running
-          (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-            [Vptr b ofs; Vint expected; Vint new] k) []))
-      (Hload : Mem.load Mint32 sm b (Ptrofs.unsigned ofs) = Some (Vint old))
-      (Hneq : old <> expected)
-      (Hview : CAM_atomic_memory_view sm tc i) :
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vfalse k) []]> stp;
-           CAM_memory := sm; CAM_rw := mu |} tc'.
-  Proof.
-    destruct Hwrapper as
-      (wrapper_ix & wrapper_raw_ge & wrapper_ge & Hwrapper_ix &
-       Hwrapper_module & Hwrapper_init & Hload_owner & Hstore_owner &
-       HCAS_owner).
-    pose proof (CAM_supported_CAS_call b ofs expected new k) as Hsupported.
-    destruct (CAM_uncrit_atomic_frame _ _ _ _ Hq Hget Hsupported) as
-      (client_ix & caller_raw_ge & caller_ge & Hcaller_module & caller_sg &
-       caller_F & Hclient_ix & Hcs).
-    destruct (CAM_initialized_client_resolution_at P ids GE HGEinit Hdecls
-      client_ix caller_raw_ge caller_ge Hclient_ix Hcaller_module) as
-      (Hload_resolve & Hstore_resolve & HCAS_resolve).
-    destruct Hview as [tfm Hembed Hload_view Hstore_view].
-    assert (Hsource_loadv :
-      Mem.loadv Mint32 sm (Vptr b ofs) = Some (Vint old)).
-    { exact Hload. }
-    pose proof (Hload_view b ofs (Vint old) Hsource_loadv) as Hfload.
-    cbn [s2t_core] in Hcs.
-    destruct
-      (InitializedCalls.initialized_atomic_CAS_failure_global_call_and_return
-        client_ix wrapper_ix caller_raw_ge wrapper_raw_ge caller_ge wrapper_ge
-        Hcaller_module Hwrapper_module ids Hids Hwrapper_init HCAS_owner
-        HCAS_resolve (gm tc) tfm b ofs old expected new Hneq Hfload
-        (thread_pool tc) (CAM_tid i) caller_F caller_sg [] k Hembed Hcs)
-      as (ttp' & fp & Htau & Hcs').
-    destruct Hq as [Hbit Hmemory Hpool Hcurrent].
-    change (CAM_memory_match sm (gm tc)) in Hmemory.
-    change (CAM_pool_matches stp (thread_pool tc)) in Hpool.
-    assert (Hvalid : ThreadPool.valid_tid (thread_pool tc) (CAM_tid i)).
-    { apply (proj1 (proj2 Hpool i)).
-      exists (CAM_endpoint_running
-        (Clight_core.Callstate Wrappers.client_atomic_CAS_external
-          [Vptr b ofs; Vint expected; Vint new] k) []). exact Hget. }
-    assert (Hnot_halted :
-      ~ ThreadPool.halted (thread_pool tc) (CAM_tid i)).
-    { eapply CAM_thread_with_frame_not_halted; exact Hcs. }
-    destruct (GlobalSteps.scheduled_tau_star_with_pool_preservation
-      (thread_pool tc) ttp' (cur_tid tc) (CAM_tid i) (gm tc) (gm tc) fp
-      Hvalid Hnot_halted Htau) as
-      (labels & Hstar & Hother & Hnext & Hfmap).
-    set (return_frame := Core.Build_t client_ix
-      (ClightAtomicGlobalCalls.runtime_core client_ix
-        ClightLang.Clight_IS_2 caller_raw_ge caller_ge Hcaller_module
-        (ClightLang.Core_Returnstate Vfalse k)) caller_sg caller_F).
-    assert (Hreturn_frame :
-      CAM_client_frame_matches (Clight_core.Returnstate Vfalse k)
-        return_frame).
-    { unfold return_frame. constructor; assumption. }
-    exists (Build_ProgConfig GE ttp' (CAM_tid i) (gm tc) O),
-      (ETrace.sw :: labels), fp.
-    split.
-    - replace tc with
-        (Build_ProgConfig GE (thread_pool tc) (cur_tid tc) (gm tc) O).
-      + exact Hstar.
-      + destruct tc. cbn in *. subst. reflexivity.
-    - refine (@Build_CAM_uncrit_match ge GE
-        {| CAM_threads := <[i := CAM_endpoint_running
-             (Clight_core.Returnstate Vfalse k) []]> stp;
-           CAM_memory := sm; CAM_rw := mu |}
-        (Build_ProgConfig GE ttp' (CAM_tid i) (gm tc) O)
-        eq_refl Hmemory _ _).
-      + eapply CAM_atomic_pool_after; eauto.
-      + exists i, (CAM_endpoint_running
-          (Clight_core.Returnstate Vfalse k) []).
-        split.
-        * apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-        * reflexivity.
-  Qed.
+  CAM_sim_atomic_CAS_failure :
+    forall stp sm mu i score ly l expected new current K
+      (Hget : stp !! i = Some (CAM_running score []))
+      (Hext : clight_at_external score =
+        Some (ACAS ly l expected new, K))
+      (Hmu : readable mu (layout_to_locs l ly))
+      (Hload : load sm l ly = Some current)
+      (Hdefined_current : clight_val_defined current)
+      (Hneq : clight_ValNEq score sm current expected)
+      j tc,
+      CAM_match_state core_match memory_match j
+        (Build_CAM_config sge stp sm mu) tc ->
+      exists j' tc',
+        index_incr j j' /\
+        CAM_linearization_path tge memory_match
+          (CAM_lin_CAS_failure l expected new current) i
+          j j' sm sm tc (CAM_read_trace l ly) tc' /\
+        CAM_match_state core_match memory_match j'
+          (Build_CAM_config sge
+            (<[i := CAM_running (K (Some Vfalse)) []]> stp) sm mu) tc'
+}.
 
-End CAMInitializedAtomicEndpoints.
+(** The generic Smallstep-style diagram below deliberately forgets which
+    nonempty target path implements a source rule.  These two lemmas retain
+    the sharper facts needed by clients of the atomic-machine simulation:
+    [Core_Try] is exactly one local core step on [i], while [Core_Commit]
+    leaves the target configuration unchanged.  The four atomic projections
+    of [CAM_local_simulation_cases] analogously retain their distinguished
+    [CAM_linearization_path]. *)
+Lemma CAM_core_try_simulates_one_from_cases
+    {J : Type} {sge tge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (index_incr : J -> J -> Prop)
+    (Hcases : @CAM_local_simulation_cases J sge tge
+      core_match memory_match index_incr)
+    (stp : CAM_tpool sge) (sm : mem) (mu : CAM_rw_map) (i : nat)
+    (score : Clight_core.CC_core) (T : CAM_trace)
+    (score' : Clight_core.CC_core) (sm' : mem) (mu' : CAM_rw_map)
+    (Hget : stp !! i = Some (CAM_running score []))
+    (Hstep : ev_step_with_mem_ev (Clight_evsem.CLC_evsem sge)
+      score sm T score' sm')
+    (Hreserve : rsv T mu = Some mu')
+    (Hsyntax : clight_core_assign_loc_value_syntax sge score)
+    (j : J) (tc : CAM_local_config)
+    (Hmatch : CAM_match_state core_match memory_match j
+      (Build_CAM_config sge stp sm mu) tc) :
+  exists j' tc',
+    index_incr j j' /\
+    CAM_local_step tge i tc T tc' /\
+    CAM_match_state core_match memory_match j'
+      (Build_CAM_config sge
+        (<[i := CAM_running score' T]> stp) sm' mu') tc'.
+Proof.
+  eapply CAM_sim_core_try; eauto.
+Qed.
 
-Section CAMInitializedAtomicStep.
+Lemma CAM_core_commit_simulates_zero
+    {J : Type} {sge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (j : J) (stp : CAM_tpool sge) (sm : mem) (mu : CAM_rw_map)
+    (i : nat) (score : Clight_core.CC_core) (pending : CAM_trace)
+    (mu' : CAM_rw_map) (tc : CAM_local_config)
+    (Hget : stp !! i = Some (CAM_running score pending))
+    (Hne : pending <> [])
+    (Hcommit : fin pending mu = Some mu')
+    (Hmatch : CAM_match_state core_match memory_match j
+      (Build_CAM_config sge stp sm mu) tc) :
+  CAM_commit_transition sge i
+      (Build_CAM_config sge stp sm mu) []
+      (Build_CAM_config sge
+        (<[i := CAM_running score []]> stp) sm mu') /\
+  CAM_match_state core_match memory_match j
+      (Build_CAM_config sge
+        (<[i := CAM_running score []]> stp) sm mu') tc.
+Proof.
+  split.
+  - econstructor; eauto.
+  - eapply CAM_match_state_commit; eauto.
+Qed.
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (sc : CAM_config ge) (tc : @ProgConfig GE).
-  Variables P : ClightLang.clight_comp_unit.
-  Variable ids : Wrappers.wrapper_ids.
-  Hypothesis HGEinit : GlobEnv.init
-    (ClightAtomicTarget.linked_units [P] ids) GE.
-  Hypothesis Hids : Wrappers.wrapper_ids_wf ids.
-  Hypothesis Hdecls : ClientInit.client_atomic_declarations ids P.
-  Hypothesis Hwrapper : CAM_initialized_wrapper ids GE.
+(** ** Smallstep-style forward-simulation diagram *)
 
-  Lemma CAM_initialized_atomic_step_refines
-      (i : nat) sc1 sc2 tc :
-    CAM_atomic_step_at i sc1 sc2 ->
-    CAM_uncrit_match sc1 tc ->
-    CAM_atomic_memory_views sc1 tc ->
-    exists tc' labels fp,
-      ETrace.star (@glob_step GE) tc labels fp tc' /\
-      CAM_uncrit_match sc2 tc'.
-  Proof.
-    intros Hatomic Hq Hviews.
-    destruct Hatomic as
-      [stp sm mu c ly l v K Hget Hext Hreadable Hload Hdefined |
-       stp sm mu c ly l v sm' K Hget Hext Hwritable Hstore Hdefined |
-       stp sm mu c ly l expected new current sm' K Hget Hext Hwritable
-         Hload Hdefined_current Heq Hstore Hdefined_new |
-       stp sm mu c ly l expected new current K Hget Hext Hreadable
-         Hload Hdefined_current Hneq].
-    - pose proof (CAM_decoded_atomic_call_supported _ _ _ Hext)
-        as Hsupported.
-      destruct (CAM_supported_load_inv _ _ _ _ Hsupported Hext) as
-        (b & ofs & k & Hc & Hly & Hl & HK).
-      subst c ly l K.
-      pose proof (Hviews i _ Hget Hsupported) as Hview.
-      eapply (@CAM_initialized_atomic_load_endpoint ge GE P ids HGEinit
-        Hids Hdecls Hwrapper); eauto.
-    - pose proof (CAM_decoded_atomic_call_supported _ _ _ Hext)
-        as Hsupported.
-      destruct (CAM_supported_store_inv _ _ _ _ _ Hsupported Hext) as
-        (b & ofs & n & k & Hc & Hly & Hl & Hv & HK).
-      subst c ly l v K.
-      pose proof (Hviews i _ Hget Hsupported) as Hview.
-      eapply (@CAM_initialized_atomic_store_endpoint ge GE P ids HGEinit
-        Hids Hdecls Hwrapper); eauto.
-    - pose proof (CAM_decoded_atomic_call_supported _ _ _ Hext)
-        as Hsupported.
-      destruct (CAM_supported_CAS_inv _ _ _ _ _ _ Hsupported Hext) as
-        (b & ofs & expected_int & new_int & k & Hc & Hly & Hl &
-         Hexpected & Hnew & HK).
-      subst c ly l expected new K.
-      pose proof (clight_ValEq_CAS_Vint_same
-        sm b ofs current expected_int new_int k Heq) as Hcurrent.
-      subst current.
-      pose proof (Hviews i _ Hget Hsupported) as Hview.
-      eapply (@CAM_initialized_atomic_CAS_success_endpoint ge GE P ids
-        HGEinit Hids Hdecls Hwrapper); eauto.
-    - pose proof (CAM_decoded_atomic_call_supported _ _ _ Hext)
-        as Hsupported.
-      destruct (CAM_supported_CAS_inv _ _ _ _ _ _ Hsupported Hext) as
-        (b & ofs & expected_int & new_int & k & Hc & Hly & Hl &
-         Hexpected & Hnew & HK).
-      subst c ly l expected new K.
-      destruct (clight_ValNEq_CAS_Vint_different
-        sm b ofs current expected_int new_int k Hneq)
-        as (old & Hcurrent & Hold).
-      subst current.
-      pose proof (Hviews i _ Hget Hsupported) as Hview.
-      eapply (@CAM_initialized_atomic_CAS_failure_endpoint ge GE P ids
-        HGEinit Hids Hdecls Hwrapper); eauto.
-  Qed.
+Definition CAM_forward_simulation_diagram
+    {J : Type} {sge tge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (index_incr : J -> J -> Prop) : Prop :=
+  forall i sc T sc' j tc,
+    CAM_safe_step sge i sc T sc' ->
+    CAM_match_state core_match memory_match j sc tc ->
+    (exists j' tc',
+      index_incr j j' /\
+      CAM_local_plus_at tge i tc T tc' /\
+      CAM_match_state core_match memory_match j' sc' tc') \/
+    (CAM_commit_transition sge i sc T sc' /\
+      CAM_match_state core_match memory_match j sc' tc).
 
-End CAMInitializedAtomicStep.
+Theorem CAM_forward_simulation_from_cases
+    {J : Type} {sge tge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (index_incr : J -> J -> Prop) :
+  @CAM_local_simulation_cases J sge tge
+    core_match memory_match index_incr ->
+  @CAM_forward_simulation_diagram J sge tge
+    core_match memory_match index_incr.
+Proof.
+  intros Hcases. destruct Hcases as
+    [Htry Hload_case Hstore_case HCAS_success_case HCAS_failure_case].
+  intros i sc T sc' j tc
+    [Hsource_step [Hsyntax Hnot_stuck]] Hmatch.
+  destruct Hsource_step.
+  - left.
+    edestruct Htry as (j' & tc' & Hincr & Htarget_step & Hmatch'); eauto.
+    exists j', tc'. split; [exact Hincr |]. split.
+    + now apply CAM_local_plus_one.
+    + exact Hmatch'.
+  - right. split.
+    + econstructor; eauto.
+    + eapply CAM_match_state_commit; eauto.
+  - left.
+    edestruct Hload_case as (j' & tc' & Hincr & Hpath & Hmatch'); eauto.
+    exists j', tc'. split; [exact Hincr |]. split.
+    + exact (CAM_linearization_path_plus tge memory_match
+        (CAM_lin_load l v) i j j' sm sm tc
+        (CAM_read_trace l ly) tc' Hpath).
+    + exact Hmatch'.
+  - left.
+    edestruct Hstore_case as (j' & tc' & Hincr & Hpath & Hmatch'); eauto.
+    exists j', tc'. split; [exact Hincr |]. split.
+    + exact (CAM_linearization_path_plus tge memory_match
+        (CAM_lin_store l v) i j j' sm sm' tc
+        (CAM_write_trace l ly) tc' Hpath).
+    + exact Hmatch'.
+  - left.
+    edestruct HCAS_success_case as
+      (j' & tc' & Hincr & Hpath & Hmatch'); eauto.
+    exists j', tc'. split; [exact Hincr |]. split.
+    + exact (CAM_linearization_path_plus tge memory_match
+        (CAM_lin_CAS_success l expected new current) i
+        j j' sm sm' tc
+        (CAM_read_trace l ly ++ CAM_write_trace l ly) tc' Hpath).
+    + exact Hmatch'.
+  - left.
+    edestruct HCAS_failure_case as
+      (j' & tc' & Hincr & Hpath & Hmatch'); eauto.
+    exists j', tc'. split; [exact Hincr |]. split.
+    + exact (CAM_linearization_path_plus tge memory_match
+        (CAM_lin_CAS_failure l expected new current) i
+        j j' sm sm tc (CAM_read_trace l ly) tc' Hpath).
+    + exact Hmatch'.
+  - exfalso. apply (Hnot_stuck i).
+    change (gmap nat (CAM_source_thread_state sge)) in stp.
+    cbn [CAM_threads CAM_stuck_state].
+    exact (lookup_insert_eq stp i
+      (@StuckState address val _ _ mem memory_chunk clight_mem_mixin
+        (Clight_language sge))).
+Qed.
 
-Section CAMInitializeduncritStep.
+(** The explicit first-step/suffix form requested by the CompCert diagram.
+    The first target step and every suffix step use the source thread [i],
+    and the observations satisfy [T = T1 ++ T2].  The only zero-step case
+    carries evidence that the source transition was [Core_Commit]. *)
+Corollary CAM_forward_simulation_step_split
+    {J : Type} {sge tge : Clight.genv}
+    (core_match : J -> Clight_core.CC_core ->
+      ClightLang.core -> Prop)
+    (memory_match : J -> mem -> mem -> Prop)
+    (index_incr : J -> J -> Prop)
+    (Hsim : @CAM_forward_simulation_diagram J sge tge
+      core_match memory_match index_incr) :
+  forall i sc T sc' j tc,
+    CAM_safe_step sge i sc T sc' ->
+    CAM_match_state core_match memory_match j sc tc ->
+    (exists j' tc1 T1 tc2 T2,
+      index_incr j j' /\
+      CAM_local_step tge i tc T1 tc1 /\
+      CAM_local_star_at tge i tc1 T2 tc2 /\
+      T = T1 ++ T2 /\
+      CAM_match_state core_match memory_match j' sc' tc2) \/
+    (CAM_commit_transition sge i sc T sc' /\
+      CAM_match_state core_match memory_match j sc' tc).
+Proof.
+  intros i sc T sc' j tc Hstep Hmatch.
+  destruct (Hsim i sc T sc' j tc Hstep Hmatch)
+    as [(j' & tc' & Hincr & Hplus & Hmatch') | Hstutter].
+  - left. destruct Hplus as (tc1 & T1 & T2 & Hfirst & Hrest & Heq).
+    exists j', tc1, T1, tc', T2. auto.
+  - right; exact Hstutter.
+Qed.
 
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types (sc : CAM_config ge) (tc : @ProgConfig GE).
-  Variables P : ClightLang.clight_comp_unit.
-  Variable ids : Wrappers.wrapper_ids.
-  Hypothesis HGEinit : GlobEnv.init
-    (ClightAtomicTarget.linked_units [P] ids) GE.
-  Hypothesis Hids : Wrappers.wrapper_ids_wf ids.
-  Hypothesis Hreserve :
-    ClightAtomicTarget.clients_reserve_wrapper_ids [P] ids.
-  Hypothesis Hdecls : ClientInit.client_atomic_declarations ids P.
+(** ** Program-level packaging *)
 
-  Theorem CAM_initialized_uncrit_step_refinement :
-    forall sc1 sc2 tc,
-      CAM_step ge sc1 sc2 ->
-      CAM_assign_loc_value_syntax sc1 ->
-      CAM_no_explicit_stuck sc2 ->
-      CAM_uncrit_match sc1 tc ->
-      CAM_core_try_refinement_at sc1 tc ->
-      CAM_atomic_memory_views sc1 tc ->
-      exists tc' labels fp,
-        ETrace.star (@glob_step GE) tc labels fp tc' /\
-        CAM_uncrit_match sc2 tc'.
-  Proof.
-    intros [stp sm mu] [stp2 sm2 mu2] tc Hstep Hsyntax
-      Hnot_stuck Hq Htry Hviews.
-    pose proof (CAM_initialized_wrapper_of_link
-      P ids GE HGEinit Hreserve Hids) as Hwrapper.
-    unfold CAM_step in Hstep. cbn in Hstep.
-    inversion Hstep; subst stp2 sm2 mu2.
-    - eapply Htry.
-      + econstructor; eauto.
-      + exact Hsyntax.
-      + exact Hq.
-    - destruct (CAM_core_commit_stutters
-        stp sm mu i c T μ' tc Hget Hq) as (labels & fp & Hstar & Hq').
-      exists tc, labels, fp. auto.
-    - eapply (CAM_initialized_atomic_step_refines
-        P ids HGEinit Hids Hdecls Hwrapper i).
-      + eapply CAM_atomic_read; eauto.
-      + exact Hq.
-      + exact Hviews.
-    - eapply (CAM_initialized_atomic_step_refines
-        P ids HGEinit Hids Hdecls Hwrapper i).
-      + eapply CAM_atomic_write; eauto.
-      + exact Hq.
-      + exact Hviews.
-    - eapply (CAM_initialized_atomic_step_refines
-        P ids HGEinit Hids Hdecls Hwrapper i).
-      + eapply CAM_atomic_CAS_success; eauto.
-      + exact Hq.
-      + exact Hviews.
-    - eapply (CAM_initialized_atomic_step_refines
-        P ids HGEinit Hids Hdecls Hwrapper i).
-      + eapply CAM_atomic_CAS_failure; eauto.
-      + exact Hq.
-      + exact Hviews.
-    - exfalso. apply (Hnot_stuck i).
-      apply (lookup_insert_eq (K := nat) (M := gmap nat)).
-  Qed.
+Record CAM_local_program_pair
+    (P : ClightLang.clight_comp_unit) (ids : Wrappers.wrapper_ids)
+    (sge tge : Clight.genv) : Prop := {
+  CAM_program_ids_wf : Wrappers.wrapper_ids_wf ids;
+  CAM_program_atomic_declarations :
+    ClientInit.client_atomic_declarations ids P;
+  CAM_program_def_ids_norepet :
+    list_norepet (map fst (ClightLang.cu_defs P));
+  CAM_program_source_initialized :
+    CAM_source_program_initialized P sge;
+  CAM_program_target_initialized :
+    CAM_local_program_initialized (CAM_local_translated_program P ids) tge;
+  CAM_program_block_alignment : CAM_program_blocks_aligned sge tge;
+  CAM_program_source_fragment : CAM_source_fragment P;
+  CAM_program_external_restriction :
+    CAM_program_only_atomic_externals ids P
+}.
 
-End CAMInitializeduncritStep.
+Section CAMProgramForwardSimulation.
 
-Section ClightAtomicProgramCorrespondence.
-
-  Context {ge : Clight.genv} {GE : GlobEnv.t}.
-  Implicit Types
-    (sc sc_initial sc_final : CAM_config ge)
-    (tc tc_initial tc_final : @ProgConfig GE).
-
+  Context {sge tge : Clight.genv}.
   Variable P : ClightLang.clight_comp_unit.
-  Variable ids : ClightAtomicWrappers.wrapper_ids.
-  Variable thread_entries : GAST.entries.
+  Variable ids : Wrappers.wrapper_ids.
+  Context {J : Type}.
+  Variable core_match : J -> Clight_core.CC_core ->
+    ClightLang.core -> Prop.
+  Variable memory_match : J -> mem -> mem -> Prop.
+  Variable index_incr : J -> J -> Prop.
 
-  Hypothesis Hids : Wrappers.wrapper_ids_wf ids.
-  Hypothesis Hreserve :
-    ClightAtomicTarget.clients_reserve_wrapper_ids [P] ids.
-  Hypothesis Hdecls : ClientInit.client_atomic_declarations ids P.
-  Hypothesis Hsource : CAM_source_program_initialized P ge.
-
-  (** [P'] is [P] verbatim plus the appended wrapper compilation unit.  The
-      wrapper bodies are, by [wrapper_bodies_have_atomic_shape], exactly
-      [ent_atom(); sequential operation; ext_atom()].  Thus this is a
-      link-time implementation of the requested call translation rather than
-      a syntactic rewrite of each call site. *)
-  (** The induction stays at O-bit wrapper boundaries.  In particular, its
-      atomic cases are discharged by
-      [CAM_initialized_uncrit_step_refinement], which extracts the
-      initialized wrapper and client-resolution facts from [P'] and invokes
-      the four concrete translated-function executions. *)
-  Theorem CAM_program_execution_corresponds_uncrit :
-    forall sc_initial sc_final tc_initial,
-      init_config (CAM_translated_program P ids thread_entries)
-        (gm tc_initial) GE tc_initial
-        (cur_tid tc_initial) ->
-      CAM_execution ge sc_initial sc_final ->
-      CAM_uncrit_match sc_initial tc_initial ->
-      CAM_core_try_refinements_for_from P ge GE tc_initial ->
-      @CAM_atomic_memory_views_from ge GE tc_initial ->
-      exists tc_final labels fp,
-        ETrace.star (@glob_step GE) tc_initial labels fp tc_final /\
-        CAM_uncrit_match sc_final tc_final.
+  (** The constructor-local cases are the remaining semantic proof boundary,
+      including the concrete core/memory relations, ordinary Clight
+      lockstep, and marker-free wrapper paths.  This theorem only packages
+      those cases; its [_from_cases] name is intentional. *)
+  Theorem CAM_program_forward_simulation_from_cases
+      (Hprograms : CAM_local_program_pair P ids sge tge)
+      (Hlocal_cases : CAM_local_program_pair P ids sge tge ->
+        @CAM_local_simulation_cases J sge tge
+          core_match memory_match index_incr) :
+    @CAM_forward_simulation_diagram J sge tge
+      core_match memory_match index_incr.
   Proof.
-    intros sc_initial sc_final tc_initial Htarget Hexec Hmatch Htries_for_from
-      Hviews_from.
-    pose proof (CAM_translated_program_init_GE
-      P ids thread_entries (gm tc_initial) GE tc_initial
-      (cur_tid tc_initial) Htarget) as HGEinit.
-    destruct Hsource as (source_raw_ge & Hsource_init).
-    pose proof (Htries_for_from source_raw_ge Hsource_init) as Htries_from.
-    clear Htarget Htries_for_from.
-    revert tc_initial Hmatch Htries_from Hviews_from.
-    induction Hexec as
-      [sc Hnot_stuck Hsyntax Hterminated |
-       sc1 sc2 sc3 Hnot_stuck Hsyntax Hsource_step Hexec IHexec];
-      intros tc1 Hmatch Htries_from Hviews_from.
-    - exists tc1, [], FP.emp. split; [constructor | exact Hmatch].
-    - pose proof (CAM_execution_source_no_explicit_stuck_1 _ _ _ Hexec)
-        as Hnext_not_stuck.
-      pose proof (Hviews_from sc1 tc1 [] FP.emp ltac:(constructor) Hmatch)
-        as Hviews.
-      pose proof (Htries_from sc1 tc1 [] FP.emp ltac:(constructor))
-        as Hcore_try.
-      destruct (CAM_initialized_uncrit_step_refinement
-        P ids HGEinit Hids Hreserve Hdecls
-        sc1 sc2 tc1 Hsource_step Hsyntax
-        Hnext_not_stuck Hmatch Hcore_try Hviews)
-        as (tc2 & labels1 & fp1 & Hstar1 & Hmatch2).
-      assert (Hviews_from2 : @CAM_atomic_memory_views_from ge GE tc2).
-      { intros sc tc labels fp Hstar Hq.
-        eapply (Hviews_from sc tc (labels1 ++ labels) (FP.union fp1 fp)).
-        - eapply CAM_etrace_star_trans; eauto.
-        - exact Hq. }
-      assert (Htries_from2 : forall sc tc labels fp,
-          ETrace.star (@glob_step GE) tc2 labels fp tc ->
-          CAM_core_try_refinement_at sc tc).
-      { intros sc tc labels fp Hstar.
-        eapply (Htries_from sc tc (labels1 ++ labels) (FP.union fp1 fp)).
-        eapply CAM_etrace_star_trans; eauto. }
-      destruct (IHexec tc2 Hmatch2 Htries_from2 Hviews_from2)
-        as (tc3 & labels2 & fp2 & Hstar2 & Hmatch3).
-      exists tc3, (labels1 ++ labels2), (FP.union fp1 fp2).
-      split; [eapply CAM_etrace_star_trans; eauto | exact Hmatch3].
+    apply CAM_forward_simulation_from_cases.
+    now apply Hlocal_cases.
   Qed.
 
-  (** Public result, stated with the direct two-case configuration relation.
-      The stronger theorem above also establishes that both endpoints are
-      outside a target crit section. *)
-  Corollary CAM_program_execution_corresponds :
-    forall sc_initial sc_final tc_initial,
-      init_config (CAM_translated_program P ids thread_entries)
-        (gm tc_initial) GE tc_initial
-        (cur_tid tc_initial) ->
-      CAM_execution ge sc_initial sc_final ->
-      CAM_uncrit_match sc_initial tc_initial ->
-      CAM_core_try_refinements_for_from P ge GE tc_initial ->
-      @CAM_atomic_memory_views_from ge GE tc_initial ->
-      exists tc_final labels fp,
-        ETrace.star (@glob_step GE) tc_initial labels fp tc_final /\
-        match_config sc_final tc_final.
-  Proof.
-    intros sc_initial sc_final tc_initial Htarget Hexec Hmatch Htries Hviews.
-    destruct (CAM_program_execution_corresponds_uncrit
-      sc_initial sc_final tc_initial Htarget Hexec Hmatch Htries Hviews)
-      as (tc_final & labels & fp & Hstar & Hfinal).
-    exists tc_final, labels, fp. split; [exact Hstar |].
-    constructor. exact Hfinal.
-  Qed.
-
-End ClightAtomicProgramCorrespondence.
+End CAMProgramForwardSimulation.
