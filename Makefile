@@ -791,16 +791,42 @@ endif
 # ########## Targets ##########
 
 # Compile CASCompCert targets with its own dependency graph while sharing the
-# bundled VST/compcert tree.  The force prerequisite makes the child Makefile,
-# rather than this wrapper, decide whether an existing .vo is current.
+# bundled VST/compcert tree.  The force prerequisite rechecks the imported
+# targets through the child Makefile on every top-level build without making
+# their VST dependents stale when the child leaves the objects unchanged.
 CASCOMPCERT_MAKE = $(MAKE) -C cascompcert FOR_VST=true \
   ARCH=$(ARCH) BITSIZE=$(BITSIZE) LIBRARY_FLOCQ=local
 
-.PHONY: cascompcert-force cascompcert-globsemantics
+# The top-level dependency file names imported CASCompCert objects, but it
+# does not contain their internal dependency graph.  Ask CASCompCert to
+# update the objects used by the atomic-machine development in one recursive
+# invocation.  A single invocation matters because CASCompCert's [%.vo] rule
+# refreshes its dependency closure whenever make is entered.
+CASCOMPCERT_IMPORTED_TARGETS = \
+  concurrency/common/FMemory.vo \
+  concurrency/common/FMemPerm.vo \
+  concurrency/common/Footprint.vo \
+  concurrency/common/GAST.vo \
+  concurrency/common/GlobDefs.vo \
+  concurrency/common/GlobSemantics.vo \
+  concurrency/common/InteractionSemantics.vo \
+  concurrency/common/clight_val_casted.vo \
+  concurrency/comp_correct/CUAST.vo \
+  concurrency/comp_correct/ClightLang.vo \
+  concurrency/comp_correct/cfrontend/FCop.vo
+CASCOMPCERT_IMPORTED_VO = \
+  $(addprefix cascompcert/,$(CASCOMPCERT_IMPORTED_TARGETS))
+
+.PHONY: cascompcert-force cascompcert-imports
 cascompcert-force:
 
-cascompcert/concurrency/common/GlobSemantics.vo: cascompcert-force
-	+$(CASCOMPCERT_MAKE) concurrency/common/GlobSemantics.vo
+cascompcert-imports: cascompcert-force
+	+$(CASCOMPCERT_MAKE) $(CASCOMPCERT_IMPORTED_TARGETS)
+
+# The recursive invocation above produces these files.  The empty recipe
+# prevents the generic top-level [%.vo] rule from compiling CASCompCert files
+# with an incomplete dependency graph.
+$(CASCOMPCERT_IMPORTED_VO): | cascompcert-imports ;
 
 globsemantics: cascompcert/concurrency/common/GlobSemantics.vo
 
